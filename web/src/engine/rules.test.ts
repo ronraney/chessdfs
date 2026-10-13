@@ -1,19 +1,29 @@
-// Ported from tests/test_rules.py. The "roster/salary feasibility, tested
-// directly" section exercises lineup_still_completable directly; the
-// "chess legality + turn order", "exclusivity", and "roster/salary (same
-// rules for both sides)" sections exercise is_legal_move/apply_move --
-// Task 23 deferred all of those (11 tests) pending ContestConfig; Task 24
-// ports ContestConfig + is_legal_move/apply_move (ordinary moves only) and
-// these tests along with them. The other test_rules.py sections (castling,
-// King modes, captures) remain deferred, their own future task.
+// Ported from tests/test_rules.py, now in full. The "roster/salary
+// feasibility, tested directly" section exercises lineup_still_completable
+// directly; "chess legality + turn order"/"exclusivity"/"roster/salary
+// (same rules for both sides)" exercise is_legal_move/apply_move (ported
+// Task 24); "castling"/"King modes (Task 14)"/"captures (Task 18/19)"
+// exercise can_castle/castle/switch_king/place_kings/is_legal_capture/
+// apply_capture_move (ported this task, Task 25).
 import type { Square } from "chess.js";
+import { Chess } from "chess.js";
 import { describe, expect, it } from "vitest";
 import nflConfig from "../data/config/sports/nfl.json";
 import { ContestConfig } from "./config";
-import { BuildState, Piece, Player } from "./models";
+import { BuildState, KingMode, Move, Piece, Side, Player } from "./models";
 import { classify } from "./pieces";
 import type { ChessMove } from "./rules";
-import { applyMove, isLegalMove, lineupStillCompletable } from "./rules";
+import {
+  applyCaptureMove,
+  applyMove,
+  canCastle,
+  castle,
+  isLegalCapture,
+  isLegalMove,
+  lineupStillCompletable,
+  placeKings,
+  switchKing,
+} from "./rules";
 import { loadSportConfig } from "./sport";
 
 const CONTEST = new ContestConfig({ cap: 50000, fieldSize: 1000, payouts: [] });
@@ -40,6 +50,51 @@ function makePlayer(id: string, pos: string, salary: number): Player {
 // no ported test here moves a pawn to its promotion rank.
 function uci(move: string): ChessMove {
   return { from: move.slice(0, 2) as Square, to: move.slice(2, 4) as Square };
+}
+
+// Plays Nc3, Bf4, Qd3 for White (clearing b1/c1/d1 and locking a
+// Knight-tier + Bishop-tier + Queen-tier player), with harmless Black
+// a-pawn replies, leaving White ready to play O-O-O.
+function stateReadyToCastleQueenside(): BuildState {
+  let state = applyMove(new BuildState(), uci("d2d4"), makePlayer("w_pawn", "WR", 3000), NFL, CONTEST);
+  state = applyMove(state, uci("a7a6"), makePlayer("b1", "WR", 3000), NFL, CONTEST);
+  state = applyMove(state, uci("b1c3"), makePlayer("te1", "TE", 4600), NFL, CONTEST);
+  state = applyMove(state, uci("a6a5"), makePlayer("b2", "WR", 3000), NFL, CONTEST);
+  state = applyMove(state, uci("c1f4"), makePlayer("wr1", "WR", 5000), NFL, CONTEST);
+  state = applyMove(state, uci("a5a4"), makePlayer("b3", "WR", 3000), NFL, CONTEST);
+  state = applyMove(state, uci("d1d3"), makePlayer("rb_queen", "RB", 7200), NFL, CONTEST);
+  state = applyMove(state, uci("a4a3"), makePlayer("b4", "WR", 3000), NFL, CONTEST);
+  return state;
+}
+
+// Like stateReadyToCastleQueenside, but White's QB is already locked from
+// setup (Task 14 PLACED king mode) before any move is played.
+function stateReadyToCastleQueensidePlaced(): BuildState {
+  let state = placeKings(makePlayer("qb_w", "QB", 6500), makePlayer("qb_b", "QB", 6200), NFL, CONTEST);
+  state = applyMove(state, uci("d2d4"), makePlayer("w_pawn", "WR", 3000), NFL, CONTEST);
+  state = applyMove(state, uci("a7a6"), makePlayer("b1", "WR", 3000), NFL, CONTEST);
+  state = applyMove(state, uci("b1c3"), makePlayer("te1", "TE", 4600), NFL, CONTEST);
+  state = applyMove(state, uci("a6a5"), makePlayer("b2", "WR", 3000), NFL, CONTEST);
+  state = applyMove(state, uci("c1f4"), makePlayer("wr1", "WR", 5000), NFL, CONTEST);
+  state = applyMove(state, uci("a5a4"), makePlayer("b3", "WR", 3000), NFL, CONTEST);
+  state = applyMove(state, uci("d1d3"), makePlayer("rb_queen", "RB", 7200), NFL, CONTEST);
+  state = applyMove(state, uci("a4a3"), makePlayer("b4", "WR", 3000), NFL, CONTEST);
+  return state;
+}
+
+function stateWithACaptureAvailable(): BuildState {
+  let state = applyMove(new BuildState(), uci("e2e4"), makePlayer("w_pawn1", "WR", 3000), NFL, CONTEST);
+  state = applyMove(state, uci("d7d5"), makePlayer("b_pawn1", "WR", 3000), NFL, CONTEST);
+  return state;
+}
+
+// White's f7-targeting bishop captures Black's f7 pawn, which never moved.
+function stateWithAnUnmovedPawnCaptureAvailable(): BuildState {
+  let state = applyMove(new BuildState(), uci("e2e4"), makePlayer("w_pawn1", "WR", 3000), NFL, CONTEST);
+  state = applyMove(state, uci("e7e5"), makePlayer("b_pawn1", "WR", 3000), NFL, CONTEST);
+  state = applyMove(state, uci("f1c4"), makePlayer("w_bishop1", "WR", 5000), NFL, CONTEST);
+  state = applyMove(state, uci("b8c6"), makePlayer("b_knight1", "TE", 4600), NFL, CONTEST);
+  return state;
 }
 
 describe("isLegalMove / applyMove", () => {
@@ -145,6 +200,337 @@ describe("isLegalMove / applyMove", () => {
     state = applyMove(state, uci("e7e5"), dst1, NFL, tight);
     state = applyMove(state, uci("d2d3"), makePlayer("w2", "WR", 3000), NFL, tight);
     expect(isLegalMove(state, uci("d7d5"), dst2, NFL, tight)).toBe(false);
+  });
+});
+
+describe("castling", () => {
+  it("can_castle is false before Knight and Bishop", () => {
+    expect(canCastle(new BuildState(), Side.WHITE)).toBe(false);
+  });
+
+  it("castle is illegal before Knight and Bishop", () => {
+    // Board where b1/c1/d1 happen to be clear, but reached without ever
+    // going through our engine -- so nothing was ever "locked" for
+    // Knight/Bishop.
+    const rawBoard = new Chess();
+    for (const m of ["d2d4", "a7a6", "b1c3", "a6a5", "c1f4", "a5a4", "d1d3", "a4a3"]) {
+      rawBoard.move({ from: m.slice(0, 2) as Square, to: m.slice(2, 4) as Square });
+    }
+    const state = new BuildState({ board: rawBoard });
+
+    expect(canCastle(state, Side.WHITE)).toBe(false);
+    const king = makePlayer("qb1", "QB", 6000);
+    const rook = makePlayer("rb1", "RB", 5200);
+    expect(() => castle(state, uci("e1c1"), king, rook, NFL, CONTEST)).toThrow();
+  });
+
+  it("castle queenside: SAN and locks King and Rook", () => {
+    const state = stateReadyToCastleQueenside();
+    expect(canCastle(state, Side.WHITE)).toBe(true);
+
+    const castleMove = uci("e1c1");
+    const matched = state.board.moves({ verbose: true }).find((m) => m.from === "e1" && m.to === "c1");
+    expect(matched?.isQueensideCastle()).toBe(true);
+
+    const king = makePlayer("qb1", "QB", 6000);
+    const rook = makePlayer("rb1", "RB", 5200);
+    const newState = castle(state, castleMove, king, rook, NFL, CONTEST);
+
+    expect(newState.lockedPlayerIds.has("qb1")).toBe(true);
+    expect(newState.lockedPlayerIds.has("rb1")).toBe(true);
+    const sans = new Set(
+      newState.whiteMoves.filter((m) => m.player.id === "qb1" || m.player.id === "rb1").map((m) => m.san),
+    );
+    expect(sans).toEqual(new Set(["O-O-O"]));
+    expect(newState.board.get("c1")?.type).toBe("k");
+    expect(newState.board.get("d1")?.type).toBe("r");
+    expect(newState.board.turn()).toBe("b");
+  });
+
+  it("castle twice is illegal", () => {
+    const state = castle(
+      stateReadyToCastleQueenside(),
+      uci("e1c1"),
+      makePlayer("qb1", "QB", 6000),
+      makePlayer("rb1", "RB", 5200),
+      NFL,
+      CONTEST,
+    );
+    expect(canCastle(state, Side.WHITE)).toBe(false);
+  });
+
+  it("castle rejects wrong piece types", () => {
+    const state = stateReadyToCastleQueenside();
+    const notAKing = makePlayer("rb9", "RB", 5200); // Rook-tier, not King
+    const rook = makePlayer("rb1", "RB", 5300);
+    expect(() => castle(state, uci("e1c1"), notAKing, rook, NFL, CONTEST)).toThrow();
+  });
+
+  it("castle respects exclusivity", () => {
+    // A board built directly from a FEN (not played out through
+    // applyMove): King and Rook both still home (castling rights intact),
+    // Knight and Bishop developed off their home squares, queenside
+    // castling chess-legal.
+    const fen = "rnbqkbnr/1ppppppp/8/8/3P1B2/p1NQ4/PPP1PPPP/R3KBNR w KQkq - 0 5";
+    const board = new Chess(fen);
+
+    const knight = makePlayer("te1", "TE", 4600);
+    const bishop = makePlayer("wr1", "WR", 5000);
+    const rook = makePlayer("rb1", "RB", 5200); // the Rook White wants to castle with
+    const state = new BuildState({
+      board,
+      whiteMoves: [
+        new Move({ side: Side.WHITE, piece: Piece.KNIGHT, san: "Nc3", player: knight }),
+        new Move({ side: Side.WHITE, piece: Piece.BISHOP, san: "Bf4", player: bishop }),
+      ],
+      // Black already took this same player elsewhere.
+      blackMoves: [new Move({ side: Side.BLACK, piece: Piece.ROOK, san: "(elsewhere)", player: rook })],
+      lockedPlayerIds: new Set([knight.id, bishop.id, rook.id]),
+    });
+    expect(canCastle(state, Side.WHITE)).toBe(true); // Knight + Bishop are developed...
+
+    const castleMove = uci("e1c1");
+    expect(state.board.moves({ verbose: true }).some((m) => m.from === "e1" && m.to === "c1")).toBe(true); // ...and the chess move itself is legal...
+
+    const king = makePlayer("qb1", "QB", 6000);
+    expect(() => castle(state, castleMove, king, rook, NFL, CONTEST)).toThrow(); // ...but the Rook isn't White's to castle with.
+  });
+});
+
+describe("King modes (Task 14)", () => {
+  it("place_kings locks both QBs before move 1", () => {
+    const whiteQb = makePlayer("qb_w", "QB", 6500);
+    const blackQb = makePlayer("qb_b", "QB", 6200);
+
+    const state = placeKings(whiteQb, blackQb, NFL, CONTEST);
+
+    expect(state.whiteMoves.length).toBe(1);
+    expect(state.whiteMoves[0].piece).toBe(Piece.KING);
+    expect(state.whiteMoves[0].san).toBe("(placed)");
+    expect(state.whiteMoves[0].player.id).toBe("qb_w");
+    expect(state.blackMoves.length).toBe(1);
+    expect(state.blackMoves[0].player.id).toBe("qb_b");
+    expect(state.lockedPlayerIds).toEqual(new Set(["qb_w", "qb_b"]));
+    expect(state.board.history()).toEqual([]); // no chess move happened
+  });
+
+  it("place_kings rejects a non-King player", () => {
+    const notAQb = makePlayer("rb1", "RB", 5200);
+    const blackQb = makePlayer("qb_b", "QB", 6200);
+    expect(() => placeKings(notAQb, blackQb, NFL, CONTEST)).toThrow();
+  });
+
+  it("place_kings rejects the same player for both sides", () => {
+    const qb = makePlayer("qb_shared", "QB", 6500);
+    expect(() => placeKings(qb, qb, NFL, CONTEST)).toThrow();
+  });
+
+  it("can_castle in PLACED mode ignores the setup-placed King", () => {
+    const state = stateReadyToCastleQueensidePlaced();
+    // The setup-placed King is already in whiteMoves (Piece.KING), which
+    // would block EMERGE-mode castling -- PLACED mode must not be fooled
+    // by that signal.
+    expect(canCastle(state, Side.WHITE, KingMode.EMERGE)).toBe(false);
+    expect(canCastle(state, Side.WHITE, KingMode.PLACED)).toBe(true);
+  });
+
+  it("castle in PLACED mode locks only the Rook", () => {
+    const state = stateReadyToCastleQueensidePlaced();
+    const castleMove = uci("e1c1");
+    const matched = state.board.moves({ verbose: true }).find((m) => m.from === "e1" && m.to === "c1");
+    expect(matched?.isQueensideCastle()).toBe(true);
+
+    const rook = makePlayer("rb1", "RB", 5200);
+    const newState = castle(state, castleMove, null, rook, NFL, CONTEST, KingMode.PLACED);
+
+    expect(newState.lockedPlayerIds.has("rb1")).toBe(true);
+    const rookMoves = newState.whiteMoves.filter((m) => m.player.id === "rb1");
+    expect(rookMoves.length).toBe(1);
+    expect(rookMoves[0].piece).toBe(Piece.ROOK);
+    // Still exactly one King-piece entry for White -- the original setup
+    // placement -- never a second one from castling.
+    const kingMoves = newState.whiteMoves.filter((m) => m.piece === Piece.KING);
+    expect(kingMoves.length).toBe(1);
+    expect(kingMoves[0].player.id).toBe("qb_w");
+    expect(newState.board.get("c1")?.type).toBe("k");
+    expect(newState.board.get("d1")?.type).toBe("r");
+    expect(newState.whiteCastled).toBe(true);
+  });
+
+  it("castle twice is illegal in PLACED mode", () => {
+    let state = stateReadyToCastleQueensidePlaced();
+    state = castle(state, uci("e1c1"), null, makePlayer("rb1", "RB", 5200), NFL, CONTEST, KingMode.PLACED);
+    expect(canCastle(state, Side.WHITE, KingMode.PLACED)).toBe(false);
+  });
+
+  it("switch_king returns the old QB to the pool and locks the new one", () => {
+    let state = stateReadyToCastleQueensidePlaced();
+    state = castle(state, uci("e1c1"), null, makePlayer("rb1", "RB", 5200), NFL, CONTEST, KingMode.PLACED);
+
+    const newQb = makePlayer("qb_new", "QB", 5800);
+    const newState = switchKing(state, Side.WHITE, newQb, NFL, CONTEST);
+
+    expect(newState).not.toBeNull();
+    expect(newState!.lockedPlayerIds.has("qb_new")).toBe(true);
+    expect(newState!.lockedPlayerIds.has("qb_w")).toBe(false); // old QB freed, available to either side
+    const kingMoves = newState!.whiteMoves.filter((m) => m.piece === Piece.KING);
+    expect(kingMoves.length).toBe(1);
+    expect(kingMoves[0].player.id).toBe("qb_new");
+  });
+
+  it("switch_king rejects an infeasible new QB", () => {
+    let state = stateReadyToCastleQueensidePlaced();
+    state = castle(state, uci("e1c1"), null, makePlayer("rb1", "RB", 5200), NFL, CONTEST, KingMode.PLACED);
+
+    const tight = new ContestConfig({ cap: 1000, fieldSize: 1000, payouts: [] }); // far under any real QB's salary
+    const tooExpensive = makePlayer("qb_new", "QB", 9000);
+
+    const result = switchKing(state, Side.WHITE, tooExpensive, NFL, tight);
+
+    expect(result).toBeNull(); // rejected -- caller keeps the original QB
+  });
+});
+
+// --- captures (Task 18: the captured player IS the capturing move's pick) --
+
+describe("captures", () => {
+  it("isLegalMove rejects every capture", () => {
+    // Task 18: a capture is never resolved through the ordinary new-pick
+    // path -- isLegalMove rejects it outright regardless of the player
+    // passed, directing callers to isLegalCapture instead.
+    const state = stateWithACaptureAvailable();
+    const captureMove = uci("e4d5");
+    const matched = state.board.moves({ verbose: true }).find((m) => m.from === "e4" && m.to === "d5");
+    expect(matched?.isCapture()).toBe(true);
+    expect(isLegalMove(state, captureMove, makePlayer("anyone", "WR", 3000), NFL, CONTEST)).toBe(false);
+  });
+
+  it("capture adds exactly one player -- the captured one", () => {
+    const state = stateWithACaptureAvailable();
+    const captureMove = uci("e4d5");
+
+    const newState = applyCaptureMove(state, captureMove, NFL, CONTEST);
+
+    // Exactly one player added to White -- the captured one -- not a
+    // separate new pick for the capturing pawn too.
+    expect(newState.whiteMoves.length - state.whiteMoves.length).toBe(1);
+    expect(new Set(newState.whiteMoves.map((m) => m.player.id))).toEqual(new Set(["w_pawn1", "b_pawn1"]));
+    expect(newState.blackMoves).toEqual([]);
+    expect(newState.board.get("d5")?.color).toBe("w");
+    const capturedMoveRecord = newState.whiteMoves.find((m) => m.player.id === "b_pawn1");
+    expect(capturedMoveRecord?.san).toBe("exd5");
+  });
+
+  it("most recently locked player transfers on capture", () => {
+    const k1 = makePlayer("te_k1", "TE", 4600);
+    const k2 = makePlayer("te_k2", "TE", 4700);
+    let state = applyMove(new BuildState(), uci("b1c3"), k1, NFL, CONTEST); // Nc3 locks K1
+    state = applyMove(state, uci("d7d5"), makePlayer("b_pawn1", "WR", 3000), NFL, CONTEST);
+    state = applyMove(state, uci("c3e4"), k2, NFL, CONTEST); // Ne4 locks K2 (same knight, moved again)
+
+    const captureMove = uci("d5e4"); // Black pawn captures the knight on e4
+    const matched = state.board.moves({ verbose: true }).find((m) => m.from === "d5" && m.to === "e4");
+    expect(matched?.isCapture()).toBe(true);
+    expect(matched?.isEnPassant()).toBe(false);
+
+    const newState = applyCaptureMove(state, captureMove, NFL, CONTEST);
+
+    expect(new Set(newState.whiteMoves.map((m) => m.player.id))).toEqual(new Set(["te_k1"])); // K1 (older) stays
+    const blackIds = new Set(newState.blackMoves.map((m) => m.player.id));
+    expect(blackIds.has("te_k2")).toBe(true); // K2 (most recent) transferred
+    expect(blackIds.has("te_k1")).toBe(false);
+  });
+
+  it("capturing an unmoved pawn requires and locks a Pawn pick", () => {
+    // Task 19: a captured piece with no lock history has nothing to
+    // transfer -- the capturing side picks a player of its own instead,
+    // of the captured piece's own real chess type (here, Pawn).
+    const state = stateWithAnUnmovedPawnCaptureAvailable();
+    const captureMove = uci("c4f7");
+    const matched = state.board.moves({ verbose: true }).find((m) => m.from === "c4" && m.to === "f7");
+    expect(matched?.isCapture()).toBe(true);
+
+    const pawnPick = makePlayer("wr_new", "WR", 3200);
+    expect(classify(pawnPick, NFL)).toBe(Piece.PAWN);
+
+    expect(isLegalCapture(state, captureMove, NFL, CONTEST)).toBe(false); // no player supplied
+    expect(isLegalCapture(state, captureMove, NFL, CONTEST, pawnPick)).toBe(true);
+
+    const expectedSan = matched!.san;
+    const newState = applyCaptureMove(state, captureMove, NFL, CONTEST, pawnPick);
+
+    // Exactly one player added -- the new Pawn pick -- not a transfer: the
+    // f7 pawn never had a locked player to begin with, so nothing comes
+    // out of Black's side.
+    expect(newState.whiteMoves.length - state.whiteMoves.length).toBe(1);
+    expect(newState.blackMoves).toEqual(state.blackMoves);
+    const record = newState.whiteMoves.find((m) => m.player.id === "wr_new");
+    expect(record?.piece).toBe(Piece.PAWN);
+    expect(record?.san).toBe(expectedSan);
+    expect(newState.lockedPlayerIds.has("wr_new")).toBe(true); // can't be picked again by either side
+  });
+
+  it("capturing an unmoved knight gives a Knight pick", () => {
+    // A White bishop captures Black's g8 knight, still on its home square
+    // -- no lock history, so (Task 19) the capturing side picks its own
+    // Knight-type player instead of transferring one.
+    const board = new Chess("4k1n1/8/8/8/2B5/8/8/4K3 w - - 0 1");
+    const state = new BuildState({ board });
+    const captureMove = uci("c4g8");
+    const matched = state.board.moves({ verbose: true }).find((m) => m.from === "c4" && m.to === "g8");
+    expect(matched?.isCapture()).toBe(true);
+
+    const knightPick = makePlayer("te1", "TE", 4600);
+    expect(classify(knightPick, NFL)).toBe(Piece.KNIGHT);
+
+    expect(isLegalCapture(state, captureMove, NFL, CONTEST)).toBe(false);
+    expect(isLegalCapture(state, captureMove, NFL, CONTEST, knightPick)).toBe(true);
+
+    const newState = applyCaptureMove(state, captureMove, NFL, CONTEST, knightPick);
+
+    expect(newState.whiteMoves.length).toBe(1);
+    expect(newState.whiteMoves[0].player.id).toBe("te1");
+    expect(newState.whiteMoves[0].piece).toBe(Piece.KNIGHT);
+    expect(newState.lockedPlayerIds.has("te1")).toBe(true); // can't be picked again by either side
+  });
+
+  it("capturing an unmoved piece is illegal when no eligible player fits", () => {
+    // White already has its one DST slot filled; a DST-position player
+    // classifies as Pawn (NFL's catch-all band) just like the captured,
+    // never-moved f7 pawn does -- but it can't fit any roster slot a
+    // second time, so no eligible player fits this capture at all.
+    const wDst1 = makePlayer("w_dst1", "DST", 2500);
+    let state = applyMove(new BuildState(), uci("e2e4"), wDst1, NFL, CONTEST);
+    state = applyMove(state, uci("e7e5"), makePlayer("b_pawn1", "WR", 3000), NFL, CONTEST);
+    state = applyMove(state, uci("f1c4"), makePlayer("w_bishop1", "WR", 5000), NFL, CONTEST);
+    state = applyMove(state, uci("b8c6"), makePlayer("b_knight1", "TE", 4600), NFL, CONTEST);
+
+    const captureMove = uci("c4f7");
+    const matched = state.board.moves({ verbose: true }).find((m) => m.from === "c4" && m.to === "f7");
+    expect(matched?.isCapture()).toBe(true);
+
+    const secondDst = makePlayer("b_dst2", "DST", 2600);
+    expect(classify(secondDst, NFL)).toBe(Piece.PAWN); // the right type...
+
+    expect(isLegalCapture(state, captureMove, NFL, CONTEST, secondDst)).toBe(false); // ...but doesn't fit
+    expect(() => applyCaptureMove(state, captureMove, NFL, CONTEST, secondDst)).toThrow();
+  });
+
+  it("capture is rejected when transfer would overflow the roster", () => {
+    // White already has one DST locked. Black's d5 pawn is also a DST
+    // pick. Transferring it (Task 18: the capture's only pick) would give
+    // White two DSTs, which DST's single slot can't hold.
+    const wDst1 = makePlayer("w_dst1", "DST", 2500);
+    let state = applyMove(new BuildState(), uci("e2e4"), wDst1, NFL, CONTEST);
+    const bDstCaptured = makePlayer("b_dst_captured", "DST", 2600);
+    state = applyMove(state, uci("d7d5"), bDstCaptured, NFL, CONTEST);
+
+    const captureMove = uci("e4d5");
+    const matched = state.board.moves({ verbose: true }).find((m) => m.from === "e4" && m.to === "d5");
+    expect(matched?.isCapture()).toBe(true);
+
+    expect(isLegalCapture(state, captureMove, NFL, CONTEST)).toBe(false);
+    expect(() => applyCaptureMove(state, captureMove, NFL, CONTEST)).toThrow();
   });
 });
 
