@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import nflConfig from "../data/config/sports/nfl.json";
 import { ContestConfig, loadContestConfig, type RawContestConfig } from "./config";
-import { FieldTier } from "./models";
+import { FieldTier, Player } from "./models";
 import { loadSportConfig } from "./sport";
 
 const NFL = loadSportConfig(nflConfig);
@@ -136,5 +136,48 @@ describe("loadContestConfig overrides", () => {
     expect(contest.smallMaxRank).toBe(5);
     // 1,000 entries now falls past Small's (overridden) upper bound.
     expect(contest.entryTier(200).name).toBe("Mid");
+  });
+});
+
+// Task 27: no existing Python or TS test exercises ownFor/field_tier
+// together end-to-end at these specific cutoffs -- test_config.py's
+// field_tier boundary tests check tier classification only (no
+// ownership values), and test_models.py's own_for tests check ownership
+// averaging in isolation (arbitrary small/large values, never tied to a
+// field_size number). Added here per Task 27's explicit instruction to
+// check for this coverage and add it if missing.
+describe("ownership by contest entries (fieldTier + ownFor)", () => {
+  function player(ownSmall: number, ownLarge: number): Player {
+    return new Player({
+      id: "p1",
+      name: "Test Player",
+      positions: ["WR"],
+      team: "AAA",
+      opp: "BBB",
+      salary: 5000,
+      proj: 10.0,
+      ownSmall,
+      ownLarge,
+    });
+  }
+
+  it("1,999 entries uses Small Field ownership only", () => {
+    const contest = new ContestConfig({ fieldSize: 1999, payouts: [] });
+    expect(player(10, 20).ownFor(contest.fieldTier())).toBe(10);
+  });
+
+  it("2,000 entries averages Small and Large Field ownership", () => {
+    const contest = new ContestConfig({ fieldSize: 2000, payouts: [] });
+    expect(player(10, 20).ownFor(contest.fieldTier())).toBe(15);
+  });
+
+  it("9,999 entries averages Small and Large Field ownership", () => {
+    const contest = new ContestConfig({ fieldSize: 9999, payouts: [] });
+    expect(player(10, 20).ownFor(contest.fieldTier())).toBe(15);
+  });
+
+  it("10,000 entries uses Large Field ownership only", () => {
+    const contest = new ContestConfig({ fieldSize: 10000, payouts: [] });
+    expect(player(10, 20).ownFor(contest.fieldTier())).toBe(20);
   });
 });
