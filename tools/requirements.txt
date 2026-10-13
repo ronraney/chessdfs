@@ -1,0 +1,4 @@
+# tools-only dependencies -- NOT part of the engine (RULES.md: "the engine
+# may not" add dependencies; stdlib + pytest + chess only). Install with:
+#   pip install -r tools/requirements.txt
+zstandard  # streaming .zst decompression for tools/count_popularity.py

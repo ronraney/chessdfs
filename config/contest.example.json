@@ -1,0 +1,9 @@
+{
+  "cap": 50000,
+  "field_size": 1000,
+  "payouts": [
+    {"rank": 1, "amount": 500.0},
+    {"rank": 2, "amount": 250.0},
+    {"rank": 3, "amount": 100.0}
+  ]
+}

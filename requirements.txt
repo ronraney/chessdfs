@@ -1,0 +1,2 @@
+pytest
+chess  # python-chess (github.com/niklasf/python-chess) -- real chess board/legality/SAN
