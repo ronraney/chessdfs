@@ -1,13 +1,14 @@
-// Core data models: Player, Piece, Side, Move. Ported from dfs_chess/models.py.
-//
-// BuildState is not ported here: it wraps a chess board/square representation
-// that belongs with rules.ts/build.ts, which Task 22 explicitly defers.
+// Core data models: Player, Piece, Side, Move, BuildState. Ported from
+// dfs_chess/models.py.
 //
 // "enum" is unavailable under this project's erasableSyntaxOnly tsconfig, so
 // each Python Enum below is a frozen const object plus a derived union type —
 // the standard erasable substitute. Member access (e.g. Piece.KING) and
 // equality checks (e.g. tier === FieldTier.SMALL) read the same as the
 // Python call sites.
+
+import type { Square } from "chess.js";
+import { Chess } from "chess.js";
 
 export const Side = {
   WHITE: "WHITE",
@@ -99,5 +100,54 @@ export class Move {
     this.piece = fields.piece;
     this.san = fields.san;
     this.player = fields.player;
+  }
+}
+
+export interface BuildStateFields {
+  board?: Chess;
+  whiteMoves?: Move[];
+  blackMoves?: Move[];
+  lockedPlayerIds?: Set<string>;
+  // Which players each currently-on-the-board piece has locked, keyed by
+  // its current square -- a piece can hold several (it moved more than
+  // once); a capture transfers only the most recent (RULES.md).
+  pieceLocks?: Map<Square, Player[]>;
+  // The full SAN move list of the book line Black has committed to while
+  // out of an explicit template (RULES.md "Black (the field)") -- null if
+  // Black hasn't committed to one right now. Carried through White's own
+  // moves unchanged; only build.ts's play_black_move equivalent sets it
+  // (not yet ported).
+  blackCommittedLine?: readonly string[] | null;
+  // Whether each side has already castled this build (Task 14: in PLACED
+  // king mode, a locked King is always present from setup, so can_castle
+  // can no longer tell "already castled" apart from "King locked" by
+  // piece type alone -- these flags make that explicit for both king
+  // modes).
+  whiteCastled?: boolean;
+  blackCastled?: boolean;
+}
+
+// Not frozen -- mirrors dfs_chess.models.BuildState, a plain (mutable)
+// dataclass: castle() (not yet ported) flips white_castled/black_castled
+// on an already-constructed instance rather than rebuilding it.
+export class BuildState {
+  board: Chess;
+  whiteMoves: Move[];
+  blackMoves: Move[];
+  lockedPlayerIds: Set<string>;
+  pieceLocks: Map<Square, Player[]>;
+  blackCommittedLine: readonly string[] | null;
+  whiteCastled: boolean;
+  blackCastled: boolean;
+
+  constructor(fields: BuildStateFields = {}) {
+    this.board = fields.board ?? new Chess();
+    this.whiteMoves = fields.whiteMoves ?? [];
+    this.blackMoves = fields.blackMoves ?? [];
+    this.lockedPlayerIds = fields.lockedPlayerIds ?? new Set();
+    this.pieceLocks = fields.pieceLocks ?? new Map();
+    this.blackCommittedLine = fields.blackCommittedLine ?? null;
+    this.whiteCastled = fields.whiteCastled ?? false;
+    this.blackCastled = fields.blackCastled ?? false;
   }
 }

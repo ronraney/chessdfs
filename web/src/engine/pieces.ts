@@ -4,8 +4,7 @@
 // Bands come from a SportConfig (checked in order; first match wins) rather
 // than hardcoded constants here, per CLAUDE.md "Multi-sport ready".
 // loadSportConfig rejects any config with no catch-all band, so every player
-// classifies here in practice -- classify's undefined return only matters for
-// a SportConfig built by hand that skips that guarantee.
+// classifies here -- no thrown errors in practice.
 
 import type { PieceSymbol } from "chess.js";
 import type { Player } from "./models";
@@ -29,12 +28,12 @@ export function pieceForChessType(pieceType: PieceSymbol): Piece {
   return CHESS_PIECE_TYPES[pieceType];
 }
 
-export function classify(player: Player, sport: SportConfig): Piece | undefined {
+export function classify(player: Player, sport: SportConfig): Piece {
   const positions = new Set(player.positions.map((p) => p.toUpperCase()));
   for (const band of sport.pieceBands) {
     if (band.matches(positions, player.salary)) {
       return band.piece;
     }
   }
-  return undefined;
+  throw new Error("no piece band matched -- loadSportConfig should have rejected this config");
 }
