@@ -1,5 +1,6 @@
-// Copies the Python engine's data/openings/ and config/ into web/src/data/
-// (gitignored) so the web app can read them. Originals are never touched.
+// Copies the Python engine's data/openings/, data/samples/, and config/
+// into web/src/data/ (gitignored) so the web app can read them. Originals
+// are never touched.
 import { cpSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -10,6 +11,7 @@ const destRoot = path.join(webRoot, "src", "data");
 
 const copies = [
   [path.join(repoRoot, "data", "openings"), path.join(destRoot, "openings")],
+  [path.join(repoRoot, "data", "samples"), path.join(destRoot, "samples")],
   [path.join(repoRoot, "config"), path.join(destRoot, "config")],
 ];
 
