@@ -1,13 +1,18 @@
 // Opening book queries -- pure (no I/O). Book data is loaded by
 // loaders.ts (loadOpeningBook) and handed in here as BookLine[]. Ported
-// from dfs_chess/openings.py: naming (openingName, findOpeningLines,
-// splitFamily), continuations (continuingLines, bookContinuations,
-// bookWeights), and legal depth (legalDepth) only, per this task's scope.
-// Family ranking (rankFamilies/RankedFamily/DEFAULT_EXCLUDED_FAMILIES),
-// field-size tiers, target rank, suggestion, opening preview
-// (OpeningPreview/openingPreview), and the build loop are all out of
-// scope -- none of them are needed by (or tangled into) what's ported
-// here. See this task's session log.
+// from dfs_chess/openings.py in full: naming (openingName,
+// findOpeningLines, splitFamily), continuations (continuingLines,
+// bookContinuations, bookWeights), legal depth (legalDepth), family
+// ranking (rankFamilies/RankedFamily/DEFAULT_EXCLUDED_FAMILIES), and
+// opening preview (OpeningPreview/openingPreview). The field-size tier
+// lookup and target-rank formula a "suggested opening" is built from
+// (ContestConfig.entryTier/rankTier/targetRank) already live in
+// config.ts (Task 24) -- reused here, not reimplemented. The combination
+// that actually picks a suggestion (`by_rank[contest.target_rank(...)]`)
+// exists only inline inside dfs_chess/cli.py's `_prompt_for_opening_setup`
+// (CLI, out of scope) with no standalone pure function or dedicated test
+// of its own -- see this task's session log. The build loop, CLI, and UI
+// remain entirely out of scope.
 
 import { Chess } from "chess.js";
 import { Piece, Player } from "./models";
@@ -187,4 +192,164 @@ export function legalDepth(line: readonly string[], sport: SportConfig): number 
   }
 
   return null;
+}
+
+export interface OpeningPreviewFields {
+  fen: string;
+  whitePieces: readonly Piece[];
+  blackPieces: readonly Piece[];
+  breakPly: number | null;
+}
+
+export class OpeningPreview {
+  readonly fen: string;
+  readonly whitePieces: readonly Piece[];
+  readonly blackPieces: readonly Piece[];
+  readonly breakPly: number | null;
+
+  constructor(fields: OpeningPreviewFields) {
+    this.fen = fields.fen;
+    this.whitePieces = fields.whitePieces;
+    this.blackPieces = fields.blackPieces;
+    this.breakPly = fields.breakPly;
+  }
+}
+
+// A book line's DFS-relevant preview (Task 17): the final chess position
+// (FEN) after playing every one of `line.moves` in full -- independent of
+// `breakPly` below, this is just the position the line's own moves reach;
+// for each side, the ordered sequence of piece types its moves would lock
+// (castling counts as one King pick then one Rook pick, same convention
+// legalDepth already uses); and the ply (1-indexed) at which the line
+// first makes either side's roster impossible to complete, or null if it
+// never does -- exactly legalDepth's own return value, reused rather than
+// re-derived.
+export function openingPreview(line: BookLine, sport: SportConfig): OpeningPreview {
+  const board = new Chess();
+  const whitePieces: Piece[] = [];
+  const blackPieces: Piece[] = [];
+
+  for (const san of line.moves) {
+    const matched = board.moves({ verbose: true }).find((m) => m.san === san);
+    if (!matched) {
+      throw new Error(`"${san}" is not a legal move`);
+    }
+    const sidePieces = board.turn() === "w" ? whitePieces : blackPieces;
+    if (matched.isKingsideCastle() || matched.isQueensideCastle()) {
+      sidePieces.push(Piece.KING, Piece.ROOK);
+    } else {
+      sidePieces.push(pieceForChessType(matched.piece));
+    }
+    board.move(san);
+  }
+
+  return new OpeningPreview({
+    fen: board.fen(),
+    whitePieces,
+    blackPieces,
+    breakPly: legalDepth(line.moves, sport),
+  });
+}
+
+export interface RankedFamilyFields {
+  name: string;
+  rank: number; // 1 = most played
+  games: number; // the representative line's own games
+  line: BookLine;
+}
+
+export class RankedFamily {
+  readonly name: string;
+  readonly rank: number;
+  readonly games: number;
+  readonly line: BookLine;
+
+  constructor(fields: RankedFamilyFields) {
+    this.name = fields.name;
+    this.rank = fields.rank;
+    this.games = fields.games;
+    this.line = fields.line;
+  }
+}
+
+// Task 20b: "umbrella" families whose own name is too broad/generic to
+// usefully suggest (every opening starting 1. e4 is nominally a "King's
+// Pawn Game") -- excluded from ranking outright, by name, regardless of
+// how many games any of their rows have. Not derived from the data by a
+// rule; a caller may override this list via rankFamilies's own parameter.
+export const DEFAULT_EXCLUDED_FAMILIES: ReadonlySet<string> = new Set([
+  "King's Pawn Game",
+  "Queen's Pawn Game",
+  "King's Knight Opening",
+  "Indian Defense",
+]);
+
+// A line_stats.json entry -- just the fields rankFamilies reads
+// (eco/name/moves/games). Loaders.ts's LineStatsEntry (the full loader
+// return shape, with white_rate/draw_rate/black_rate too) is structurally
+// assignable here; this stays independent of loaders.ts the same way
+// Python's rank_families never imports anything from loaders.py either.
+export interface RankableLine {
+  eco: string;
+  name: string;
+  moves: readonly string[];
+  games: number;
+}
+
+function repKey(entry: RankableLine): [number, number, string] {
+  return [entry.games, -entry.moves.length, entry.eco];
+}
+
+function keyGreater(a: readonly [number, number, string], b: readonly [number, number, string]): boolean {
+  if (a[0] !== b[0]) return a[0] > b[0];
+  if (a[1] !== b[1]) return a[1] > b[1];
+  return a[2] > b[2];
+}
+
+function compareStrings(a: string, b: string): number {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
+}
+
+// Ranks each family (Task 20, corrected by Task 20b) -- splitFamily's
+// first element -- by its most-played line reaching at least 6 plies,
+// from ANY row whose name IS that family or starts with "<family>:" (not
+// just a bare-name row -- Task 20's original restriction to the bare
+// name was a bug; a named sub-variation's own row is a perfectly good
+// representative). Ties: fewest plies, then eco. `excludedFamilies`
+// (default DEFAULT_EXCLUDED_FAMILIES) are left off entirely regardless of
+// games -- an explicit exclusion list, not a rule derived from the data
+// (Task 20b). A family with no qualifying row at all is also left off
+// (unranked). Rank 1 = most played.
+export function rankFamilies(
+  lineStats: readonly RankableLine[],
+  excludedFamilies: ReadonlySet<string> = DEFAULT_EXCLUDED_FAMILIES,
+): RankedFamily[] {
+  const reps = new Map<string, RankableLine>();
+  for (const entry of lineStats) {
+    const [family] = splitFamily(entry.name);
+    if (excludedFamilies.has(family) || entry.moves.length < 6) continue;
+    const current = reps.get(family);
+    if (current === undefined || keyGreater(repKey(entry), repKey(current))) {
+      reps.set(family, entry);
+    }
+  }
+
+  const rankedNames = Array.from(reps.keys()).sort((a, b) => {
+    const gamesA = reps.get(a)!.games;
+    const gamesB = reps.get(b)!.games;
+    if (gamesA !== gamesB) return gamesB - gamesA; // descending games
+    return compareStrings(a, b); // ascending name
+  });
+
+  return rankedNames.map((name, index) => {
+    const rep = reps.get(name)!;
+    return new RankedFamily({
+      name,
+      rank: index + 1,
+      games: rep.games,
+      line: new BookLine({ eco: rep.eco, name: rep.name, moves: [...rep.moves] }),
+    });
+  });
 }
