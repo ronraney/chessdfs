@@ -241,3 +241,42 @@ export function loadContestConfig(data: RawContestConfig): ContestConfig {
     largeMaxRank: data.large_max_rank ?? DEFAULT_LARGE_MAX_RANK,
   });
 }
+
+// Task 31: config/contests.json's own shape -- a list of named contest
+// presets (a display name, its entries/buy-in, plus any RawContestConfig
+// field) with no Python original to port from. `entries` is each preset's
+// field_size under its own name, matching how "H2H (2 entries)" already
+// reads elsewhere in this codebase. `name`/`buy_in` are typed here as part
+// of the JSON's documented shape but not threaded through loadContestPresets
+// below -- its return type is ContestConfig objects only.
+export interface RawContestPreset {
+  name: string;
+  entries: number;
+  buy_in: number;
+  cap?: number | null;
+  payouts: RawPayoutTier[];
+  max_entries_scale?: number;
+  small_max_entries?: number;
+  mid_max_entries?: number;
+  large_max_entries?: number;
+  small_max_rank?: number;
+  mid_max_rank?: number;
+  large_max_rank?: number;
+}
+
+export function loadContestPresets(data: readonly RawContestPreset[]): ContestConfig[] {
+  return data.map((preset) =>
+    loadContestConfig({
+      field_size: preset.entries,
+      payouts: preset.payouts,
+      cap: preset.cap,
+      max_entries_scale: preset.max_entries_scale,
+      small_max_entries: preset.small_max_entries,
+      mid_max_entries: preset.mid_max_entries,
+      large_max_entries: preset.large_max_entries,
+      small_max_rank: preset.small_max_rank,
+      mid_max_rank: preset.mid_max_rank,
+      large_max_rank: preset.large_max_rank,
+    }),
+  );
+}

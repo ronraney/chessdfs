@@ -7,16 +7,22 @@
 // opening preview (OpeningPreview/openingPreview). The field-size tier
 // lookup and target-rank formula a "suggested opening" is built from
 // (ContestConfig.entryTier/rankTier/targetRank) already live in
-// config.ts (Task 24) -- reused here, not reimplemented. The combination
-// that actually picks a suggestion (`by_rank[contest.target_rank(...)]`)
-// exists only inline inside dfs_chess/cli.py's `_prompt_for_opening_setup`
-// (CLI, out of scope) with no standalone pure function or dedicated test
-// of its own -- see this task's session log. The build loop, CLI, and UI
-// remain entirely out of scope.
+// config.ts (Task 24) -- reused here, not reimplemented.
+//
+// suggestOpening/randomOpening (Task 31) are the one piece of this file
+// with no standalone Python function to port from: the selection itself
+// (`by_rank[contest.target_rank(...)]`, and the 'r'/Random branch's
+// `rng.choice(pool)`) exists only inline inside dfs_chess/cli.py's
+// `_prompt_for_opening_setup`. Both are built here from already-ported,
+// already-tested pieces (rankFamilies, ContestConfig.targetRank,
+// SeededRandom), matching that inline selection exactly rather than
+// reimplementing it some other way. The CLI and UI remain out of scope.
 
 import { Chess } from "chess.js";
+import type { ContestConfig, EntryTier } from "./config";
 import { Piece, Player } from "./models";
 import { pieceForChessType } from "./pieces";
+import { SeededRandom } from "./rng";
 import { maxAssignable } from "./rules";
 import type { SportConfig } from "./sport";
 
@@ -352,4 +358,42 @@ export function rankFamilies(
       line: new BookLine({ eco: rep.eco, name: rep.name, moves: [...rep.moves] }),
     });
   });
+}
+
+// The setup screen's default suggestion (Task 31): the ranked family at
+// `contest`'s own target rank, exactly cli.py's `_prompt_for_opening_setup`
+// -- `by_rank = {family.rank: family for family in ranked_families}`,
+// `suggestion = by_rank[contest.target_rank(last_rank)]`. Its `.line` is
+// the representative line pressing Enter at the setup screen would accept.
+// Throws if `rankedFamilies` has no family at that rank -- can only happen
+// if `rankedFamilies` is empty (target_rank is then 0), which Python's CLI
+// avoids by branching to free play before ever computing a suggestion; no
+// such free-play fallback exists at this pure layer.
+export function suggestOpening(contest: ContestConfig, rankedFamilies: readonly RankedFamily[]): RankedFamily {
+  const byRank = new Map(rankedFamilies.map((family) => [family.rank, family]));
+  const target = contest.targetRank(rankedFamilies.length);
+  const suggestion = byRank.get(target);
+  if (suggestion === undefined) {
+    throw new Error(`no ranked family at rank ${target}`);
+  }
+  return suggestion;
+}
+
+// The setup screen's 'r'/Random pick (Task 31): a seeded uniform choice
+// from `rankedFamilies`, restricted to `tier`'s own [lowRank, highRank]
+// when one is given, or across every ranked family when `tier` is "all" --
+// cli.py's `rng.choice(pool)` over `own_tier_pool or ranked_families`,
+// generalized so the caller picks the pool directly rather than this
+// function deriving "own tier" from a contest itself. Uses rng.ts's
+// SeededRandom, not Python's random.Random -- same seed always gives the
+// same TS pick, not necessarily the same pick Python would make for that
+// seed number (see rng.ts's own header).
+export function randomOpening(
+  rankedFamilies: readonly RankedFamily[],
+  tier: EntryTier | "all",
+  seed: number,
+): RankedFamily {
+  const pool =
+    tier === "all" ? rankedFamilies : rankedFamilies.filter((family) => family.rank >= tier.lowRank && family.rank <= tier.highRank);
+  return new SeededRandom(seed).choice(pool);
 }

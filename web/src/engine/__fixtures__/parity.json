@@ -1,5 +1,5 @@
 {
-  "scenario_count": 33,
+  "scenario_count": 41,
   "scenarios": [
     {
       "name": "classify_all_sample_players",
@@ -6435,6 +6435,162 @@
       "last_rank": 104,
       "expected": {
         "target_rank": 104
+      }
+    },
+    {
+      "name": "suggested_opening_2",
+      "kind": "suggested_opening",
+      "field_size": 2,
+      "expected": {
+        "rank": 1,
+        "name": "Sicilian Defense",
+        "games": 24356,
+        "eco": "B32",
+        "moves": [
+          "e4",
+          "c5",
+          "Nf3",
+          "Nc6",
+          "d4",
+          "cxd4"
+        ]
+      }
+    },
+    {
+      "name": "suggested_opening_100",
+      "kind": "suggested_opening",
+      "field_size": 100,
+      "expected": {
+        "rank": 6,
+        "name": "French Defense",
+        "games": 11904,
+        "eco": "C02",
+        "moves": [
+          "e4",
+          "e6",
+          "d4",
+          "d5",
+          "e5",
+          "c5"
+        ]
+      }
+    },
+    {
+      "name": "suggested_opening_1000",
+      "kind": "suggested_opening",
+      "field_size": 1000,
+      "expected": {
+        "rank": 9,
+        "name": "Nimzo-Indian Defense",
+        "games": 7259,
+        "eco": "E20",
+        "moves": [
+          "d4",
+          "Nf6",
+          "c4",
+          "e6",
+          "Nc3",
+          "Bb4"
+        ]
+      }
+    },
+    {
+      "name": "suggested_opening_1001",
+      "kind": "suggested_opening",
+      "field_size": 1001,
+      "expected": {
+        "rank": 10,
+        "name": "King's Indian Defense",
+        "games": 6870,
+        "eco": "E70",
+        "moves": [
+          "d4",
+          "Nf6",
+          "c4",
+          "g6",
+          "Nc3",
+          "Bg7",
+          "e4"
+        ]
+      }
+    },
+    {
+      "name": "suggested_opening_5000",
+      "kind": "suggested_opening",
+      "field_size": 5000,
+      "expected": {
+        "rank": 29,
+        "name": "Slav Defense",
+        "games": 1374,
+        "eco": "D15",
+        "moves": [
+          "d4",
+          "d5",
+          "c4",
+          "c6",
+          "Nf3",
+          "Nf6",
+          "Nc3"
+        ]
+      }
+    },
+    {
+      "name": "suggested_opening_10000",
+      "kind": "suggested_opening",
+      "field_size": 10000,
+      "expected": {
+        "rank": 37,
+        "name": "London System",
+        "games": 1036,
+        "eco": "A48",
+        "moves": [
+          "d4",
+          "Nf6",
+          "Nf3",
+          "g6",
+          "Bf4",
+          "Bg7",
+          "e3"
+        ]
+      }
+    },
+    {
+      "name": "suggested_opening_100000",
+      "kind": "suggested_opening",
+      "field_size": 100000,
+      "expected": {
+        "rank": 60,
+        "name": "Benko Gambit Declined",
+        "games": 132,
+        "eco": "A57",
+        "moves": [
+          "d4",
+          "Nf6",
+          "c4",
+          "c5",
+          "d5",
+          "b5",
+          "Nf3"
+        ]
+      }
+    },
+    {
+      "name": "suggested_opening_416171",
+      "kind": "suggested_opening",
+      "field_size": 416171,
+      "expected": {
+        "rank": 104,
+        "name": "Ware Opening",
+        "games": 0,
+        "eco": "A00",
+        "moves": [
+          "a4",
+          "b6",
+          "d4",
+          "d5",
+          "Nc3",
+          "Nd7"
+        ]
       }
     },
     {

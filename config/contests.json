@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Example Contest",
+    "entries": 1000,
+    "buy_in": 20.0,
+    "cap": 50000,
+    "payouts": [
+      {"rank": 1, "amount": 500.0},
+      {"rank": 2, "amount": 250.0},
+      {"rank": 3, "amount": 100.0}
+    ]
+  },
+  {
+    "name": "Head-to-Head",
+    "entries": 2,
+    "buy_in": 5.0,
+    "cap": 50000,
+    "payouts": [
+      {"rank": 1, "amount": 9.0}
+    ]
+  }
+]

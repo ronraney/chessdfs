@@ -443,6 +443,30 @@ def scenario_target_rank(field_size: int, last_rank: int) -> dict:
     }
 
 
+# --- suggested opening (Task 31): by_rank[contest.target_rank(last_rank)], --
+# the selection cli.py's _prompt_for_opening_setup makes inline, here called
+# via rank_families/ContestConfig.target_rank directly (both already real,
+# tested engine functions) rather than importing the CLI itself.
+
+def scenario_suggested_opening(field_size: int) -> dict:
+    ranked = rank_families(load_line_stats(LINE_STATS_PATH))
+    by_rank = {family.rank: family for family in ranked}
+    contest = ContestConfig(field_size=field_size, payouts=[])
+    suggestion = by_rank[contest.target_rank(len(ranked))]
+    return {
+        "name": f"suggested_opening_{field_size}",
+        "kind": "suggested_opening",
+        "field_size": field_size,
+        "expected": {
+            "rank": suggestion.rank,
+            "name": suggestion.name,
+            "games": suggestion.games,
+            "eco": suggestion.line.eco,
+            "moves": list(suggestion.line.moves),
+        },
+    }
+
+
 # --- full family ranking list -------------------------------------------------
 
 def scenario_family_ranking() -> dict:
@@ -561,6 +585,14 @@ def main() -> None:
         scenario_target_rank(10000, last_rank),
         scenario_target_rank(100000, last_rank),
         scenario_target_rank(416171, last_rank),
+        scenario_suggested_opening(2),
+        scenario_suggested_opening(100),
+        scenario_suggested_opening(1000),
+        scenario_suggested_opening(1001),
+        scenario_suggested_opening(5000),
+        scenario_suggested_opening(10000),
+        scenario_suggested_opening(100000),
+        scenario_suggested_opening(416171),
         scenario_family_ranking(),
         scenario_opening_lookup("opening_lookup_after_e4", ["e4"]),
         scenario_opening_lookup("opening_lookup_ruy_lopez", ["e4", "e5", "Nf3", "Nc6", "Bb5"]),

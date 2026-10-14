@@ -4,8 +4,9 @@
 // as loadSportConfig), so the file-writing step is skipped -- the config
 // shape and assertions are otherwise unchanged.
 import { describe, expect, it } from "vitest";
+import contestsData from "../data/config/contests.json";
 import nflConfig from "../data/config/sports/nfl.json";
-import { ContestConfig, loadContestConfig, type RawContestConfig } from "./config";
+import { ContestConfig, loadContestConfig, loadContestPresets, type RawContestConfig, type RawContestPreset } from "./config";
 import { FieldTier, Player } from "./models";
 import { loadSportConfig } from "./sport";
 
@@ -179,5 +180,31 @@ describe("ownership by contest entries (fieldTier + ownFor)", () => {
   it("10,000 entries uses Large Field ownership only", () => {
     const contest = new ContestConfig({ fieldSize: 10000, payouts: [] });
     expect(player(10, 20).ownFor(contest.fieldTier())).toBe(20);
+  });
+});
+
+// --- contest presets (Task 31) ---------------------------------------------
+// config/contests.json has no Python original -- new, TS-only. Round-trips
+// against the real, synced file (same pattern as nflConfig above), not a
+// synthetic fixture, so a change to the seeded presets themselves would
+// surface here too.
+
+describe("loadContestPresets", () => {
+  it("round-trips the example contest and the H2H preset", () => {
+    const configs = loadContestPresets(contestsData as RawContestPreset[]);
+    expect(configs).toHaveLength(2);
+
+    const [example, h2h] = configs;
+    expect(example.fieldSize).toBe(1000);
+    expect(example.cap).toBe(50000);
+    expect(example.payouts.map((p) => ({ rank: p.rank, amount: p.amount }))).toEqual([
+      { rank: 1, amount: 500.0 },
+      { rank: 2, amount: 250.0 },
+      { rank: 3, amount: 100.0 },
+    ]);
+
+    expect(h2h.fieldSize).toBe(2);
+    expect(h2h.cap).toBe(50000);
+    expect(h2h.payouts.map((p) => ({ rank: p.rank, amount: p.amount }))).toEqual([{ rank: 1, amount: 9.0 }]);
   });
 });

@@ -8,6 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import nflConfig from "../data/config/sports/nfl.json";
+import { ContestConfig } from "./config";
 import { loadLineStats, loadOpeningBook } from "./loaders";
 import { Piece } from "./models";
 import {
@@ -19,8 +20,10 @@ import {
   legalDepth,
   openingName,
   openingPreview,
+  randomOpening,
   rankFamilies,
   splitFamily,
+  suggestOpening,
   type RankableLine,
 } from "./openings";
 import { PieceBand, RosterSlot, SportConfig, loadSportConfig } from "./sport";
@@ -345,5 +348,54 @@ describe("rankFamilies", () => {
       "Queen's Gambit Declined",
       "Nimzo-Indian Defense",
     ]);
+  });
+});
+
+// --- suggested opening / random opening (Task 31) -------------------------
+// Real data throughout, same as rankFamilies' own real-data tests above --
+// both functions are meant to run against the live ranking, and parity.json
+// (via tools/export_parity.py) separately pins suggestOpening's exact
+// output against Python's cli.py selection at eight field sizes.
+
+const REAL_RANKED = rankFamilies(loadLineStats(readFileSync(path.join(OPENINGS_DIR, "line_stats.json"), "utf-8")));
+
+describe("suggestOpening", () => {
+  it("H2H (2 entries) suggests rank 1, Sicilian Defense", () => {
+    const h2h = new ContestConfig({ fieldSize: 2, payouts: [] });
+    const suggestion = suggestOpening(h2h, REAL_RANKED);
+    expect(suggestion.rank).toBe(1);
+    expect(suggestion.name).toBe("Sicilian Defense");
+  });
+
+  it("returns the ranked family's own representative line", () => {
+    const h2h = new ContestConfig({ fieldSize: 2, payouts: [] });
+    const suggestion = suggestOpening(h2h, REAL_RANKED);
+    expect(suggestion.line).toBe(REAL_RANKED[0].line);
+  });
+});
+
+describe("randomOpening", () => {
+  const smallTier = new ContestConfig({ fieldSize: 1000, payouts: [] }).entryTier(REAL_RANKED.length); // Small: ranks 1-9
+
+  it("stays within the given tier across many seeds", () => {
+    for (let seed = 0; seed < 25; seed++) {
+      const pick = randomOpening(REAL_RANKED, smallTier, seed);
+      expect(pick.rank).toBeGreaterThanOrEqual(smallTier.lowRank);
+      expect(pick.rank).toBeLessThanOrEqual(smallTier.highRank);
+    }
+  });
+
+  it("the same seed gives the same pick", () => {
+    const first = randomOpening(REAL_RANKED, smallTier, 42);
+    const second = randomOpening(REAL_RANKED, smallTier, 42);
+    expect(second).toBe(first);
+  });
+
+  it("'all' can pick a family outside any single tier's range", () => {
+    for (let seed = 0; seed < 25; seed++) {
+      const pick = randomOpening(REAL_RANKED, "all", seed);
+      expect(pick.rank).toBeGreaterThanOrEqual(1);
+      expect(pick.rank).toBeLessThanOrEqual(REAL_RANKED.length);
+    }
   });
 });

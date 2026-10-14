@@ -14,7 +14,7 @@ import parityFixture from "./__fixtures__/parity.json";
 import { ContestConfig } from "./config";
 import { loadEtrCsv, loadLineStats, loadOpeningBook } from "./loaders";
 import { BuildState, KingMode, Piece, Player, Side } from "./models";
-import { bookContinuations, openingName, rankFamilies, type RankableLine } from "./openings";
+import { bookContinuations, openingName, rankFamilies, suggestOpening, type RankableLine } from "./openings";
 import { classify, pieceForChessType } from "./pieces";
 import type { ChessMove } from "./rules";
 import {
@@ -133,6 +133,8 @@ function runScenario(scenario: Scenario): void {
       return checkFieldTier(scenario);
     case "target_rank":
       return checkTargetRank(scenario);
+    case "suggested_opening":
+      return checkSuggestedOpening(scenario);
     case "family_ranking":
       return checkFamilyRanking(scenario);
     case "opening_lookup":
@@ -307,6 +309,18 @@ function checkTargetRank(scenario: Scenario): void {
   const contest = new ContestConfig({ fieldSize: scenario.field_size as number, payouts: [] });
   const expected = scenario.expected as { target_rank: number };
   expect(contest.targetRank(scenario.last_rank as number)).toBe(expected.target_rank);
+}
+
+function checkSuggestedOpening(scenario: Scenario): void {
+  const ranked = rankFamilies(LINE_STATS as unknown as RankableLine[]);
+  const contest = new ContestConfig({ fieldSize: scenario.field_size as number, payouts: [] });
+  const suggestion = suggestOpening(contest, ranked);
+  const expected = scenario.expected as { rank: number; name: string; games: number; eco: string; moves: string[] };
+  expect(suggestion.rank).toBe(expected.rank);
+  expect(suggestion.name).toBe(expected.name);
+  expect(suggestion.games).toBe(expected.games);
+  expect(suggestion.line.eco).toBe(expected.eco);
+  expect(suggestion.line.moves).toEqual(expected.moves);
 }
 
 function checkFamilyRanking(scenario: Scenario): void {
