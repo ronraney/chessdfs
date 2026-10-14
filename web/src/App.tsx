@@ -1,38 +1,57 @@
-// Task 32: the first setup screen, replacing the Vite default page. Three
-// steps (upload projections, pick a contest, choose King mode) feed a
-// single "Continue" that's enabled once each is resolved. Task 34 adds the
-// opening-setup screen after it (OpeningSetupScreen) and a placeholder
-// build screen after THAT. UI-only: every parse/classify/rank/tier call
-// below is the engine's own function from web/src/engine, never
-// reimplemented here.
-import { useMemo, useState, type ChangeEvent } from "react";
+// Task 32: the first setup screen, replacing the Vite default page.
+// Originally three steps (upload projections, pick a contest, choose King
+// mode); Task 35 removes the upload step from the player flow entirely --
+// players now read a projections slate the admin already saved (see
+// AdminScreen.tsx, projectionsStore.ts), so the flow is contest -> King
+// mode -> opening. Task 34 adds the opening-setup screen after it
+// (OpeningSetupScreen) and a placeholder build screen after THAT. UI-only:
+// every parse/classify/rank/tier call below is the engine's own function
+// from web/src/engine, never reimplemented here.
+import { useEffect, useMemo, useState } from "react";
 import "./App.css";
+import AdminScreen from "./AdminScreen";
 import { NFL, PRESETS, LAST_RANK } from "./appData";
 import { loadEtrCsv } from "./engine/loaders";
 import { KingMode, Piece, type Player } from "./engine/models";
 import type { ChosenOpening } from "./OpeningSetupScreen";
 import OpeningSetupScreen from "./OpeningSetupScreen";
 import { classify } from "./engine/pieces";
+import { getSavedProjectionsCsv } from "./projectionsStore";
 
-// Blob#text() isn't implemented by jsdom (the RTL test environment), so
-// FileReader is used instead -- universally supported, including there.
-function readFileAsText(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsText(file);
-  });
+function loadSavedPlayers(): Player[] | null {
+  const csv = getSavedProjectionsCsv();
+  if (csv === null) return null;
+  try {
+    const parsed = loadEtrCsv(csv);
+    return parsed.length > 0 ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
 function App() {
+  const [isAdminRoute, setIsAdminRoute] = useState(() => window.location.hash === "#/admin");
   const [screen, setScreen] = useState<"setup" | "opening" | "build">("setup");
   const [chosenOpening, setChosenOpening] = useState<ChosenOpening | null>(null);
-  const [players, setPlayers] = useState<Player[] | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [players, setPlayers] = useState<Player[] | null>(() => loadSavedPlayers());
   const [presetIndex, setPresetIndex] = useState<number | null>(null);
   const [kingMode, setKingMode] = useState<KingMode>(KingMode.EMERGE);
   const [whiteKingId, setWhiteKingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    function onHashChange() {
+      const admin = window.location.hash === "#/admin";
+      setIsAdminRoute(admin);
+      // Re-read the saved slate on the way back from #/admin -- picks up
+      // an upload or a clear made there, within this same mounted App
+      // instance (not just across page reloads).
+      if (!admin) {
+        setPlayers(loadSavedPlayers());
+      }
+    }
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
 
   const qbs = useMemo(
     () => (players ?? []).filter((p) => classify(p, NFL) === Piece.KING).sort((a, b) => b.proj - a.proj),
@@ -45,28 +64,21 @@ function App() {
 
   const selectedPreset = presetIndex !== null ? PRESETS[presetIndex] : null;
 
-  async function handleUpload(event: ChangeEvent<HTMLInputElement>): Promise<void> {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    try {
-      const text = await readFileAsText(file);
-      const parsed = loadEtrCsv(text);
-      if (parsed.length === 0) {
-        throw new Error("no players found in that file");
-      }
-      setPlayers(parsed);
-      setWhiteKingId(null);
-      setUploadError(null);
-    } catch {
-      setPlayers(null);
-      setUploadError("Couldn't read that file as a projections CSV -- check it's a valid DK projections export.");
-    }
+  const canContinue =
+    selectedPreset !== null && (kingMode === KingMode.EMERGE || (kingMode === KingMode.PLACED && whiteKing !== null));
+
+  if (isAdminRoute) {
+    return <AdminScreen />;
   }
 
-  const canContinue =
-    players !== null &&
-    selectedPreset !== null &&
-    (kingMode === KingMode.EMERGE || (kingMode === KingMode.PLACED && whiteKing !== null));
+  if (players === null) {
+    return (
+      <main className="setup">
+        <h1>Chess DFS</h1>
+        <p className="status">No slate loaded yet.</p>
+      </main>
+    );
+  }
 
   if (screen === "opening" && selectedPreset !== null) {
     return (
@@ -112,21 +124,7 @@ function App() {
       <h1>Chess DFS</h1>
 
       <section className="step">
-        <h2>1. Upload your projections</h2>
-        <label className="file-label" htmlFor="projections-csv">
-          Projections CSV
-        </label>
-        <input id="projections-csv" type="file" accept=".csv" onChange={handleUpload} />
-        {players !== null && <p className="status">{players.length} players loaded</p>}
-        {uploadError !== null && (
-          <p className="error" role="alert">
-            {uploadError}
-          </p>
-        )}
-      </section>
-
-      <section className="step">
-        <h2>2. Pick a contest</h2>
+        <h2>1. Pick a contest</h2>
         <ul className="presets">
           {PRESETS.map((preset, index) => {
             const tier = preset.contest.entryTier(LAST_RANK);
@@ -152,7 +150,7 @@ function App() {
       </section>
 
       <section className="step">
-        <h2>3. King mode</h2>
+        <h2>2. King mode</h2>
         <label className="radio">
           <input
             type="radio"
@@ -174,9 +172,7 @@ function App() {
 
         {kingMode === KingMode.PLACED && (
           <div className="qb-picker">
-            {players === null ? (
-              <p className="hint">Upload your projections above to pick a QB.</p>
-            ) : qbs.length === 0 ? (
+            {qbs.length === 0 ? (
               <p className="hint">No QBs found in that file.</p>
             ) : (
               <>
