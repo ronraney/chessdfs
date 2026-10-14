@@ -27,7 +27,7 @@ import { Chess } from "chess.js";
 import type { Dests, Key } from "@lichess-org/chessground/types";
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./BuildScreen.css";
-import { BOOK, LAST_RANK, NFL, RANKED_FAMILIES } from "./appData";
+import { BOOK, LAST_RANK, NFL, RANKED_FAMILIES, RANK_BY_FAMILY } from "./appData";
 import BuildBoard from "./BuildBoard";
 import { dfsLegalMoves } from "./buildFlow";
 import { eligiblePlayers, pieceBandLabel, sideStats, type SideStats } from "./buildStats";
@@ -61,6 +61,13 @@ const PIECE_GLYPH: Record<Piece, string> = {
 };
 
 const BLACK_REPLY_DELAY_MS = 600;
+// At the very start of a build, `bookContinuations` returns essentially
+// every first move recorded anywhere in the 3,865-line book -- dozens of
+// options, not a useful menu. Capped to the chosen line's own move (always
+// first, regardless of rank) plus the N next-most-popular by family rank
+// -- the same ranking the Explorer already uses -- rather than every
+// legal continuation; "(Play your own move)" covers anything not shown.
+const CONTINUATION_LIMIT = 8;
 
 interface Props {
   preset: ContestPreset;
@@ -83,6 +90,9 @@ interface ContinuationOption {
   openingLabel: string | null;
   lockLabel: string;
   isChosen: boolean;
+  // The resulting opening's family rank (lower = more played), Infinity if
+  // its family isn't ranked at all -- ordering/capping only, never shown.
+  rank: number;
 }
 
 function commonPrefixLength(a: readonly string[], b: readonly string[]): number {
@@ -170,15 +180,23 @@ export default function BuildScreen({ preset, players, kingMode, whiteKing, blac
           .filter((san) => legalSans.has(san))
           .map((san): ContinuationOption => {
             const matched = legalMoves.find((m) => m.san === san)!;
+            const resultLine = openingLine([...history, san], BOOK);
+            const resultFamily = resultLine !== null ? splitFamily(resultLine.name)[0] : "";
             return {
               san,
               moveLabel: `${moveNumber}. ${san}`,
-              openingLabel: openingName([...history, san], BOOK),
+              openingLabel: resultLine?.name ?? null,
               lockLabel: lockDescription(pieceForChessType(matched.piece)),
               isChosen: san === chosenNextMove,
+              rank: RANK_BY_FAMILY.get(resultFamily)?.rank ?? Infinity,
             };
           })
-          .sort((a, b) => (a.isChosen === b.isChosen ? a.san.localeCompare(b.san) : a.isChosen ? -1 : 1))
+          .sort((a, b) => {
+            if (a.isChosen !== b.isChosen) return a.isChosen ? -1 : 1;
+            if (a.rank !== b.rank) return a.rank - b.rank;
+            return a.san.localeCompare(b.san);
+          })
+          .slice(0, CONTINUATION_LIMIT)
       : [];
 
   const previewFen = useMemo(() => {
@@ -255,6 +273,15 @@ export default function BuildScreen({ preset, players, kingMode, whiteKing, blac
   const [family, variation] = chosenLine !== null ? splitFamily(chosenLine.name) : ["Your own opening", ""];
   const entryTier = preset.contest.entryTier(LAST_RANK);
 
+  // The banner's own move list: the chosen line's reference (played moves
+  // solid, the rest a preview of where it's headed) while still on it;
+  // once off it -- deviated, or "own opening" with no chosen line at all
+  // -- there's no fixed future left to preview, so it switches to the
+  // actual played history instead (nothing "pending" in that case, since
+  // bannerPlayedCount then equals the list's own length).
+  const movesForBanner = onChosenLine && chosenLine !== null ? chosenLine.moves : history;
+  const bannerPlayedCount = onChosenLine ? playedCount : history.length;
+
   return (
     <main className="build-screen">
       <header className="build-header">
@@ -278,9 +305,9 @@ export default function BuildScreen({ preset, players, kingMode, whiteKing, blac
           {variation !== "" && <p className="opening-variation">{variation}</p>}
           {bannerSubtext !== null && <p className="opening-subtext">{bannerSubtext}</p>}
         </div>
-        {chosenLine !== null && (
+        {movesForBanner.length > 0 && (
           <p className="opening-moves">
-            <MovesProgress moves={chosenLine.moves} playedCount={playedCount} />
+            <MovesProgress moves={movesForBanner} playedCount={bannerPlayedCount} />
           </p>
         )}
       </section>
@@ -293,6 +320,7 @@ export default function BuildScreen({ preset, players, kingMode, whiteKing, blac
           {turn === "w" && (
             <div className="book-continues">
               <p className="book-continues-label">Book continues</p>
+              <p className="book-continues-hint">Tap a move to play it, or drag a piece on the board.</p>
               {continuationOptions.map((option) => (
                 <button
                   key={option.san}
@@ -313,11 +341,6 @@ export default function BuildScreen({ preset, players, kingMode, whiteKing, blac
         </div>
         <SideColumn side="field" label="Field" sideName="Black" stats={blackStats} moves={state.blackMoves} />
       </div>
-
-      <section className="move-list">
-        <h2>Moves</h2>
-        <MoveList sans={history} />
-      </section>
 
       <section className="player-field-table">
         <h2>Player | Field</h2>
@@ -342,21 +365,41 @@ export default function BuildScreen({ preset, players, kingMode, whiteKing, blac
   );
 }
 
+// Played moves are solid; the one at `playedCount` (if the list extends
+// that far -- it won't once there's no fixed future left to preview, see
+// bannerPlayedCount above) gets a small accent marker calling it out as
+// next; anything beyond that is a plain muted preview, not dimmed-looking
+// the way an opacity fade reads as "disabled."
 function MovesProgress({ moves, playedCount }: { moves: readonly string[]; playedCount: number }) {
   const pairs: { num: number; white: string; black: string | undefined; whiteIdx: number; blackIdx: number }[] = [];
   for (let i = 0; i < moves.length; i += 2) {
     pairs.push({ num: i / 2 + 1, white: moves[i], black: moves[i + 1], whiteIdx: i, blackIdx: i + 1 });
   }
+  function moveClass(idx: number): string {
+    if (idx === playedCount) return "next";
+    return idx < playedCount ? "played" : "pending";
+  }
+  function Move({ idx, san }: { idx: number; san: string }) {
+    return (
+      <span className={moveClass(idx)}>
+        {idx === playedCount && (
+          <span className="next-marker" aria-hidden="true">
+            ▸{" "}
+          </span>
+        )}
+        {san}
+      </span>
+    );
+  }
   return (
     <>
       {pairs.map((pair) => (
         <span key={pair.num} className="move-pair">
-          <span className="move-number">{pair.num}.</span>{" "}
-          <span className={pair.whiteIdx < playedCount ? "played" : "pending"}>{pair.white}</span>
+          <span className="move-number">{pair.num}.</span> <Move idx={pair.whiteIdx} san={pair.white} />
           {pair.black !== undefined && (
             <>
               {" "}
-              <span className={pair.blackIdx < playedCount ? "played" : "pending"}>{pair.black}</span>
+              <Move idx={pair.blackIdx} san={pair.black} />
             </>
           )}{" "}
         </span>
@@ -418,30 +461,6 @@ function SideColumn({
 
       {openSlots.length > 0 && <p className="side-open">Open: {openSlots.join(" · ")}</p>}
     </div>
-  );
-}
-
-function MoveList({ sans }: { sans: readonly string[] }) {
-  if (sans.length === 0) return <p className="hint">(no moves yet)</p>;
-  const lastIndex = sans.length - 1;
-  const pairs: { num: number; whiteIdx: number; blackIdx: number | null }[] = [];
-  for (let i = 0; i < sans.length; i += 2) {
-    pairs.push({ num: i / 2 + 1, whiteIdx: i, blackIdx: i + 1 < sans.length ? i + 1 : null });
-  }
-  return (
-    <p className="moves-line">
-      {pairs.map((pair) => (
-        <span key={pair.num} className="move-pair">
-          {pair.num}. <span className={pair.whiteIdx === lastIndex ? "current-move" : ""}>{sans[pair.whiteIdx]}</span>
-          {pair.blackIdx !== null && (
-            <>
-              {" "}
-              <span className={pair.blackIdx === lastIndex ? "current-move" : ""}>{sans[pair.blackIdx]}</span>
-            </>
-          )}{" "}
-        </span>
-      ))}
-    </p>
   );
 }
 

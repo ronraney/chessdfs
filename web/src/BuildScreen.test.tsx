@@ -82,6 +82,10 @@ function fieldColumn(): HTMLElement {
   return screen.getByRole("heading", { level: 2, name: "Field" }).closest(".side-column") as HTMLElement;
 }
 
+function youColumn(): HTMLElement {
+  return screen.getByRole("heading", { level: 2, name: "You" }).closest(".side-column") as HTMLElement;
+}
+
 function chosenContinueButton(): HTMLElement {
   return document.querySelector(".continue-option.chosen") as HTMLElement;
 }
@@ -103,6 +107,13 @@ describe("BuildScreen -- move first, then pick", () => {
     const chosen = chosenContinueButton();
     expect(chosen).not.toBeNull();
     expect(chosen.textContent).toContain("1. e4");
+  });
+
+  it("Book continues is capped, not a dump of every recorded first move", () => {
+    renderScreen();
+    // bookContinuations([], BOOK) alone returns dozens of first moves --
+    // Task 38b caps what's actually shown to a manageable menu.
+    expect(document.querySelectorAll(".continue-option").length).toBeLessThanOrEqual(8);
   });
 
   it("tapping the chosen Book continues button plays it and opens the pick modal", async () => {
@@ -127,14 +138,17 @@ describe("BuildScreen -- move first, then pick", () => {
   it("tapping a non-chosen Book continues button plays that move and opens the modal", async () => {
     renderScreen();
     const user = userEvent.setup();
-    const dQueenPawn = screen.getByText("1. d4").closest("button")!;
-    expect(dQueenPawn.className).not.toContain("chosen");
+    // Capped and ranked (Task 38b) -- which specific moves land in the top
+    // 8 besides the chosen one isn't the point here, just that a
+    // non-chosen option is clickable and behaves the same as the chosen
+    // one does in the other tests.
+    const other = document.querySelector(".continue-option:not(.chosen)") as HTMLElement;
+    expect(other).not.toBeNull();
 
-    await user.click(dQueenPawn);
+    await user.click(other);
 
-    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
-    expect(dialog).toBeInTheDocument();
-    expect(document.querySelector(".moves-line")).toBeNull(); // still not committed
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(within(youColumn()).queryAllByRole("listitem")).toHaveLength(0); // still not committed
   });
 
   it("the pick modal shows the 'After this pick' footer, and Lock player commits the top candidate", async () => {
@@ -148,7 +162,7 @@ describe("BuildScreen -- move first, then pick", () => {
     await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
 
     expect(screen.queryByRole("dialog")).toBeNull(); // modal closes once the pick locks
-    expect(document.querySelector(".moves-line")?.textContent).toContain("d4"); // now actually locked in
+    expect(document.querySelector(".opening-moves")?.textContent).toContain("d4"); // now actually locked in
     expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(0); // Black hasn't replied yet
 
     await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
@@ -167,7 +181,7 @@ describe("BuildScreen -- move first, then pick", () => {
 
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(lastApi!.config.fen).toBe(fenBefore); // visually reverted
-    expect(document.querySelector(".hint")?.textContent).toBe("(no moves yet)"); // never actually committed
+    expect(within(youColumn()).queryAllByRole("listitem")).toHaveLength(0); // never actually committed
     expect(chosenContinueButton()?.textContent).toContain("1. e4"); // still on the chosen line
   });
 

@@ -123,9 +123,20 @@
   color: var(--text-h);
 }
 
+/* Not opacity -- a faded-out token reads as disabled/inert rather than
+   "not played yet." Plain muted text (the same shade labels/eyebrows
+   already use) stays legible while still reading as "preview." */
 .opening-moves .pending {
   color: var(--text);
-  opacity: 0.5;
+}
+
+.opening-moves .next {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.opening-moves .next-marker {
+  color: var(--accent);
 }
 
 /* You / board / Field */
@@ -327,6 +338,12 @@
   color: var(--text);
 }
 
+.book-continues-hint {
+  margin: -4px 0 2px;
+  font-size: 13px;
+  color: var(--text);
+}
+
 .play-own-move {
   align-self: center;
   margin: 2px 0 0;
@@ -334,20 +351,19 @@
   color: var(--text);
 }
 
-.move-list h2,
+/* Player | Field -- Task 38b moves this up next to the board/cards row
+   (it used to be the last thing on the page) and gives it the same card
+   treatment as the opening banner and side columns, since it's now part
+   of the main view rather than an afterthought below the fold. */
+.player-field-table {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px 22px;
+}
+
 .player-field-table h2 {
-  margin-bottom: 8px;
-}
-
-.moves-line {
-  font-family: var(--mono);
-  font-size: 15px;
-  line-height: 160%;
-}
-
-.current-move {
-  font-weight: 700;
-  color: var(--accent);
+  margin: 0 0 10px;
 }
 
 .player-field {
