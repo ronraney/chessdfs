@@ -8,6 +8,7 @@
 - If a task is unclear or contradicts existing behavior or tests, stop and ask before building.
 
 ## Rules
+- Never use AskUserQuestion. Always ask questions inline.
 - The prompt is the spec. When a prompt changes behavior, implement it exactly as written, even if it changes earlier behavior, and update the affected tests.
 - The existing code and tests are the record of all earlier rules. Don't change behavior a prompt didn't mention.
 - Never change rules on your own. If a rule seems wrong, incomplete, or conflicts with another, flag it in your log. Do not "fix" it in code.

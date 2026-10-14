@@ -183,28 +183,39 @@ describe("ownership by contest entries (fieldTier + ownFor)", () => {
   });
 });
 
-// --- contest presets (Task 31) ---------------------------------------------
+// --- contest presets (Tasks 31/32) ------------------------------------------
 // config/contests.json has no Python original -- new, TS-only. Round-trips
 // against the real, synced file (same pattern as nflConfig above), not a
 // synthetic fixture, so a change to the seeded presets themselves would
-// surface here too.
+// surface here too. Task 32 replaced the two hand-seeded presets with every
+// row of data/samples/NFL Weekly DFS System - Sim_Contest.csv except "NFL
+// GIANT $25 Double-Up" (a cash game, unsupported) -- H2H (also technically
+// "cash" in that CSV) is kept regardless, per Task 32's explicit carve-out.
 
 describe("loadContestPresets", () => {
-  it("round-trips the example contest and the H2H preset", () => {
-    const configs = loadContestPresets(contestsData as RawContestPreset[]);
-    expect(configs).toHaveLength(2);
+  it("round-trips name/buyIn/contest for every preset", () => {
+    const presets = loadContestPresets(contestsData as RawContestPreset[]);
+    expect(presets.length).toBe((contestsData as RawContestPreset[]).length);
+    for (const [index, preset] of presets.entries()) {
+      const raw = (contestsData as RawContestPreset[])[index];
+      expect(preset.name).toBe(raw.name);
+      expect(preset.buyIn).toBe(raw.buy_in);
+      expect(preset.contest.fieldSize).toBe(raw.entries);
+    }
+  });
 
-    const [example, h2h] = configs;
-    expect(example.fieldSize).toBe(1000);
-    expect(example.cap).toBe(50000);
-    expect(example.payouts.map((p) => ({ rank: p.rank, amount: p.amount }))).toEqual([
-      { rank: 1, amount: 500.0 },
-      { rank: 2, amount: 250.0 },
-      { rank: 3, amount: 100.0 },
-    ]);
+  it("skips the unsupported cash game but keeps H2H", () => {
+    const presets = loadContestPresets(contestsData as RawContestPreset[]);
+    expect(presets.some((p) => p.name === "NFL GIANT $25 Double-Up")).toBe(false);
 
-    expect(h2h.fieldSize).toBe(2);
-    expect(h2h.cap).toBe(50000);
-    expect(h2h.payouts.map((p) => ({ rank: p.rank, amount: p.amount }))).toEqual([{ rank: 1, amount: 9.0 }]);
+    const h2h = presets.find((p) => p.name === "H2H");
+    expect(h2h).toBeDefined();
+    expect(h2h!.contest.fieldSize).toBe(2);
+    expect(h2h!.buyIn).toBe(1);
+  });
+
+  it("entries not given a cap default to the sport's salary cap", () => {
+    const presets = loadContestPresets(contestsData as RawContestPreset[]);
+    expect(presets.every((p) => p.contest.cap === null)).toBe(true);
   });
 });

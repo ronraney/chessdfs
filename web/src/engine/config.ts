@@ -242,17 +242,26 @@ export function loadContestConfig(data: RawContestConfig): ContestConfig {
   });
 }
 
-// Task 31: config/contests.json's own shape -- a list of named contest
+// Task 31/32: config/contests.json's own shape -- a list of named contest
 // presets (a display name, its entries/buy-in, plus any RawContestConfig
 // field) with no Python original to port from. `entries` is each preset's
 // field_size under its own name, matching how "H2H (2 entries)" already
-// reads elsewhere in this codebase. `name`/`buy_in` are typed here as part
-// of the JSON's documented shape but not threaded through loadContestPresets
-// below -- its return type is ContestConfig objects only.
+// reads elsewhere in this codebase. The real file (Task 32) is generated
+// from data/samples/NFL Weekly DFS System - Sim_Contest.csv, whose columns
+// beyond name/entries/buy-in (type, prize_pool, pct_to_first, min_cash,
+// cash_line, max_entries_per_user) are typed here as part of the JSON's
+// documented shape but not threaded through loadContestPresets below --
+// "extra fields for later," not yet consumed.
 export interface RawContestPreset {
   name: string;
   entries: number;
   buy_in: number;
+  type?: string;
+  prize_pool?: number;
+  pct_to_first?: number;
+  min_cash?: number;
+  cash_line?: number;
+  max_entries_per_user?: number;
   cap?: number | null;
   payouts: RawPayoutTier[];
   max_entries_scale?: number;
@@ -264,9 +273,17 @@ export interface RawContestPreset {
   large_max_rank?: number;
 }
 
-export function loadContestPresets(data: readonly RawContestPreset[]): ContestConfig[] {
-  return data.map((preset) =>
-    loadContestConfig({
+export interface ContestPreset {
+  name: string;
+  buyIn: number;
+  contest: ContestConfig;
+}
+
+export function loadContestPresets(data: readonly RawContestPreset[]): ContestPreset[] {
+  return data.map((preset) => ({
+    name: preset.name,
+    buyIn: preset.buy_in,
+    contest: loadContestConfig({
       field_size: preset.entries,
       payouts: preset.payouts,
       cap: preset.cap,
@@ -278,5 +295,5 @@ export function loadContestPresets(data: readonly RawContestPreset[]): ContestCo
       mid_max_rank: preset.mid_max_rank,
       large_max_rank: preset.large_max_rank,
     }),
-  );
+  }));
 }
