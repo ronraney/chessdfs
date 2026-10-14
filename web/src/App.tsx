@@ -1,20 +1,18 @@
 // Task 32: the first setup screen, replacing the Vite default page. Three
 // steps (upload projections, pick a contest, choose King mode) feed a
-// single "Continue" that's enabled once each is resolved, leading to a
-// placeholder screen for the opening-setup screen a future task builds.
-// UI-only: every parse/classify/rank/tier call below is the engine's own
-// function from web/src/engine, never reimplemented here.
+// single "Continue" that's enabled once each is resolved. Task 34 adds the
+// opening-setup screen after it (OpeningSetupScreen) and a placeholder
+// build screen after THAT. UI-only: every parse/classify/rank/tier call
+// below is the engine's own function from web/src/engine, never
+// reimplemented here.
 import { useMemo, useState, type ChangeEvent } from "react";
 import "./App.css";
-import contestsRaw from "./data/config/contests.json";
-import lineStatsRaw from "./data/openings/line_stats.json?raw";
-import nflConfig from "./data/config/sports/nfl.json";
-import { loadContestPresets, type ContestPreset, type RawContestPreset } from "./engine/config";
-import { loadEtrCsv, loadLineStats } from "./engine/loaders";
+import { NFL, PRESETS, LAST_RANK } from "./appData";
+import { loadEtrCsv } from "./engine/loaders";
 import { KingMode, Piece, type Player } from "./engine/models";
-import { rankFamilies } from "./engine/openings";
+import type { ChosenOpening } from "./OpeningSetupScreen";
+import OpeningSetupScreen from "./OpeningSetupScreen";
 import { classify } from "./engine/pieces";
-import { loadSportConfig } from "./engine/sport";
 
 // Blob#text() isn't implemented by jsdom (the RTL test environment), so
 // FileReader is used instead -- universally supported, including there.
@@ -27,14 +25,9 @@ function readFileAsText(file: File): Promise<string> {
   });
 }
 
-const NFL = loadSportConfig(nflConfig);
-const PRESETS: ContestPreset[] = loadContestPresets(contestsRaw as RawContestPreset[]);
-// cli.py's own "Contest tier" readout (_run_one_build) resolves this from
-// the same rank_families(line_stats) count -- not a fixed number.
-const LAST_RANK = rankFamilies(loadLineStats(lineStatsRaw)).length;
-
 function App() {
-  const [screen, setScreen] = useState<"setup" | "placeholder">("setup");
+  const [screen, setScreen] = useState<"setup" | "opening" | "build">("setup");
+  const [chosenOpening, setChosenOpening] = useState<ChosenOpening | null>(null);
   const [players, setPlayers] = useState<Player[] | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [presetIndex, setPresetIndex] = useState<number | null>(null);
@@ -75,11 +68,24 @@ function App() {
     selectedPreset !== null &&
     (kingMode === KingMode.EMERGE || (kingMode === KingMode.PLACED && whiteKing !== null));
 
-  if (screen === "placeholder" && selectedPreset !== null) {
+  if (screen === "opening" && selectedPreset !== null) {
+    return (
+      <OpeningSetupScreen
+        preset={selectedPreset}
+        onBack={() => setScreen("setup")}
+        onChoose={(chosen) => {
+          setChosenOpening(chosen);
+          setScreen("build");
+        }}
+      />
+    );
+  }
+
+  if (screen === "build" && selectedPreset !== null && chosenOpening !== null) {
     return (
       <main className="setup">
         <h1>Chess DFS</h1>
-        <h2>Opening setup — coming next</h2>
+        <h2>Build — coming next</h2>
         <p>
           Contest: {selectedPreset.name} ({selectedPreset.contest.fieldSize.toLocaleString()} entries, $
           {selectedPreset.buyIn.toLocaleString()} buy-in)
@@ -93,7 +99,8 @@ function App() {
             </>
           )}
         </p>
-        <button type="button" onClick={() => setScreen("setup")}>
+        <p>Opening: {chosenOpening.kind === "own" ? "Your own opening" : chosenOpening.line.name}</p>
+        <button type="button" onClick={() => setScreen("opening")}>
           Back
         </button>
       </main>
@@ -193,7 +200,7 @@ function App() {
         )}
       </section>
 
-      <button type="button" className="continue" disabled={!canContinue} onClick={() => setScreen("placeholder")}>
+      <button type="button" className="continue" disabled={!canContinue} onClick={() => setScreen("opening")}>
         Continue
       </button>
     </main>
