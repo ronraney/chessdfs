@@ -52,9 +52,13 @@ function movesEqual(a: readonly string[], b: readonly string[]): boolean {
   return true;
 }
 
-// The name of the longest book line that's a prefix of `moves` (including
-// an exact match), or null if no line matches at all.
-export function openingName(moves: readonly string[], book: readonly BookLine[]): string | null {
+// The longest book line that's a prefix of `moves` (including an exact
+// match), or null if no line matches at all. Task 37: the build screen's
+// opening banner needs the matching line's `eco` alongside its `name` --
+// two lines can share an identical name at different depths/ECOs (e.g.
+// "Ruy Lopez: Morphy Defense" exists at both C70, 6-ply, and C78, 10-ply),
+// so the name string alone can't be traced back to an eco.
+export function openingLine(moves: readonly string[], book: readonly BookLine[]): BookLine | null {
   let best: BookLine | null = null;
   for (const line of book) {
     if (line.moves.length <= moves.length && movesEqual(line.moves, moves.slice(0, line.moves.length))) {
@@ -63,7 +67,13 @@ export function openingName(moves: readonly string[], book: readonly BookLine[])
       }
     }
   }
-  return best ? best.name : null;
+  return best;
+}
+
+// The name of the longest book line that's a prefix of `moves` (including
+// an exact match), or null if no line matches at all.
+export function openingName(moves: readonly string[], book: readonly BookLine[]): string | null {
+  return openingLine(moves, book)?.name ?? null;
 }
 
 // Book lines whose name contains `query`, case-insensitively -- the

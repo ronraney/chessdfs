@@ -1,10 +1,10 @@
-/* Task 36: Club (light, default) and Slate (dark) themes. `--accent` is the
-   single interactive color Club defines; Slate splits it into `--accent`
-   (You) and `--accent-field` (Field) -- Club has no second color in spec,
-   so `--accent-field` just reuses `--accent` there. An explicit choice is
-   written to <html data-theme> by theme.ts/ThemeToggle; absent one, the
-   prefers-color-scheme block below decides, which is how "default follows
-   the device setting" stays true. */
+/* Task 36: Club (light, default) and Slate (dark) themes. `--accent` is
+   White/"You"; `--accent-field` is Black/"Field" (Task 37 gives Club its
+   own field color, #2F4A6B -- ~7.9:1 against --bg, ~8.5:1 against --card,
+   both well past 4.5:1). An explicit choice is written to <html
+   data-theme> by theme.ts/ThemeToggle; absent one, the prefers-color-
+   scheme block below decides, which is how "default follows the device
+   setting" stays true. */
 :root {
   --bg: #f4efe6;
   --card: #fbf8f2;
@@ -12,7 +12,7 @@
   --text-h: #1e1b16;
   --text: #6b6358;
   --accent: #8a2d2a;
-  --accent-field: #8a2d2a;
+  --accent-field: #2f4a6b;
   --accent-bg: rgba(138, 45, 42, 0.1);
   --accent-border: rgba(138, 45, 42, 0.5);
   --board-light: #ead9b8;

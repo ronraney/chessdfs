@@ -18,6 +18,7 @@ import {
   continuingLines,
   findOpeningLines,
   legalDepth,
+  openingLine,
   openingName,
   openingPreview,
   randomOpening,
@@ -57,6 +58,26 @@ describe("openingName", () => {
 
   it("null when no line matches", () => {
     expect(openingName(["Qzz9"], BOOK)).toBeNull(); // not a real SAN token; no line starts with it
+  });
+});
+
+describe("openingLine", () => {
+  it("Morphy Defense's eco ply by ply: B00 -> C20 -> C40 -> C44 -> C60 -> C70", () => {
+    // Ply 4 (e4 e5 Nf3 Nc6) has its own dedicated book entry -- "King's
+    // Knight Opening: Normal Variation", C44 -- longer and so a better
+    // match than ply 3's C40 ("King's Knight Opening"), same rule as
+    // every other ply here. Verified against the real vendored book
+    // (web/src/data/openings/c.tsv).
+    const expectedEcos = ["B00", "C20", "C40", "C44", "C60", "C70"];
+    for (let ply = 1; ply <= MORPHY_DEFENSE.length; ply++) {
+      const line = openingLine(MORPHY_DEFENSE.slice(0, ply), BOOK);
+      expect(line?.eco).toBe(expectedEcos[ply - 1]);
+    }
+    expect(openingLine(MORPHY_DEFENSE, BOOK)?.name).toBe("Ruy Lopez: Morphy Defense");
+  });
+
+  it("null when no line matches", () => {
+    expect(openingLine(["Qzz9"], BOOK)).toBeNull();
   });
 });
 

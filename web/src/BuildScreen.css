@@ -1,0 +1,161 @@
+.build-screen {
+  box-sizing: border-box;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 16px 20px 48px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.opening-banner {
+  text-align: center;
+}
+
+.opening-family {
+  margin: 8px 0 0;
+}
+
+.opening-variation {
+  font-family: var(--sans);
+  font-size: 18px;
+  color: var(--text);
+  margin: 0;
+}
+
+.opening-eco {
+  font-size: 13px;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 4px 0 0;
+}
+
+.build-layout {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  grid-template-areas: "you board field";
+  gap: 16px;
+  align-items: start;
+}
+
+.side-column {
+  grid-area: you;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  border-top: 4px solid var(--accent);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.side-column.field {
+  grid-area: field;
+  border-top-color: var(--accent-field);
+}
+
+.side-column h2 {
+  margin: 0;
+}
+
+.side-stat {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.locked-players {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.locked-players li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 13px;
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+}
+
+.locked-piece {
+  font-weight: 600;
+  min-width: 56px;
+}
+
+.locked-name {
+  flex: 1 1 auto;
+}
+
+.locked-pos,
+.locked-team,
+.locked-salary {
+  font-family: var(--mono);
+  color: var(--text);
+}
+
+.board-column {
+  grid-area: board;
+  display: flex;
+  justify-content: center;
+}
+
+.board-column .board-preview {
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+  aspect-ratio: 1;
+}
+
+.move-list h2,
+.player-field-table h2 {
+  margin-bottom: 8px;
+}
+
+.moves-line {
+  font-family: var(--mono);
+  font-size: 15px;
+  line-height: 160%;
+}
+
+.current-move {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.player-field {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.player-field th,
+.player-field td {
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.build-status {
+  text-align: center;
+  font-size: 16px;
+  color: var(--text-h);
+}
+
+@media (max-width: 760px) {
+  .build-layout {
+    grid-template-columns: 1fr;
+    grid-template-areas: "board" "you" "field";
+  }
+
+  .board-column .board-preview {
+    max-width: 320px;
+  }
+}

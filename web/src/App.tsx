@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import AdminScreen from "./AdminScreen";
 import { NFL, PRESETS, LAST_RANK } from "./appData";
+import BuildScreen from "./BuildScreen";
 import { loadEtrCsv } from "./engine/loaders";
 import { KingMode, Piece, type Player } from "./engine/models";
 import type { ChosenOpening } from "./OpeningSetupScreen";
@@ -99,30 +100,14 @@ function App() {
 
   if (screen === "build" && selectedPreset !== null && chosenOpening !== null) {
     return (
-      <main className="setup">
-        <header className="app-header">
-          <ThemeToggle />
-        </header>
-        <h1>Chess DFS</h1>
-        <h2>Build — coming next</h2>
-        <p>
-          Contest: {selectedPreset.name} ({selectedPreset.contest.fieldSize.toLocaleString()} entries, $
-          {selectedPreset.buyIn.toLocaleString()} buy-in)
-        </p>
-        <p>
-          King mode: {kingMode === KingMode.EMERGE ? "Let him emerge" : "Place your King now"}
-          {kingMode === KingMode.PLACED && whiteKing && blackKing && (
-            <>
-              {" "}
-              — White: {whiteKing.name}, Black: {blackKing.name}
-            </>
-          )}
-        </p>
-        <p>Opening: {chosenOpening.kind === "own" ? "Your own opening" : chosenOpening.line.name}</p>
-        <button type="button" onClick={() => setScreen("opening")}>
-          Back
-        </button>
-      </main>
+      <BuildScreen
+        preset={selectedPreset}
+        players={players}
+        kingMode={kingMode}
+        whiteKing={whiteKing}
+        blackKing={blackKing}
+        chosenOpening={chosenOpening}
+      />
     );
   }
 
