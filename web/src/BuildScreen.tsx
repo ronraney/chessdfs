@@ -1,36 +1,37 @@
-// Task 37: replaces the old "Build -- coming next" placeholder with real
-// template play. Both sides' moves come from the chosen opening line
-// (ChosenOpening.kind === "line"); White's pick is interactive (PickModal),
-// Black's is automatic (build.playBlackTemplateMove) -- same split as
-// dfs_chess/cli.py's _play_white_template_move/play_black_template_move.
-// "Play your own opening" (ChosenOpening.kind === "own") has no line to
-// play at all -- depth (0) is already >= templateMoves.length (0), so it
-// falls straight to the same "Line complete" placeholder; free play isn't
-// built yet (explicitly out of scope this task).
+// Task 38: reworks Task 37's forced-both-sides template into "the chosen
+// line only suggests White's moves; White may play any legal move." White
+// drags on the board (BuildBoard); Black always replies via the engine's
+// own book-committed free play (build.playBlackMove, not
+// playBlackTemplateMove -- it already implements exactly "follow the
+// committed line while it matches, re-choose when it doesn't," RULES.md
+// "Black (the field)," so there's no template bookkeeping left to drive
+// here at all) after a short pause so the move reads as its own turn.
 //
-// computeNextStep is the one place that decides what happens at the
-// current position -- open White's pick modal, auto-advance (Black's
-// move, or a PLACED-mode silent King move), stop with the template
-// finished, or stop because the next move needs UI this task doesn't
-// build yet (a capture or castling for White; "no captures UI, castling
-// prompts... yet"). It's a pure function of `state`, so advanceThroughAutoSteps
-// below can call it (and playBlackTemplateMove, itself pure) repeatedly to
-// walk an entire chain of automatic moves and hand back just the one
-// resulting BuildState to commit -- no setState-inside-an-effect chain
-// reacting to its own output, and no move is ever resolved twice.
-import { useMemo, useState } from "react";
+// A White move is never committed to `state` until its pick is confirmed:
+// BuildBoard's `fen` is `previewFen` (the current `state` plus the
+// tentative move, computed with a scratch chess.js clone -- a pure chess-
+// mechanics preview, not a DFS rule) while a pick is pending, and plain
+// `state.board.fen()` otherwise. Cancel just drops `pendingMove`, which
+// snaps `previewFen` back to `state`'s own fen -- no engine-level undo is
+// needed (see the session report for the explicit "is this supported"
+// check this task asked for).
+import { Chess } from "chess.js";
+import type { Dests, Key } from "@lichess-org/chessground/types";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./BuildScreen.css";
-import { BOOK, NFL } from "./appData";
-import BoardPreview from "./BoardPreview";
+import { BOOK, LAST_RANK, NFL, RANKED_FAMILIES } from "./appData";
+import BuildBoard from "./BuildBoard";
+import { chessMoveForSan, dfsLegalMoves, suggestionFor } from "./buildFlow";
 import { eligiblePlayers, sideStats, type SideStats } from "./buildStats";
-import { playBlackTemplateMove, playWhiteMove } from "./engine/build";
-import type { ContestConfig, ContestPreset } from "./engine/config";
+import { playBlackMove, playWhiteMove } from "./engine/build";
+import type { ContestPreset } from "./engine/config";
 import { BuildState, KingMode, Piece, type Move, type Player } from "./engine/models";
 import { openingLine, splitFamily, type BookLine } from "./engine/openings";
 import { pieceForChessType } from "./engine/pieces";
-import { isCaptureMove, placeKings, pushSilentMove, type ChessMove } from "./engine/rules";
+import { SeededRandom } from "./engine/rng";
+import { placeKings, pushSilentMove, type ChessMove } from "./engine/rules";
 import type { ChosenOpening } from "./OpeningSetupScreen";
-import PickModal from "./PickModal";
+import PickPanel from "./PickPanel";
 import ThemeToggle from "./ThemeToggle";
 
 const PIECE_LABEL: Record<Piece, string> = {
@@ -42,75 +43,7 @@ const PIECE_LABEL: Record<Piece, string> = {
   PAWN: "Pawn",
 };
 
-type NextStep =
-  | { kind: "templateDone" }
-  | { kind: "openModal"; chessMove: ChessMove; piece: Piece }
-  | { kind: "autoAdvance"; state: BuildState }
-  | { kind: "unsupported"; reason: string };
-
-function computeNextStep(
-  state: BuildState,
-  templateMoves: readonly string[],
-  kingMode: KingMode,
-  players: readonly Player[],
-  contest: ContestConfig,
-): NextStep {
-  const depth = state.board.history().length;
-  if (depth >= templateMoves.length) return { kind: "templateDone" };
-
-  const san = templateMoves[depth];
-  const matched = state.board.moves({ verbose: true }).find((m) => m.san === san);
-  if (matched === undefined) {
-    return { kind: "unsupported", reason: `"${san}" is not a legal move here -- stopping the template.` };
-  }
-  const chessMove: ChessMove = { from: matched.from, to: matched.to, promotion: matched.promotion };
-
-  if (state.board.turn() === "b") {
-    const result = playBlackTemplateMove(state, chessMove, NFL, contest, players, BOOK, kingMode);
-    if (result === null) {
-      return { kind: "unsupported", reason: "This line is no longer playable for Black here -- stopping the template." };
-    }
-    return { kind: "autoAdvance", state: result.state };
-  }
-
-  if (matched.isKingsideCastle() || matched.isQueensideCastle()) {
-    return {
-      kind: "unsupported",
-      reason: "This opening's next move is castling, which the build screen doesn't support yet.",
-    };
-  }
-  if (isCaptureMove(matched)) {
-    return {
-      kind: "unsupported",
-      reason: "This opening's next move is a capture, which the build screen doesn't support yet.",
-    };
-  }
-  const piece = pieceForChessType(matched.piece);
-  if (kingMode === KingMode.PLACED && piece === Piece.KING) {
-    return { kind: "autoAdvance", state: pushSilentMove(state, chessMove) };
-  }
-  return { kind: "openModal", chessMove, piece };
-}
-
-// Resolves every automatic step in a row (Black's template moves, and a
-// PLACED-mode silent King move for White) before ever committing a state
-// to React -- the loop itself is the "synchronize in one place" fix for
-// what would otherwise be a setState-inside-an-effect chain reacting to
-// its own output.
-function advanceThroughAutoSteps(
-  start: BuildState,
-  templateMoves: readonly string[],
-  kingMode: KingMode,
-  players: readonly Player[],
-  contest: ContestConfig,
-): BuildState {
-  let current = start;
-  for (;;) {
-    const step = computeNextStep(current, templateMoves, kingMode, players, contest);
-    if (step.kind !== "autoAdvance") return current;
-    current = step.state;
-  }
-}
+const BLACK_REPLY_DELAY_MS = 600;
 
 interface Props {
   preset: ContestPreset;
@@ -121,48 +54,123 @@ interface Props {
   chosenOpening: ChosenOpening;
 }
 
+interface PendingMove {
+  chessMove: ChessMove;
+  piece: Piece;
+}
+
 export default function BuildScreen({ preset, players, kingMode, whiteKing, blackKing, chosenOpening }: Props) {
-  const templateMoves = useMemo(
-    () => (chosenOpening.kind === "line" ? chosenOpening.line.moves : []),
-    [chosenOpening],
+  const [state, setState] = useState<BuildState>(() =>
+    kingMode === KingMode.PLACED && whiteKing !== null && blackKing !== null
+      ? placeKings(whiteKing, blackKing, NFL, preset.contest)
+      : new BuildState(),
   );
-
-  const [state, setState] = useState<BuildState>(() => {
-    const initial =
-      kingMode === KingMode.PLACED && whiteKing !== null && blackKing !== null
-        ? placeKings(whiteKing, blackKing, NFL, preset.contest)
-        : new BuildState();
-    return advanceThroughAutoSteps(initial, templateMoves, kingMode, players, preset.contest);
-  });
   const [lastOpening, setLastOpening] = useState<BookLine | null>(() => openingLine(state.board.history(), BOOK));
+  const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
   const [pickError, setPickError] = useState<string | null>(null);
+  const blackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const nextStep = useMemo(
-    () => computeNextStep(state, templateMoves, kingMode, players, preset.contest),
-    [state, templateMoves, kingMode, players, preset.contest],
-  );
+  useEffect(() => {
+    return () => {
+      if (blackTimerRef.current !== null) clearTimeout(blackTimerRef.current);
+    };
+  }, []);
+
+  // Stable for the component's lifetime -- re-seeding every render (or
+  // every Black move) would break play's own book-line commitment logic,
+  // which depends on one continuously-advancing PRNG sequence. useState's
+  // lazy initializer (not useRef's eager argument) is what keeps
+  // Math.random() from being called -- impurely -- on every render; only
+  // the first render's call is ever used.
+  const [rng] = useState<SeededRandom>(() => new SeededRandom(Math.floor(Math.random() * 2 ** 31)));
+  const familyRanks = useMemo(() => Object.fromEntries(RANKED_FAMILIES.map((f) => [f.name, f.rank])), []);
+  const targetRank = useMemo(() => preset.contest.targetRank(LAST_RANK), [preset]);
+
+  const turn = state.board.turn();
+  const history = state.board.history();
+  const isWhiteToAct = turn === "w" && pendingMove === null;
+
+  const legalMoves = isWhiteToAct ? dfsLegalMoves(state, NFL, preset.contest, players, kingMode) : [];
+  const legalSans = new Set(legalMoves.map((m) => m.san));
+  const dests: Dests = new Map();
+  for (const move of legalMoves) {
+    const arr = dests.get(move.from) ?? [];
+    arr.push(move.to);
+    dests.set(move.from, arr);
+  }
+
+  const suggestion = isWhiteToAct ? filterSuggestion(suggestionFor(history, chosenOpening, BOOK), legalSans) : { kind: "none" as const };
+  const suggestionArrow =
+    suggestion.kind === "onLine" ? arrowFor(state, suggestion.move) : null;
+
+  const previewFen = useMemo(() => {
+    if (pendingMove === null) return state.board.fen();
+    const scratch = new Chess(state.board.fen());
+    scratch.move({ from: pendingMove.chessMove.from, to: pendingMove.chessMove.to, promotion: pendingMove.chessMove.promotion });
+    return scratch.fen();
+  }, [state, pendingMove]);
 
   function commit(newState: BuildState): void {
     setState(newState);
+    setPendingMove(null);
     const line = openingLine(newState.board.history(), BOOK);
     if (line !== null) setLastOpening(line);
+
+    if (blackTimerRef.current !== null) clearTimeout(blackTimerRef.current);
+    blackTimerRef.current =
+      newState.board.turn() !== "b"
+        ? null
+        : setTimeout(() => {
+            try {
+              const result = playBlackMove(newState, BOOK, familyRanks, targetRank, NFL, preset.contest, players, rng, kingMode);
+              setState(result.state);
+              const afterBlack = openingLine(result.state.board.history(), BOOK);
+              if (afterBlack !== null) setLastOpening(afterBlack);
+            } catch {
+              // Black has no legal move at all -- a dead end this task
+              // doesn't handle yet (not reachable by anything this task
+              // tests); left as a no-op rather than crashing the screen.
+            }
+          }, BLACK_REPLY_DELAY_MS);
+  }
+
+  function handleBoardMove(orig: Key, dest: Key): void {
+    const matched = legalMoves.find((m) => m.from === orig && m.to === dest);
+    if (matched === undefined) return; // dests only ever offers matched's own from/to pairs
+    const chessMove: ChessMove = { from: matched.from, to: matched.to, promotion: matched.promotion };
+    const piece = pieceForChessType(matched.piece);
+    if (kingMode === KingMode.PLACED && piece === Piece.KING) {
+      commit(pushSilentMove(state, chessMove));
+      return;
+    }
+    setPickError(null);
+    setPendingMove({ chessMove, piece });
+  }
+
+  function playSan(san: string): void {
+    const matched = legalMoves.find((m) => m.san === san);
+    if (matched === undefined) return;
+    handleBoardMove(matched.from, matched.to);
   }
 
   function handlePick(player: Player): void {
-    if (nextStep.kind !== "openModal") return;
+    if (pendingMove === null) return;
     try {
-      const result = playWhiteMove(state, nextStep.chessMove, player, NFL, preset.contest, BOOK, null, kingMode);
-      setPickError(null);
-      commit(advanceThroughAutoSteps(result.state, templateMoves, kingMode, players, preset.contest));
+      const result = playWhiteMove(state, pendingMove.chessMove, player, NFL, preset.contest, BOOK, null, kingMode);
+      commit(result.state);
     } catch {
       setPickError(`${player.name} isn't a legal pick for this move right now.`);
     }
   }
 
+  function handleCancel(): void {
+    setPendingMove(null);
+    setPickError(null);
+  }
+
   const whiteStats = sideStats(state.whiteMoves.map((m) => m.player), NFL, preset.contest);
   const blackStats = sideStats(state.blackMoves.map((m) => m.player), NFL, preset.contest);
   const [family, variation] = lastOpening !== null ? splitFamily(lastOpening.name) : ["", ""];
-  const history = state.board.history();
 
   return (
     <main className="build-screen">
@@ -176,10 +184,38 @@ export default function BuildScreen({ preset, players, kingMode, whiteKing, blac
         {lastOpening !== null && <p className="opening-eco">{lastOpening.eco}</p>}
       </section>
 
+      {isWhiteToAct && suggestion.kind === "onLine" && (
+        <section className="suggestion-banner">
+          <p>
+            Suggested: <strong>{suggestion.move}</strong> · {suggestion.lineName}
+          </p>
+          <button type="button" onClick={() => playSan(suggestion.move)}>
+            Play it
+          </button>
+        </section>
+      )}
+      {isWhiteToAct && suggestion.kind === "offLine" && (
+        <section className="suggestion-banner off-line">
+          <p>Book continuations:</p>
+          <div className="suggestion-options">
+            {suggestion.options.map((option) => (
+              <button key={option.move} type="button" onClick={() => playSan(option.move)}>
+                {option.name} ({option.move})
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       <div className="build-layout">
         <SideColumn side="you" label="You" stats={whiteStats} moves={state.whiteMoves} />
         <div className="board-column">
-          <BoardPreview fen={state.board.fen()} />
+          <BuildBoard
+            fen={previewFen}
+            dests={pendingMove === null && turn === "w" ? dests : new Map()}
+            suggestionArrow={pendingMove === null ? suggestionArrow : null}
+            onMove={handleBoardMove}
+          />
         </div>
         <SideColumn side="field" label="Field" stats={blackStats} moves={state.blackMoves} />
       </div>
@@ -194,24 +230,39 @@ export default function BuildScreen({ preset, players, kingMode, whiteKing, blac
         <PlayerFieldTable white={state.whiteMoves} black={state.blackMoves} />
       </section>
 
-      {nextStep.kind === "unsupported" && <p className="status build-status">{nextStep.reason}</p>}
-      {nextStep.kind === "templateDone" && (
-        <p className="status build-status">Line complete — next steps coming.</p>
-      )}
-
-      {nextStep.kind === "openModal" && (
-        <PickModal
-          piece={nextStep.piece}
-          candidates={eligiblePlayers(nextStep.piece, state.lockedPlayerIds, players, NFL)}
+      {pendingMove !== null && (
+        <PickPanel
+          piece={pendingMove.piece}
+          candidates={eligiblePlayers(pendingMove.piece, state.lockedPlayerIds, players, NFL)}
           currentPlayers={state.whiteMoves.map((m) => m.player)}
           sport={NFL}
           contest={preset.contest}
           onPick={handlePick}
+          onCancel={handleCancel}
           error={pickError}
         />
       )}
     </main>
   );
+}
+
+function filterSuggestion(
+  raw: ReturnType<typeof suggestionFor>,
+  legalSans: ReadonlySet<string>,
+): ReturnType<typeof suggestionFor> {
+  if (raw.kind === "onLine") {
+    return legalSans.has(raw.move) ? raw : { kind: "none" };
+  }
+  if (raw.kind === "offLine") {
+    const options = raw.options.filter((o) => legalSans.has(o.move));
+    return options.length > 0 ? { kind: "offLine", options } : { kind: "none" };
+  }
+  return raw;
+}
+
+function arrowFor(state: BuildState, san: string): { orig: Key; dest: Key } | null {
+  const matched = chessMoveForSan(state, san);
+  return matched === null ? null : { orig: matched.from, dest: matched.to };
 }
 
 function SideColumn({

@@ -107,11 +107,32 @@
   justify-content: center;
 }
 
-.board-column .board-preview {
-  width: 100%;
+.board-column .build-board {
   max-width: 420px;
-  height: auto;
-  aspect-ratio: 1;
+}
+
+.suggestion-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 16px;
+}
+
+.suggestion-banner.off-line {
+  flex-direction: column;
+}
+
+.suggestion-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
 }
 
 .move-list h2,
@@ -143,19 +164,13 @@
   font-size: 14px;
 }
 
-.build-status {
-  text-align: center;
-  font-size: 16px;
-  color: var(--text-h);
-}
-
 @media (max-width: 760px) {
   .build-layout {
     grid-template-columns: 1fr;
     grid-template-areas: "board" "you" "field";
   }
 
-  .board-column .board-preview {
+  .board-column .build-board {
     max-width: 320px;
   }
 }

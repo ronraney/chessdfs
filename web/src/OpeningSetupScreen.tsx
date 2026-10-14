@@ -244,7 +244,15 @@ function FamilyRow({
 
   return (
     <li className="family-row">
-      <button type="button" className="family-button" onClick={onToggle} aria-expanded={expanded}>
+      <button
+        type="button"
+        className="family-button"
+        onClick={() => {
+          onSelect(family.line);
+          onToggle();
+        }}
+        aria-expanded={expanded}
+      >
         <span className="family-name-small">{family.name}</span>
         <span className="family-detail">
           rank {family.rank} · {family.games.toLocaleString()} games

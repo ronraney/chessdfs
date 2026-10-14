@@ -2,7 +2,7 @@
 // Task 34: the opening setup screen's own tests, via React Testing
 // Library + jsdom (same per-file opt-in as App.test.tsx -- see its own
 // header comment for why this isn't the global default).
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { LAST_RANK, PRESETS, RANKED_FAMILIES } from "./appData";
@@ -68,4 +68,30 @@ describe("OpeningSetupScreen", () => {
     await user.click(screen.getByRole("button", { name: "Random" }));
     expect(screen.getByText("Large-style")).toBeInTheDocument();
   });
+
+  it(
+    "choosing a family in the explorer plays its representative line, not the bare family row (Task 38 bug fix)",
+    async () => {
+      const user = userEvent.setup();
+      const { onChoose } = renderScreen();
+      await user.click(screen.getByRole("button", { name: "All" })); // Ruy Lopez regardless of H2H's own tier
+      await user.click(screen.getByText("Ruy Lopez").closest("button")!);
+
+      const card = document.querySelector(".selection-card") as HTMLElement;
+      expect(within(card).getByRole("heading", { level: 2, name: "Ruy Lopez" })).toBeInTheDocument();
+      expect(within(card).getByText("Morphy Defense")).toBeInTheDocument();
+      // ends 3...a6, not the bare 5-ply "Ruy Lopez" row
+      expect(within(card).getByText("e4 e5 Nf3 Nc6 Bb5 a6")).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Play this" }));
+      expect(onChoose).toHaveBeenCalledWith({
+        kind: "line",
+        line: expect.objectContaining({
+          name: "Ruy Lopez: Morphy Defense",
+          moves: ["e4", "e5", "Nf3", "Nc6", "Bb5", "a6"],
+        }),
+      });
+    },
+    15000,
+  );
 });

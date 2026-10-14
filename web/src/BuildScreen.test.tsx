@@ -1,19 +1,57 @@
 // @vitest-environment jsdom
-// Task 37: drives the Ruy Lopez: Morphy Defense template end to end --
-// White's three interactive picks (Pawn/e4, Knight/Nf3, Bishop/Bb5) via
-// the pick modal, Black's three automatic ones (Pawn/e5, Knight/Nc6,
-// Pawn/a6) via build.playBlackTemplateMove -- against the real vendored
-// book and a real sample projections CSV (same data every other screen's
-// tests already use).
-import { render, screen, within } from "@testing-library/react";
+// Task 38: drives the move-first-then-pick flow end to end. chessground
+// manipulates raw DOM pixel geometry to detect drag/drop, which jsdom
+// can't lay out at all (getBoundingClientRect is always zeroed) -- there's
+// no way to simulate a real drag in this environment, so
+// "@lichess-org/chessground" is mocked here: the fake Chessground()
+// captures the config BuildBoard passed it (in particular
+// `movable.events.after`, the callback a real drag would eventually
+// call) and `simulateMove` invokes it directly, exactly as chessground
+// itself would once a legal drop lands. Everything downstream of that
+// callback -- state, the pick panel, Black's automatic reply -- is real,
+// unmocked BuildScreen/engine code.
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
-import { BOOK, NFL, PRESETS } from "./appData";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Config } from "@lichess-org/chessground/config";
+import { BOOK, PRESETS } from "./appData";
 import BuildScreen from "./BuildScreen";
-import { eligiblePlayers } from "./buildStats";
 import { loadEtrCsv } from "./engine/loaders";
-import { KingMode, Piece } from "./engine/models";
+import { KingMode } from "./engine/models";
 import { SAMPLE_CSV } from "./testFixtures";
+
+interface FakeApi {
+  config: Config;
+  set(partial: Partial<Config>): void;
+  destroy(): void;
+}
+
+let lastApi: FakeApi | null = null;
+
+vi.mock("@lichess-org/chessground", () => ({
+  Chessground: (_el: HTMLElement, config: Config): FakeApi => {
+    const api: FakeApi = {
+      config,
+      set(partial) {
+        api.config = {
+          ...api.config,
+          ...partial,
+          movable: { ...api.config.movable, ...partial.movable },
+          drawable: { ...api.config.drawable, ...partial.drawable },
+        };
+      },
+      destroy() {},
+    };
+    lastApi = api;
+    return api;
+  },
+}));
+
+// Simulates a completed drag/drop -- the same call chessground's own
+// `movable.events.after` callback would receive once a legal drop lands.
+function simulateMove(orig: string, dest: string): void {
+  lastApi!.config.movable!.events!.after!(orig as never, dest as never, { premove: false });
+}
 
 const PLAYERS = loadEtrCsv(SAMPLE_CSV);
 const H2H = PRESETS.find((preset) => preset.name === "H2H")!;
@@ -32,79 +70,77 @@ function renderScreen() {
   );
 }
 
-// Regex/substring text matchers in RTL match any ancestor whose combined
-// textContent happens to contain the substring, not just the one leaf
-// paragraph -- querySelector against the side-stat paragraph's own class
-// (the first .side-stat in a SideColumn is always the salary-remaining
-// line; see BuildScreen.tsx's SideColumn) sidesteps that ambiguity.
-function salaryRemainingText(container: Element): string {
-  return container.querySelector(".side-stat")?.textContent ?? "";
+function fieldColumn(): HTMLElement {
+  return screen.getByRole("heading", { level: 2, name: "Field" }).closest(".side-column") as HTMLElement;
 }
 
-describe("BuildScreen -- Morphy Defense template", () => {
-  it("the book has the expected 6-ply line this test drives", () => {
-    expect(MORPHY_DEFENSE.moves).toEqual(["e4", "e5", "Nf3", "Nc6", "Bb5", "a6"]);
+beforeEach(() => {
+  lastApi = null;
+});
+
+describe("BuildScreen -- move first, then pick", () => {
+  it("arrives on the board with no pick list, and suggests the chosen line's first move", () => {
+    renderScreen();
+    expect(document.querySelector(".build-board")).not.toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    const banner = document.querySelector(".suggestion-banner");
+    expect(banner?.textContent).toContain("Suggested:");
+    expect(banner?.textContent).toContain("e4");
+    expect(banner?.textContent).toContain("Ruy Lopez: Morphy Defense");
   });
 
-  it("locks 3 White and 3 Black players, then shows the line-complete placeholder", async () => {
+  it("the suggested move's 'Play it' makes that move and opens the pick list", async () => {
     renderScreen();
     const user = userEvent.setup();
+    const fenBefore = lastApi!.config.fen;
+    await user.click(screen.getByRole("button", { name: "Play it" }));
 
-    for (const label of ["Pick a Pawn", "Pick a Knight", "Pick a Bishop"]) {
-      const dialog = await screen.findByRole("dialog", { name: label });
-      await user.click(within(dialog).getAllByRole("button", { name: "Pick" })[0]);
-    }
-
-    await screen.findByText("Line complete — next steps coming.");
-
-    const you = screen.getByRole("heading", { level: 2, name: "You" }).closest(".side-column") as HTMLElement;
-    const field = screen.getByRole("heading", { level: 2, name: "Field" }).closest(".side-column") as HTMLElement;
-    expect(within(you).getAllByRole("listitem")).toHaveLength(3);
-    expect(within(field).getAllByRole("listitem")).toHaveLength(3);
-
-    // All 6 locked players are distinct -- the practical consequence of
-    // lockedPlayerIds gating both sides' eligibility (see buildStats.test.ts
-    // for the direct, general proof that a locked player is excluded).
-    const names = [...within(you).getAllByRole("listitem"), ...within(field).getAllByRole("listitem")].map(
-      (li) => li.textContent,
-    );
-    expect(new Set(names).size).toBe(6);
+    expect(await screen.findByRole("dialog", { name: "Pick a Pawn" })).toBeInTheDocument();
+    expect(lastApi!.config.fen).not.toBe(fenBefore); // the board shows the move, even though it isn't locked in yet
   });
 
-  it("the pick modal lists exactly the eligible players for the moved piece", async () => {
+  it("a non-suggested legal move is accepted, and Black responds after the pick locks", async () => {
     renderScreen();
     const user = userEvent.setup();
-
-    await screen.findByRole("dialog", { name: "Pick a Pawn" });
-    const pawnDialog = screen.getByRole("dialog", { name: "Pick a Pawn" });
-    await user.click(within(pawnDialog).getAllByRole("button", { name: "Pick" })[0]);
-
-    const knightDialog = await screen.findByRole("dialog", { name: "Pick a Knight" });
-    const rows = within(knightDialog).getAllByRole("row").slice(1); // drop the header row
-    // Both picks locked so far (White's e4, Black's auto e5) are Pawn-band
-    // players -- classify() is one-to-one, so neither affects the
-    // Knight-eligible pool at all; the empty locked set here matches that.
-    const expectedCount = eligiblePlayers(Piece.KNIGHT, new Set(), PLAYERS, NFL).length;
-    expect(rows.length).toBe(expectedCount);
-  });
-
-  it("salary remaining updates by exactly the picked player's salary", async () => {
-    renderScreen();
-    const user = userEvent.setup();
-
-    const you = screen.getByRole("heading", { level: 2, name: "You" }).closest(".side-column")!;
-    const before = salaryRemainingText(you);
+    simulateMove("d2", "d4"); // deviates from the suggested e4
 
     const dialog = await screen.findByRole("dialog", { name: "Pick a Pawn" });
-    const firstRow = within(dialog).getAllByRole("row")[1]; // header + first candidate
-    const salaryText = within(firstRow).getAllByRole("cell")[2].textContent!; // Name | Team | Salary | ...
-    const salary = Number(salaryText.replace(/[$,]/g, ""));
+    await user.click(within(dialog).getAllByRole("button", { name: "Pick" })[0]);
 
-    await user.click(within(firstRow).getByRole("button", { name: "Pick" }));
+    expect(screen.queryByRole("dialog")).toBeNull(); // panel closes once the pick locks
+    expect(document.querySelector(".moves-line")?.textContent).toContain("d4"); // now actually locked in
+    expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(0); // Black hasn't replied yet
 
-    const after = salaryRemainingText(you);
-    const capBefore = Number(before.match(/\$([\d,]+)/)![1].replace(/,/g, ""));
-    const capAfter = Number(after.match(/\$([\d,]+)/)![1].replace(/,/g, ""));
-    expect(capAfter).toBe(capBefore - salary);
+    await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+  });
+
+  it("cancel restores the previous position", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    const fenBefore = lastApi!.config.fen;
+
+    simulateMove("e2", "e4");
+    await screen.findByRole("dialog", { name: "Pick a Pawn" });
+    expect(lastApi!.config.fen).not.toBe(fenBefore); // the board shows the tentative move
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(lastApi!.config.fen).toBe(fenBefore); // visually reverted
+    expect(document.querySelector(".hint")?.textContent).toBe("(no moves yet)"); // never actually committed
+    expect(document.querySelector(".suggestion-banner")?.textContent).toContain("Suggested:"); // back on the chosen line
+  });
+
+  it("after deviating, suggestions come from book continuations by name", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    simulateMove("d2", "d4"); // no longer the Ruy Lopez's own "e4"
+    const dialog = await screen.findByRole("dialog", { name: "Pick a Pawn" });
+    await user.click(within(dialog).getAllByRole("button", { name: "Pick" })[0]);
+
+    await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+
+    expect(screen.queryByText(/^Suggested:/)).toBeNull();
+    expect(screen.getByText("Book continuations:")).toBeInTheDocument();
   });
 });

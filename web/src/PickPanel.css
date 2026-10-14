@@ -1,0 +1,96 @@
+.pick-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 420px;
+  max-width: 92vw;
+  background: var(--card);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  overflow-y: auto;
+  padding: 16px;
+  text-align: left;
+  z-index: 50;
+}
+
+.pick-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pick-panel-header h2 {
+  margin: 0;
+}
+
+.cancel-pick {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text-h);
+  border-radius: 6px;
+  padding: 6px 14px;
+}
+
+.pick-table-wrap {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.pick-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.pick-table th,
+.pick-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.pick-table th {
+  padding: 0;
+}
+
+.sort-header {
+  width: 100%;
+  min-height: 36px;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 6px 8px;
+  color: var(--text);
+}
+
+.sort-header.active {
+  color: var(--text-h);
+}
+
+.pick-table tbody tr:hover {
+  background: var(--accent-bg);
+}
+
+.pick-table td:last-child button {
+  min-height: 32px;
+  padding: 4px 12px;
+}
+
+@media (max-width: 760px) {
+  .pick-panel {
+    top: auto;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: none;
+    max-height: 70vh;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    border-radius: 12px 12px 0 0;
+  }
+}

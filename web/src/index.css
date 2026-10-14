@@ -174,10 +174,11 @@ input[type='checkbox'] {
 }
 
 /* The chessground board preview ships its own checker-pattern CSS
-   (chessground.brown.css, imported by BoardPreview.tsx); overriding it by
-   descendant selector beats it on specificity regardless of stylesheet
-   order, without needing to drop that import. */
-.board-preview cg-board {
+   (chessground.brown.css, imported by BoardPreview.tsx/BuildBoard.tsx);
+   overriding it by descendant selector beats it on specificity regardless
+   of stylesheet order, without needing to drop that import. */
+.board-preview cg-board,
+.build-board cg-board {
   background-color: var(--board-light);
   background-image:
     linear-gradient(45deg, var(--board-dark) 25%, transparent 25%, transparent 75%, var(--board-dark) 75%),
