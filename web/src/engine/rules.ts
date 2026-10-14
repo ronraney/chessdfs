@@ -171,10 +171,37 @@ function withBoardState(
 // type and SAN the Python version separately pulls via piece_type_at/san().
 // Exported for build.ts (Task 29), which needs the same resolution for its
 // own caller-supplied/candidate moves.
+//
+// Task 33: this is the engine's hottest path by far -- build.ts's
+// bestLegalPlayer/bestLegalCapturePlayer/bestLegalCastlePlayers call it with
+// the exact same (board, move) pair once per candidate player, a loop of
+// dozens deep for a real NFL pool. Two fixes, stacked: `square: move.from`
+// scopes chess.js's own move generation (and its per-move check-legality
+// make/undo filtering) to the one piece on that square instead of the whole
+// board; a per-board result cache then collapses the *repeat* asks for that
+// same square entirely. Caching by board-instance identity is safe because
+// a BuildState's `board` is never mutated in place after creation -- every
+// apply/castle/capture/silent-move clones first (see cloneBoard below) --
+// and a WeakMap means a discarded board's cache entry is collected right
+// along with it, never leaked.
+const legalMoveCache = new WeakMap<Chess, Map<string, ChessJsMove | undefined>>();
+
 export function findLegalMove(board: Chess, move: ChessMove): ChessJsMove | undefined {
-  return board
-    .moves({ verbose: true })
-    .find((m) => m.from === move.from && m.to === move.to && (move.promotion === undefined || m.promotion === move.promotion));
+  const key = `${move.from}${move.to}${move.promotion ?? ""}`;
+  let cache = legalMoveCache.get(board);
+  if (cache === undefined) {
+    cache = new Map();
+    legalMoveCache.set(board, cache);
+  }
+  if (cache.has(key)) {
+    return cache.get(key);
+  }
+
+  const result = board
+    .moves({ verbose: true, square: move.from })
+    .find((m) => m.to === move.to && (move.promotion === undefined || m.promotion === move.promotion));
+  cache.set(key, result);
+  return result;
 }
 
 // A copy of `board` that keeps its full move history -- unlike python-chess's
@@ -185,6 +212,10 @@ export function findLegalMove(board: Chess, move: ChessMove): ChessJsMove | unde
 // actually led to this position. Round-tripping through PGN instead
 // preserves it, including a non-default starting position (chess.js emits
 // a `[FEN ...]`/`[SetUp "1"]` header for that case and `loadPgn` honors it).
+// Task 33 profiling found this a minor cost next to the move-generation
+// fix above (it only runs once per real move actually applied, not once
+// per candidate) -- left as-is rather than risking a subtler replay-based
+// rewrite for marginal gain.
 function cloneBoard(board: Chess): Chess {
   const clone = new Chess();
   clone.loadPgn(board.pgn());

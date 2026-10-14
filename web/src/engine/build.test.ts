@@ -469,12 +469,6 @@ describe("capture transfer pre-check (Task 11c)", () => {
     // data at seeds 17/18 in the Python build, per Task 11b's log). Across
     // many seeds here, playBlackMove must never raise it, and must never
     // actually complete that transfer.
-    //
-    // 50 full playBlackMove calls, each re-running chess.js move generation
-    // for every (candidate move, candidate player) pair -- chess.js is far
-    // slower at this than python-chess, so this one needs more than
-    // vitest's default 5s budget even though the Python original runs it
-    // without a timeout concern at all.
     const bDst1 = makePlayer("b_dst1", "DST", 2500);
     let state = applyMove(new BuildState(), uci("d2d4"), makePlayer("w_f1", "WR", 3000), NFL, CONTEST);
     state = applyMove(state, uci("d7d5"), bDst1, NFL, CONTEST);
@@ -497,7 +491,7 @@ describe("capture transfer pre-check (Task 11c)", () => {
       expect(positions.filter((p) => p === "DST").length).toBeLessThanOrEqual(1); // the overflowing transfer never went through
       expect(result.state.blackMoves.some((m) => m.player.id === "w_dst_captured")).toBe(false);
     }
-  }, 20000);
+  });
 });
 
 // --- dead-end endings (Task 11e) ---------------------------------------------
