@@ -2,22 +2,23 @@
 // Originally three steps (upload projections, pick a contest, choose King
 // mode); Task 35 removes the upload step from the player flow entirely --
 // players now read a projections slate the admin already saved (see
-// AdminScreen.tsx, projectionsStore.ts), so the flow is contest -> King
-// mode -> opening. Task 34 adds the opening-setup screen after it
-// (OpeningSetupScreen) and a placeholder build screen after THAT. UI-only:
-// every parse/classify/rank/tier call below is the engine's own function
-// from web/src/engine, never reimplemented here.
-import { useEffect, useMemo, useState } from "react";
+// AdminScreen.tsx, projectionsStore.ts). Task 38c merges the remaining
+// contest/King-mode step and the opening-setup step (formerly
+// OpeningSetupScreen, Task 34) into one SetupScreen, matching design/'s
+// combined mockup -- there's no "Continue" step left in between; SetupScreen
+// hands back everything a build needs (preset, King mode, both Kings, and
+// the chosen opening) in one go. UI-only: every parse/classify call below
+// is the engine's own function from web/src/engine, never reimplemented
+// here.
+import { useEffect, useState } from "react";
 import "./App.css";
 import AdminScreen from "./AdminScreen";
-import { NFL, PRESETS, LAST_RANK } from "./appData";
 import BuildScreen from "./BuildScreen";
 import { loadEtrCsv } from "./engine/loaders";
-import { KingMode, Piece, type Player } from "./engine/models";
-import type { ChosenOpening } from "./OpeningSetupScreen";
-import OpeningSetupScreen from "./OpeningSetupScreen";
-import { classify } from "./engine/pieces";
+import type { Player } from "./engine/models";
 import { getSavedProjectionsCsv } from "./projectionsStore";
+import type { ChosenSetup } from "./SetupScreen";
+import SetupScreen from "./SetupScreen";
 import ThemeToggle from "./ThemeToggle";
 
 function loadSavedPlayers(): Player[] | null {
@@ -33,12 +34,9 @@ function loadSavedPlayers(): Player[] | null {
 
 function App() {
   const [isAdminRoute, setIsAdminRoute] = useState(() => window.location.hash === "#/admin");
-  const [screen, setScreen] = useState<"setup" | "opening" | "build">("setup");
-  const [chosenOpening, setChosenOpening] = useState<ChosenOpening | null>(null);
+  const [screen, setScreen] = useState<"setup" | "build">("setup");
+  const [chosenSetup, setChosenSetup] = useState<ChosenSetup | null>(null);
   const [players, setPlayers] = useState<Player[] | null>(() => loadSavedPlayers());
-  const [presetIndex, setPresetIndex] = useState<number | null>(null);
-  const [kingMode, setKingMode] = useState<KingMode>(KingMode.EMERGE);
-  const [whiteKingId, setWhiteKingId] = useState<string | null>(null);
 
   useEffect(() => {
     function onHashChange() {
@@ -54,20 +52,6 @@ function App() {
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
-
-  const qbs = useMemo(
-    () => (players ?? []).filter((p) => classify(p, NFL) === Piece.KING).sort((a, b) => b.proj - a.proj),
-    [players],
-  );
-  const whiteKing = qbs.find((p) => p.id === whiteKingId) ?? null;
-  // cli.py's `_prompt_and_place_kings`: Black's QB is the highest-projection
-  // QB other than White's own pick -- not a user choice.
-  const blackKing = whiteKing ? qbs.find((p) => p.id !== whiteKing.id) ?? null : null;
-
-  const selectedPreset = presetIndex !== null ? PRESETS[presetIndex] : null;
-
-  const canContinue =
-    selectedPreset !== null && (kingMode === KingMode.EMERGE || (kingMode === KingMode.PLACED && whiteKing !== null));
 
   if (isAdminRoute) {
     return <AdminScreen />;
@@ -85,116 +69,27 @@ function App() {
     );
   }
 
-  if (screen === "opening" && selectedPreset !== null) {
-    return (
-      <OpeningSetupScreen
-        preset={selectedPreset}
-        onBack={() => setScreen("setup")}
-        onChoose={(chosen) => {
-          setChosenOpening(chosen);
-          setScreen("build");
-        }}
-      />
-    );
-  }
-
-  if (screen === "build" && selectedPreset !== null && chosenOpening !== null) {
+  if (screen === "build" && chosenSetup !== null) {
     return (
       <BuildScreen
-        preset={selectedPreset}
+        preset={chosenSetup.preset}
         players={players}
-        kingMode={kingMode}
-        whiteKing={whiteKing}
-        blackKing={blackKing}
-        chosenOpening={chosenOpening}
+        kingMode={chosenSetup.kingMode}
+        whiteKing={chosenSetup.whiteKing}
+        blackKing={chosenSetup.blackKing}
+        chosenOpening={chosenSetup.opening}
       />
     );
   }
 
   return (
-    <main className="setup">
-      <header className="app-header">
-        <ThemeToggle />
-      </header>
-      <h1>Chess DFS</h1>
-
-      <section className="step">
-        <h2>1. Pick a contest</h2>
-        <ul className="presets">
-          {PRESETS.map((preset, index) => {
-            const tier = preset.contest.entryTier(LAST_RANK);
-            const selected = presetIndex === index;
-            return (
-              <li key={preset.name}>
-                <button
-                  type="button"
-                  className={selected ? "preset selected" : "preset"}
-                  aria-pressed={selected}
-                  onClick={() => setPresetIndex(index)}
-                >
-                  <span className="preset-name">{preset.name}</span>
-                  <span className="preset-detail">
-                    {preset.contest.fieldSize.toLocaleString()} entries · ${preset.buyIn.toLocaleString()} buy-in ·{" "}
-                    {tier.name} tier
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-
-      <section className="step">
-        <h2>2. King mode</h2>
-        <label className="radio">
-          <input
-            type="radio"
-            name="king-mode"
-            checked={kingMode === KingMode.EMERGE}
-            onChange={() => setKingMode(KingMode.EMERGE)}
-          />
-          Let him emerge
-        </label>
-        <label className="radio">
-          <input
-            type="radio"
-            name="king-mode"
-            checked={kingMode === KingMode.PLACED}
-            onChange={() => setKingMode(KingMode.PLACED)}
-          />
-          Place your King now
-        </label>
-
-        {kingMode === KingMode.PLACED && (
-          <div className="qb-picker">
-            {qbs.length === 0 ? (
-              <p className="hint">No QBs found in that file.</p>
-            ) : (
-              <>
-                <label htmlFor="white-qb">White&apos;s QB</label>
-                <select
-                  id="white-qb"
-                  value={whiteKingId ?? ""}
-                  onChange={(event) => setWhiteKingId(event.target.value || null)}
-                >
-                  <option value="">Choose a QB…</option>
-                  {qbs.map((qb) => (
-                    <option key={qb.id} value={qb.id}>
-                      {qb.name} — ${qb.salary.toLocaleString()} — {qb.proj.toFixed(1)} pts
-                    </option>
-                  ))}
-                </select>
-                {blackKing && <p className="hint">Black&apos;s QB: {blackKing.name}</p>}
-              </>
-            )}
-          </div>
-        )}
-      </section>
-
-      <button type="button" className="continue" disabled={!canContinue} onClick={() => setScreen("opening")}>
-        Continue
-      </button>
-    </main>
+    <SetupScreen
+      players={players}
+      onChoose={(chosen) => {
+        setChosenSetup(chosen);
+        setScreen("build");
+      }}
+    />
   );
 }
 

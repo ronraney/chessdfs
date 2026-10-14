@@ -38,8 +38,8 @@ import { bookContinuations, openingLine, openingName, splitFamily, type BookLine
 import { pieceForChessType } from "./engine/pieces";
 import { SeededRandom } from "./engine/rng";
 import { placeKings, pushSilentMove, type ChessMove } from "./engine/rules";
-import type { ChosenOpening } from "./OpeningSetupScreen";
 import PickPanel from "./PickPanel";
+import type { ChosenOpening } from "./SetupScreen";
 import ThemeToggle from "./ThemeToggle";
 
 const PIECE_LABEL: Record<Piece, string> = {
@@ -486,6 +486,11 @@ function SideColumn({
       <div className="side-stat-block">
         <p className="side-eyebrow">Core ownership</p>
         <p className="side-ownership">{(stats.ownershipTotal * 100).toFixed(1)}%</p>
+      </div>
+
+      <div className="side-stat-block">
+        <p className="side-eyebrow">Core projection</p>
+        <p className="side-projection">{stats.projTotal.toFixed(1)} pts</p>
       </div>
 
       <ul className="locked-players">

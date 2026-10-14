@@ -234,6 +234,16 @@ describe("BuildScreen -- status line (Task 38d)", () => {
   });
 });
 
+describe("BuildScreen -- Core projection stat (Task 38c)", () => {
+  it("shows Core projection under Core ownership in both the You and Field cards", () => {
+    renderScreen();
+    for (const column of [youColumn(), fieldColumn()]) {
+      expect(within(column).getByText("Core projection")).toBeInTheDocument();
+      expect(within(column).getByText(/^0\.0 pts$/)).toBeInTheDocument(); // no picks locked yet
+    }
+  });
+});
+
 describe("BuildScreen -- How it works strip (Task 38d)", () => {
   it("shows the strip by default, hides it once dismissed, and stays hidden after reload", async () => {
     const user = userEvent.setup();

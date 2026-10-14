@@ -12,7 +12,7 @@ import type { BuildState, KingMode, Player } from "./engine/models";
 import { bookContinuations, openingName, type BookLine } from "./engine/openings";
 import { isCaptureMove, type ChessMove } from "./engine/rules";
 import type { SportConfig } from "./engine/sport";
-import type { ChosenOpening } from "./OpeningSetupScreen";
+import type { ChosenOpening } from "./SetupScreen";
 
 // Every legal chess move for the side to move that this task offers as a
 // drag target: not a capture, not castling (both excluded "for now" --

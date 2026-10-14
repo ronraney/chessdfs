@@ -1,0 +1,464 @@
+/* Task 38c: matches design/'s combined setup mockups (club-setup.html /
+   slate-setup.html) -- Contest, King mode, and Suggested cards in a left
+   column, the Explorer in a right column, both visible at once. */
+.setup-screen {
+  box-sizing: border-box;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 16px 20px 48px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.setup-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.setup-wordmark-group {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.setup-wordmark {
+  font-family: var(--heading);
+  font-weight: 700;
+  font-size: 28px;
+}
+
+.setup-tagline {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.setup-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 420px) 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.setup-left {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.setup-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.setup-eyebrow {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.setup-card select {
+  height: 44px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 15px;
+  background: var(--bg);
+  color: var(--text-h);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.setup-card-detail {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.setup-card-detail .accent {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.king-mode-control {
+  display: flex;
+  gap: 8px;
+}
+
+.king-mode-option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  font-size: 15px;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.king-mode-option:has(:checked) {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Visually hidden, not display:none -- stays in the accessibility tree and
+   keeps getByLabelText working the same as a plain radio+label pair. */
+.king-mode-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.qb-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.qb-picker select {
+  font: inherit;
+  padding: 6px;
+  max-width: 100%;
+}
+
+.hint {
+  font-size: 13px;
+  color: var(--text);
+  margin: 0;
+}
+
+.suggested-card {
+  flex: 1 1 auto;
+  flex-direction: row;
+  gap: 20px;
+  border-top: 3px solid var(--accent);
+}
+
+.suggested-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.suggested-eyebrow {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.family-name {
+  margin: 2px 0 0;
+  font-size: 32px;
+  line-height: 1.1;
+}
+
+.variation-name {
+  margin: 0;
+  font-family: var(--heading);
+  font-style: italic;
+  font-size: 18px;
+  color: var(--text);
+}
+
+.off-tier-tag {
+  align-self: flex-start;
+  margin: 0;
+  font-size: 12px;
+  color: var(--accent);
+  background: var(--accent-bg);
+  border-radius: 10px;
+  padding: 2px 10px;
+}
+
+.moves {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text-h);
+  word-break: break-word;
+}
+
+.piece-sequence {
+  margin: 0;
+  font-family: var(--mono);
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.eco-games {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.play-this {
+  margin-top: auto;
+  align-self: flex-start;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 10px 24px;
+  border-radius: 6px;
+  border: 0;
+  color: var(--bg);
+  background: var(--accent);
+  cursor: pointer;
+}
+
+.play-this:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.board-preview {
+  width: 176px;
+  height: 176px;
+  flex: 0 0 auto;
+  align-self: center;
+  position: relative;
+}
+
+.board-preview-cg {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.setup-right {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.explorer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.explorer-header h3 {
+  margin: 0;
+  font-family: var(--heading);
+  font-size: 22px;
+}
+
+.explorer-header button {
+  height: 40px;
+  padding: 0 16px;
+  font: inherit;
+  font-size: 14px;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chip.selected {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.search-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-row label {
+  flex: 1 1 100%;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.search-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 40px;
+  font: inherit;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.explorer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.explorer-row button {
+  width: 100%;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 32px 1.4fr 1.6fr auto;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.explorer-row button:hover {
+  border-color: var(--border);
+  background: var(--bg);
+}
+
+.explorer-rank {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.explorer-name {
+  min-width: 0;
+  font-family: var(--heading);
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.explorer-variation {
+  font-family: var(--sans);
+  font-weight: 400;
+  font-style: italic;
+  color: var(--text);
+}
+
+.explorer-moves {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.explorer-games {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text-h);
+  text-align: right;
+}
+
+.play-own {
+  align-self: center;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.play-own:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (max-width: 760px) {
+  .setup-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .suggested-card {
+    flex-direction: column;
+  }
+
+  .board-preview {
+    width: 160px;
+    height: 160px;
+    align-self: center;
+  }
+
+  .explorer-row button {
+    grid-template-columns: 24px 1fr;
+    grid-template-areas:
+      "rank name"
+      ". moves"
+      ". games";
+  }
+
+  .explorer-rank {
+    grid-area: rank;
+  }
+
+  .explorer-name {
+    grid-area: name;
+  }
+
+  .explorer-moves {
+    grid-area: moves;
+    white-space: normal;
+  }
+
+  .explorer-games {
+    grid-area: games;
+    text-align: left;
+  }
+}

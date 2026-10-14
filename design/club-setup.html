@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Club Room setup</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&amp;family=Source+Sans+3:wght@400;600&amp;family=IBM+Plex+Mono:wght@500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#8A2D2A}a:hover{color:#5E1E1C}
+</style>
+</helmet>
+<div style="width: 1280px; height: 800px; box-sizing: border-box; padding: 36px 40px; background: #F4EFE6; color: #1E1B16; font-family: 'Source Sans 3', sans-serif; display: flex; flex-direction: column; gap: 28px; overflow: hidden">
+  <header style="display: flex; align-items: baseline; justify-content: space-between; border-bottom: 1px solid #D9CFBF; padding-bottom: 16px">
+    <div style="display: flex; align-items: baseline; gap: 16px">
+      <div style="font-family: 'Cormorant Garamond', serif; font-weight: 700; font-size: 38px; letter-spacing: 0.5px">Chess DFS</div>
+      <div style="font-size: 15px; color: #6B6358">DFS lineups, built from chess openings.</div>
+    </div>
+    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #6B6358">NFL · DraftKings Classic</div>
+  </header>
+
+  <div style="display: flex; gap: 40px; flex-grow: 1; min-height: 0">
+    <section style="width: 460px; display: flex; flex-direction: column; gap: 20px">
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <label for="contestA" style="font-size: 13px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #6B6358">1 · Contest</label>
+        <select id="contestA" style="height: 48px; padding: 0 14px; font: inherit; font-size: 16px; background: #FBF8F2; color: #1E1B16; border: 1px solid #D9CFBF; border-radius: 6px">
+          <option>Mini Gridiron ($27 6-max) — 215 entries</option>
+        </select>
+        <div style="font-size: 14px; color: #6B6358">$27 buy-in · <span style="color: #8A2D2A; font-weight: 600">Small field</span></div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="font-size: 13px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #6B6358">2 · King mode</div>
+        <div style="display: flex; gap: 8px">
+          <button style="flex: 1; height: 44px; font: inherit; font-size: 15px; font-weight: 600; background: #1E1B16; color: #F4EFE6; border: 1px solid #1E1B16; border-radius: 6px">Let him emerge</button>
+          <button style="flex: 1; height: 44px; font: inherit; font-size: 15px; background: transparent; color: #1E1B16; border: 1px solid #D9CFBF; border-radius: 6px">Place your King now</button>
+        </div>
+      </div>
+
+      <div style="background: #FBF8F2; border: 1px solid #D9CFBF; border-radius: 8px; padding: 20px; display: flex; gap: 20px; flex-grow: 1">
+        <div style="display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 0">
+          <div style="font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: #8A2D2A">Suggested · Small field</div>
+          <div style="font-family: 'Cormorant Garamond', serif; font-weight: 700; font-size: 36px; line-height: 1">Ruy Lopez</div>
+          <div style="font-family: 'Cormorant Garamond', serif; font-size: 22px; font-style: italic; color: #4A443B">Morphy Defense</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 14px">1. e4 e5 2. Nf3 Nc6 3. Bb5 a6</div>
+          <div style="display: flex; gap: 6px; align-items: center">
+            <sc-for list="{{seq}}" as="s" hint-placeholder-count="6">
+              <span style="display: inline-flex; width: 30px; height: 30px; align-items: center; justify-content: center; border: 1px solid #D9CFBF; border-radius: 4px; background: #F4EFE6; font-size: 20px">
+                <sc-if value="{{s.w}}" hint-placeholder-val="{{true}}"><span style="color: #FFFDF8; -webkit-text-stroke: 1px #1E1B16">{{s.g}}</span></sc-if>
+                <sc-if value="{{s.b}}" hint-placeholder-val="{{false}}"><span style="color: #1E1B16">{{s.g}}</span></sc-if>
+              </span>
+            </sc-for>
+          </div>
+          <div style="font-size: 13px; color: #6B6358">C70 · 9,731 games</div>
+          <button style="margin-top: auto; height: 48px; font: inherit; font-size: 16px; font-weight: 600; background: #8A2D2A; color: #FFFDF8; border: 0; border-radius: 6px">Play this</button>
+        </div>
+        <div style="width: 176px; height: 176px; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); border: 2px solid #5C3F27; align-self: center">
+          <sc-for list="{{cells}}" as="c" hint-placeholder-count="64">
+            <sc-if value="{{c.light}}" hint-placeholder-val="{{true}}"><div style="background: #EAD9B8; display: flex; align-items: center; justify-content: center; font-size: 18px; line-height: 1">
+              <sc-if value="{{c.w}}" hint-placeholder-val="{{false}}"><span style="color: #FFFDF8; -webkit-text-stroke: 0.8px #1E1B16">{{c.g}}</span></sc-if>
+              <sc-if value="{{c.b}}" hint-placeholder-val="{{false}}"><span style="color: #1E1B16">{{c.g}}</span></sc-if>
+            </div></sc-if>
+            <sc-if value="{{c.dark}}" hint-placeholder-val="{{false}}"><div style="background: #A97B54; display: flex; align-items: center; justify-content: center; font-size: 18px; line-height: 1">
+              <sc-if value="{{c.w}}" hint-placeholder-val="{{false}}"><span style="color: #FFFDF8; -webkit-text-stroke: 0.8px #1E1B16">{{c.g}}</span></sc-if>
+              <sc-if value="{{c.b}}" hint-placeholder-val="{{false}}"><span style="color: #1E1B16">{{c.g}}</span></sc-if>
+            </div></sc-if>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+
+    <section style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <div style="font-family: 'Cormorant Garamond', serif; font-weight: 700; font-size: 28px">Opening explorer</div>
+        <button style="height: 44px; padding: 0 18px; font: inherit; font-size: 15px; background: transparent; color: #8A2D2A; border: 1px solid #8A2D2A; border-radius: 6px">Random</button>
+      </div>
+      <div style="display: flex; gap: 8px">
+        <button style="height: 44px; padding: 0 18px; font: inherit; font-size: 15px; font-weight: 600; background: #1E1B16; color: #F4EFE6; border: 0; border-radius: 22px">Small</button>
+        <button style="height: 44px; padding: 0 18px; font: inherit; font-size: 15px; background: transparent; color: #1E1B16; border: 1px solid #D9CFBF; border-radius: 22px">Mid</button>
+        <button style="height: 44px; padding: 0 18px; font: inherit; font-size: 15px; background: transparent; color: #1E1B16; border: 1px solid #D9CFBF; border-radius: 22px">Large</button>
+        <button style="height: 44px; padding: 0 18px; font: inherit; font-size: 15px; background: transparent; color: #1E1B16; border: 1px solid #D9CFBF; border-radius: 22px">XL</button>
+        <button style="height: 44px; padding: 0 18px; font: inherit; font-size: 15px; background: transparent; color: #1E1B16; border: 1px solid #D9CFBF; border-radius: 22px">All</button>
+      </div>
+      <label for="searchA" style="position: absolute; left: -9999px">Search openings</label>
+      <input id="searchA" placeholder="Search 3,865 named lines…" style="height: 44px; padding: 0 14px; font: inherit; font-size: 15px; background: #FBF8F2; color: #1E1B16; border: 1px solid #D9CFBF; border-radius: 6px">
+      <div style="display: flex; flex-direction: column; border-top: 1px solid #D9CFBF; overflow: hidden; flex-grow: 1">
+        <sc-for list="{{fams}}" as="f" hint-placeholder-count="9">
+          <div style="display: flex; align-items: center; gap: 16px; padding: 10px 4px; border-bottom: 1px solid #E5DCCD">
+            <div style="width: 24px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #6B6358">{{f.rank}}</div>
+            <div style="flex: 1; min-width: 0">
+              <div style="font-family: 'Cormorant Garamond', serif; font-weight: 700; font-size: 20px; line-height: 1.1">{{f.name}} <span style="font-weight: 600; font-style: italic; color: #4A443B">· {{f.var}}</span></div>
+              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #6B6358">{{f.moves}}</div>
+            </div>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #4A443B">{{f.games}}</div>
+          </div>
+        </sc-for>
+      </div>
+      <a href="#" style="font-size: 13px">(Play your own opening)</a>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const B = ['r.bqkbnr','.ppp.ppp','p.n.....','.B..p...','....P...','.....N..','PPPP.PPP','RNBQK..R'];
+    const G = { k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' };
+    const cells = [];
+    for (let r = 0; r < 8; r++) for (let f = 0; f < 8; f++) {
+      const ch = B[r][f]; const lt = (r + f) % 2 === 0; const has = ch !== '.';
+      const up = has && ch === ch.toUpperCase();
+      cells.push({ light: lt, dark: !lt, w: up, b: has && !up, g: has ? G[ch.toLowerCase()] + '︎' : '' });
+    }
+    const v = (k, w) => ({ g: G[k] + '︎', w: w, b: !w });
+    const seq = [v('p', true), v('p', false), v('n', true), v('n', false), v('b', true), v('p', false)];
+    const fams = [
+      { rank: 1, name: 'Sicilian Defense', var: 'Open', moves: '1. e4 c5 2. Nf3 Nc6 3. d4 cxd4', games: '24,356' },
+      { rank: 2, name: 'Scotch Game', var: 'Scotch Game', moves: '1. e4 e5 2. Nf3 Nc6 3. d4 exd4', games: '17,553' },
+      { rank: 3, name: 'Caro-Kann Defense', var: 'Exchange', moves: '1. e4 c6 2. d4 d5 3. exd5 cxd5', games: '17,500' },
+      { rank: 4, name: 'Scandinavian Defense', var: 'Valencian', moves: '1. e4 d5 2. exd5 Qxd5 3. Nc3 Qd8', games: '15,279' },
+      { rank: 5, name: 'Italian Game', var: 'Giuoco Piano', moves: '1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5', games: '15,094' },
+      { rank: 6, name: 'French Defense', var: 'Advance', moves: '1. e4 e6 2. d4 d5 3. e5 c5', games: '11,904' },
+      { rank: 7, name: 'Ruy Lopez', var: 'Morphy Defense', moves: '1. e4 e5 2. Nf3 Nc6 3. Bb5 a6', games: '9,731' },
+      { rank: 8, name: "Queen's Gambit Declined", var: 'Normal Defense', moves: '1. d4 d5 2. c4 e6 3. Nc3 Nf6', games: '8,786' },
+      { rank: 9, name: 'Nimzo-Indian Defense', var: 'Nimzo-Indian', moves: '1. d4 Nf6 2. c4 e6 3. Nc3 Bb4', games: '7,259' }
+    ];
+    return { cells, seq, fams };
+  }
+}
+</script>
+</body>
+</html>

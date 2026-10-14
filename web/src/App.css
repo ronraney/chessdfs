@@ -31,96 +31,9 @@
   color: var(--danger);
 }
 
-.presets {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 320px;
-  overflow-y: auto;
-}
-
-.preset {
-  width: 100%;
-  box-sizing: border-box;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 10px 14px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.preset:hover {
-  border-color: var(--accent-border);
-}
-
-.preset.selected {
-  border-color: var(--accent);
-  background: var(--accent-bg);
-}
-
-.preset-name {
-  font-weight: 600;
-}
-
-.preset-detail {
-  font-family: var(--mono);
-  font-size: 14px;
-  color: var(--text);
-}
-
-.radio {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-}
-
-.qb-picker {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-left: 24px;
-}
-
-.qb-picker select {
-  font: inherit;
-  padding: 6px;
-  max-width: 100%;
-}
-
 .hint {
   font-size: 14px;
   color: var(--text);
-}
-
-.continue {
-  align-self: center;
-  font-size: 18px;
-  padding: 10px 28px;
-  border-radius: 6px;
-  border: 2px solid var(--accent);
-  color: var(--accent);
-  background: var(--accent-bg);
-  cursor: pointer;
-}
-
-.continue:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.continue:not(:disabled):hover {
-  border-color: var(--accent);
-  box-shadow: var(--shadow);
 }
 
 @media (max-width: 480px) {

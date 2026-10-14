@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Build screen, combined</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=Literata:opsz,wght@7..72,500;7..72,700&amp;display=swap">
+<style>
+body{margin:0;background:#131518}
+a{color:#E8A93B}a:hover{color:#F3C46E}
+</style>
+</helmet>
+<div style="position: relative; box-sizing: border-box; max-width: 1440px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; font-family: 'IBM Plex Sans', sans-serif; color: #EDE9E1; background: #131518; min-height: 1100px">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+<span style="font-family: 'Literata', serif; font-weight: 700; font-size: 22px">DFS Chess</span>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<span style="padding: 6px 12px; border: 1px solid #2C3036; border-radius: 999px; font-size: 13px">[Contest name] · Large field · Aggressive</span>
+<span style="padding: 6px 12px; border: 1px solid #2C3036; border-radius: 999px; font-size: 13px">King: Let him emerge</span>
+<span style="padding: 6px 12px; background: #2C3036; border-radius: 999px; font-size: 13px; color: #A8A396">Sample values</span>
+</div>
+</header>
+
+<section style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; background: #1C1F23; border-radius: 8px; padding: 20px 28px" aria-label="Opening">
+<div>
+<div style="font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #A8A396">Opening</div>
+<div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-top: 4px">
+<h1 style="margin: 0; font-family: 'Literata', serif; font-weight: 700; font-size: 48px; line-height: 1.1">Ruy Lopez</h1>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #A8A396">C70</span>
+</div>
+<div style="font-family: 'Literata', serif; font-size: 21px; color: #D9D3C7; margin-top: 4px">Morphy Defense</div>
+</div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 17px; display: flex; flex-wrap: wrap; gap: 6px 18px">
+<span><span style="color: #A8A396">1.</span> e4 e5</span>
+<span><span style="color: #A8A396">2.</span> Nf3 Nc6</span>
+<span><span style="color: #A8A396">3.</span> Bb5 a6</span>
+<sc-if value="{{locked}}" hint-placeholder-val="{{false}}"><span><span style="color: #A8A396">4.</span> <span style="color: #E8A93B">Ba4</span></span></sc-if>
+</div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: stretch; justify-content: center">
+
+<section style="flex: 1 1 300px; min-width: 0; max-width: 380px; background: #1C1F23; border-radius: 8px; border-top: 4px solid #E8A93B; padding: 20px 22px; display: flex; flex-direction: column; gap: 18px" aria-label="You">
+<div style="display: flex; justify-content: space-between; align-items: baseline"><h2 style="margin: 0; font-size: 22px; color: #E8A93B">You</h2><span style="font-size: 13px; color: #A8A396">White · {{youCount}} locked</span></div>
+<div>
+<div style="font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #A8A396">Salary remaining</div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 40px; color: #E8A93B">{{youLeft}}</div>
+<div style="font-size: 15px"><span style="font-family: 'IBM Plex Mono', monospace">{{youAvg}}</span> avg / open slot · {{youOpen}} open</div>
+</div>
+<div>
+<div style="font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #A8A396">Core ownership</div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 28px">{{youOwn}}</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{youRoster}}" as="r" hint-placeholder-count="3">
+<div style="display: flex; gap: 10px; align-items: center"><span style="font-size: 22px; width: 26px" aria-hidden="true">{{r.glyph}}</span><span style="flex: 1">{{r.label}}</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">{{r.sal}}</span></div>
+</sc-for>
+<div style="font-size: 13px; color: #A8A396; padding-top: 4px; border-top: 1px solid #2C3036">Open: {{youOpenSlots}}</div>
+</div>
+</section>
+
+<div style="flex: 0 0 auto; display: flex; flex-direction: column; gap: 14px; align-items: stretch; width: 480px">
+<div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); grid-template-rows: repeat(8, minmax(0, 1fr)); width: 480px; height: 480px; border-radius: 6px; overflow: hidden" role="img" aria-label="Chess board, current position">
+<sc-for list="{{squares}}" as="s" hint-placeholder-count="64">
+<div aria-hidden="true" style="position: relative; display: flex; align-items: center; justify-content: center; font-size: 43px; line-height: 1; background: {{s.bg}}; color: {{s.color}}; text-shadow: {{s.shadow}}">{{s.glyph}}<span style="position: absolute; left: 3px; top: 2px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #4A3B28">{{s.rank}}</span><span style="position: absolute; right: 3px; bottom: 2px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #4A3B28">{{s.file}}</span></div>
+</sc-for>
+</div>
+<sc-if value="{{notLocked}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #A8A396">Book continues</div>
+<button type="button" onClick="{{openPick}}" style="display: flex; align-items: center; gap: 14px; text-align: left; background: #1C1F23; border: 1px solid #E8A93B; border-radius: 8px; padding: 12px 16px; color: #EDE9E1; font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; min-height: 44px"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 17px; width: 70px">4. Ba4</span><span style="flex: 1"><span style="display: block; font-size: 15px">Morphy Defense · main line</span><span style="display: block; font-size: 13px; color: #A8A396">Locks a Bishop: WR $5,000–6,999</span></span></button>
+<button type="button" style="display: flex; align-items: center; gap: 14px; text-align: left; background: #1C1F23; border: 1px solid #2C3036; border-radius: 8px; padding: 12px 16px; color: #EDE9E1; font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; min-height: 44px"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 17px; width: 70px">4. Bxc6</span><span style="flex: 1"><span style="display: block; font-size: 15px">Exchange Variation</span><span style="display: block; font-size: 13px; color: #A8A396">Locks a Bishop and captures the Field's TE</span></span></button>
+<button type="button" style="align-self: center; background: none; border: none; color: #A8A396; font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; cursor: pointer; min-height: 44px">(Play your own move)</button>
+</div>
+</sc-if>
+<sc-if value="{{locked}}" hint-placeholder-val="{{false}}">
+<div style="text-align: center; font-size: 15px; color: #A8A396; padding: 12px 0">Field to move…</div>
+</sc-if>
+</div>
+
+<section style="flex: 1 1 300px; min-width: 0; max-width: 380px; background: #1C1F23; border-radius: 8px; border-top: 4px solid #8DB4E8; padding: 20px 22px; display: flex; flex-direction: column; gap: 18px" aria-label="Field">
+<div style="display: flex; justify-content: space-between; align-items: baseline"><h2 style="margin: 0; font-size: 22px; color: #8DB4E8">Field</h2><span style="font-size: 13px; color: #A8A396">Black · 3 locked</span></div>
+<div>
+<div style="font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #A8A396">Salary remaining</div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 40px; color: #8DB4E8">$35,700</div>
+<div style="font-size: 15px"><span style="font-family: 'IBM Plex Mono', monospace">$5,950</span> avg / open slot · 6 open</div>
+</div>
+<div>
+<div style="font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #A8A396">Core ownership</div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 28px">55.7%</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; gap: 10px; align-items: center"><span style="font-size: 22px; width: 26px" aria-hidden="true">♟︎</span><span style="flex: 1">[Team] · DST</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">$4,300</span></div>
+<div style="display: flex; gap: 10px; align-items: center"><span style="font-size: 22px; width: 26px" aria-hidden="true">♞</span><span style="flex: 1">[Player] · TE</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">$6,000</span></div>
+<div style="display: flex; gap: 10px; align-items: center"><span style="font-size: 22px; width: 26px" aria-hidden="true">♟︎</span><span style="flex: 1">[Player] · RB</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">$4,000</span></div>
+<div style="font-size: 13px; color: #A8A396; padding-top: 4px; border-top: 1px solid #2C3036">Open: QB · RB · WR · WR · WR · FLEX</div>
+</div>
+</section>
+</div>
+
+<div style="text-align: center; font-size: 15px; color: #D9D3C7">Ownership gap: <span style="font-family: 'IBM Plex Mono', monospace; color: #E8A93B">{{gap}}</span> points of natural leverage</div>
+
+<sc-if value="{{open}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; background: rgba(8, 9, 11, 0.72); display: flex; align-items: flex-start; justify-content: center; padding-top: 140px">
+<section role="dialog" aria-modal="true" aria-labelledby="pick-title" style="width: 640px; max-width: calc(100% - 32px); background: #1C1F23; border: 1px solid #2C3036; border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5)">
+<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px">
+<div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #E8A93B">4. Ba4 · Morphy Defense</div>
+<h2 id="pick-title" style="margin: 4px 0 0; font-size: 26px; font-weight: 600">Choose your Bishop</h2>
+<div style="font-size: 14px; color: #A8A396; margin-top: 4px">WR · $5,000–6,999 · sorted by projection</div>
+</div>
+<button type="button" onClick="{{closePick}}" aria-label="Close" style="background: none; border: 1px solid #2C3036; border-radius: 6px; width: 44px; height: 44px; color: #EDE9E1; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg></button>
+</div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 0 16px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #A8A396"><span>Player</span><span style="text-align: right">Salary</span><span style="text-align: right">Proj</span><span style="text-align: right">Own</span></div>
+<sc-for list="{{picks}}" as="p" hint-placeholder-count="5">
+<button type="button" onClick="{{p.pick}}" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: center; text-align: left; background: #16181B; border: 1px solid {{p.border}}; border-radius: 8px; padding: 12px 16px; color: #EDE9E1; font-family: 'IBM Plex Sans', sans-serif; font-size: 15px; cursor: pointer; min-height: 48px"><span>{{p.name}}</span><span style="text-align: right; font-family: 'IBM Plex Mono', monospace">{{p.salary}}</span><span style="text-align: right; font-family: 'IBM Plex Mono', monospace">{{p.proj}}</span><span style="text-align: right; font-family: 'IBM Plex Mono', monospace">{{p.own}}</span></button>
+</sc-for>
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-radius: 8px; background: #2A2418; border: 1px solid #5C4A22">
+<span style="font-size: 15px">After this pick: <span style="font-family: 'IBM Plex Mono', monospace; color: #E8A93B">{{after}}</span> left · <span style="font-family: 'IBM Plex Mono', monospace">{{afterAvg}}</span> / slot · 5 open</span>
+<div style="display: flex; gap: 8px">
+<button type="button" onClick="{{closePick}}" style="background: none; color: #EDE9E1; border: 1px solid #5C4A22; border-radius: 6px; padding: 12px 18px; font-family: 'IBM Plex Sans', sans-serif; font-size: 15px; cursor: pointer; min-height: 44px">Cancel</button>
+<button type="button" onClick="{{lockPick}}" style="background: #E8A93B; color: #131518; border: none; border-radius: 6px; padding: 12px 22px; font-family: 'IBM Plex Sans', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; min-height: 44px">Lock player</button>
+</div>
+</div>
+</section>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"startOpen":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { open: !!props.startOpen, picked: 0, locked: false };
+  }
+  renderVals() {
+    const locked = this.state.locked;
+    const pos = {a8:'r',c8:'b',d8:'q',e8:'k',f8:'b',g8:'n',h8:'r',b7:'p',c7:'p',d7:'p',f7:'p',g7:'p',h7:'p',a6:'p',c6:'n',e5:'p',e4:'P',f3:'N',a2:'P',b2:'P',c2:'P',d2:'P',f2:'P',g2:'P',h2:'P',a1:'R',b1:'N',c1:'B',d1:'Q',e1:'K',h1:'R'};
+    if (locked) { pos.a4 = 'B'; } else { pos.b5 = 'B'; }
+    const G = {k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟︎'};
+    const hl = locked ? {b5:true, a4:true} : {a7:true, a6:true};
+    const files = 'abcdefgh';
+    const squares = [];
+    for (let r = 8; r >= 1; r--) {
+      for (let f = 0; f < 8; f++) {
+        const id = files[f] + r;
+        const p = pos[id];
+        const light = (f + r) % 2 === 0;
+        let bg = light ? '#E9DDC4' : '#A2805A';
+        if (hl[id]) bg = light ? '#E6D388' : '#BE9D4C';
+        const white = p && p === p.toUpperCase();
+        squares.push({
+          bg: bg,
+          glyph: p ? G[p.toLowerCase()] : '',
+          color: white ? '#FFFDF6' : '#17181A',
+          shadow: white ? '0 0 1px #17181A, 0 0 2px #17181A, 0 1px 1px #17181A' : 'none',
+          rank: f === 0 ? String(r) : '',
+          file: r === 1 ? files[f] : ''
+        });
+      }
+    }
+    const rows = [
+      { name: '[Player] · [TM]', sal: 6600, proj: '17.2', own: 9.1 },
+      { name: '[Player] · [TM]', sal: 6400, proj: '16.5', own: 14.3 },
+      { name: '[Player] · [TM]', sal: 6100, proj: '15.8', own: 6.7 },
+      { name: '[Player] · [TM]', sal: 5800, proj: '14.9', own: 11.0 },
+      { name: '[Player] · [TM]', sal: 5400, proj: '13.6', own: 4.2 }
+    ];
+    const fmt = (n) => '$' + n.toLocaleString('en-US');
+    const chosen = rows[this.state.picked];
+    const baseLeft = 33400;
+    const roster = [
+      { glyph: '♟︎', label: '[Player] · WR', sal: '$4,600' },
+      { glyph: '♞', label: '[Player] · TE', sal: '$5,200' },
+      { glyph: '♝', label: '[Player] · WR', sal: '$6,800' }
+    ];
+    let left = baseLeft, open = 6, own = 28.3, openSlots = 'QB · RB · RB · WR · FLEX · DST';
+    if (locked) {
+      roster.push({ glyph: '♝', label: '[Player] · WR', sal: fmt(chosen.sal) });
+      left = baseLeft - chosen.sal; open = 5; own = 28.3 + chosen.own; openSlots = 'QB · RB · RB · FLEX · DST';
+    }
+    const picks = rows.map((r, i) => ({
+      name: r.name, salary: fmt(r.sal), proj: r.proj, own: r.own.toFixed(1) + '%',
+      border: i === this.state.picked ? '#E8A93B' : '#2C3036',
+      pick: () => this.setState({ picked: i })
+    }));
+    return {
+      squares: squares,
+      open: this.state.open,
+      locked: locked,
+      notLocked: !locked,
+      youCount: String(roster.length),
+      youLeft: fmt(left),
+      youAvg: fmt(Math.round(left / open)),
+      youOpen: String(open),
+      youOwn: own.toFixed(1) + '%',
+      youRoster: roster,
+      youOpenSlots: openSlots,
+      gap: (55.7 - own).toFixed(1),
+      picks: picks,
+      after: fmt(baseLeft - chosen.sal),
+      afterAvg: fmt(Math.round((baseLeft - chosen.sal) / 5)),
+      openPick: () => this.setState({ open: true }),
+      closePick: () => this.setState({ open: false }),
+      lockPick: () => this.setState({ open: false, locked: true })
+    };
+  }
+}
+</script>
+</body>
+</html>
