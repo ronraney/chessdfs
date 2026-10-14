@@ -3,11 +3,13 @@
 // Crazyhouse-style captures. Ported from dfs_chess/rules.py in full --
 // max_assignable, lineup_still_completable, is_lineup_complete,
 // open_roster_slots, is_legal_move, apply_move, can_castle, castle,
-// switch_king, place_kings, is_legal_capture, and apply_capture_move.
-// push_silent_move is NOT ported -- it exists in rules.py only to support
-// the build loop (a side whose lineup is already complete), has no
-// test_rules.py coverage, and the build loop itself is still out of scope
-// (see Task 25's session log).
+// switch_king, place_kings, is_legal_capture, apply_capture_move, and
+// (Task 29, alongside build.ts) push_silent_move -- a side whose lineup is
+// already complete gets its board moves pushed without locking anyone.
+// push_silent_move has no test_rules.py coverage of its own in Python
+// (build-loop-only); it's exercised here only indirectly, through
+// build.test.ts's ported play_black_move/play_black_template_move tests,
+// same as in Python.
 //
 // Roster shape (slots, eligible positions, salary cap) comes from a
 // SportConfig, not from constants here, per RULES.md "Multi-sport ready".
@@ -167,10 +169,26 @@ function withBoardState(
 // or undefined if `move` isn't legal right now -- the chess.js stand-in for
 // `chess_move in state.board.legal_moves`, but also hands back the piece
 // type and SAN the Python version separately pulls via piece_type_at/san().
-function findLegalMove(board: Chess, move: ChessMove): ChessJsMove | undefined {
+// Exported for build.ts (Task 29), which needs the same resolution for its
+// own caller-supplied/candidate moves.
+export function findLegalMove(board: Chess, move: ChessMove): ChessJsMove | undefined {
   return board
     .moves({ verbose: true })
     .find((m) => m.from === move.from && m.to === move.to && (move.promotion === undefined || m.promotion === move.promotion));
+}
+
+// A copy of `board` that keeps its full move history -- unlike python-chess's
+// `board.copy()`, chess.js has no public clone, and `new Chess(board.fen())`
+// only carries over the current position: FEN has no notion of move
+// history, so a board rebuilt that way reports an empty `history()` (or,
+// after one more move, a history of length 1) no matter how many moves
+// actually led to this position. Round-tripping through PGN instead
+// preserves it, including a non-default starting position (chess.js emits
+// a `[FEN ...]`/`[SetUp "1"]` header for that case and `loadPgn` honors it).
+function cloneBoard(board: Chess): Chess {
+  const clone = new Chess();
+  clone.loadPgn(board.pgn());
+  return clone;
 }
 
 export function isLegalMove(
@@ -218,7 +236,7 @@ export function applyMove(
   const piece = pieceForChessType(matched.piece);
   const san = matched.san;
 
-  const newBoard = new Chess(state.board.fen());
+  const newBoard = cloneBoard(state.board);
   newBoard.move({ from: chessMove.from, to: chessMove.to, promotion: chessMove.promotion });
 
   const newPieceLocks = new Map(state.pieceLocks);
@@ -310,7 +328,7 @@ export function castle(
   const san = matched.san;
   const [rookFrom, rookTo] = castlingRookSquares(matched);
 
-  const newBoard = new Chess(state.board.fen());
+  const newBoard = cloneBoard(state.board);
   newBoard.move({ from: chessMove.from, to: chessMove.to });
 
   const newPieceLocks = new Map(state.pieceLocks);
@@ -428,8 +446,9 @@ function otherSide(side: Side): Side {
 }
 
 // The square holding the piece `move` captures. Normally `move.to`; for en
-// passant the captured pawn sits beside it. Call before pushing.
-function capturedSquare(move: ChessJsMove): Square {
+// passant the captured pawn sits beside it. Call before pushing. Exported
+// for build.ts (Task 29), same reason as findLegalMove above.
+export function capturedSquare(move: ChessJsMove): Square {
   if (move.isEnPassant()) {
     return (move.to[0] + move.from[1]) as Square;
   }
@@ -530,7 +549,7 @@ export function applyCaptureMove(
     throw new Error(`capturing ${captured.name} would make the lineup impossible to complete`);
   }
 
-  const newBoard = new Chess(state.board.fen());
+  const newBoard = cloneBoard(state.board);
   newBoard.move({ from: chessMove.from, to: chessMove.to, promotion: chessMove.promotion });
 
   const newPieceLocks = new Map(state.pieceLocks);
@@ -559,4 +578,37 @@ export function applyCaptureMove(
     whiteCastled: state.whiteCastled,
     blackCastled: state.blackCastled,
   });
+}
+
+// Pushes `chessMove` without locking any player -- for a side whose lineup
+// is already complete (RULES.md: "If Black's lineup fills first, Black's
+// board moves lock no player"). Must be neither a capture nor castling:
+// both inherently lock a player (a transferred capture would overflow an
+// already-full roster; castling always locks King + Rook), so neither
+// makes sense once nobody is being drafted this move.
+export function pushSilentMove(state: BuildState, chessMove: ChessMove): BuildState {
+  const matched = findLegalMove(state.board, chessMove);
+  if (!matched) {
+    throw new Error(`illegal move: ${JSON.stringify(chessMove)}`);
+  }
+  if (matched.isCapture()) {
+    throw new Error(`${JSON.stringify(chessMove)} is a capture; a silent move cannot be`);
+  }
+  if (matched.isKingsideCastle() || matched.isQueensideCastle()) {
+    throw new Error(`${JSON.stringify(chessMove)} is castling; a silent move cannot be`);
+  }
+
+  const side = sideToMove(state.board);
+  const newBoard = cloneBoard(state.board);
+  newBoard.move({ from: chessMove.from, to: chessMove.to, promotion: chessMove.promotion });
+
+  const newPieceLocks = new Map(state.pieceLocks);
+  const history = newPieceLocks.get(chessMove.from);
+  newPieceLocks.delete(chessMove.from);
+  if (history !== undefined) {
+    newPieceLocks.set(chessMove.to, history);
+  }
+
+  const moves = movesFor(state, side);
+  return withBoardState(state, side, moves, state.lockedPlayerIds, newBoard, newPieceLocks);
 }

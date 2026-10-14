@@ -16,95 +16,109 @@ locks one. It is a **build, not a game** — "build" in code and docs, never
 `CLAUDE.md` (never edited by Claude directly; Ron edits it himself) says the
 task **prompt** is the spec — implement it exactly as written, even where it
 changes earlier behavior; the existing code and tests are the record of all
-earlier rules. It now also has an explicit Git section (see below). Python
-3.11+, stdlib + pytest + `python-chess` for the original engine; `web/` is a
-Vite + React + TypeScript app (Node v24, npm) being built alongside it,
-starting with a pure TS port of the engine. Secrets (`LICHESS_API_TOKEN`)
-live in a gitignored `.env`, never printed.
+earlier rules. It has an explicit Git section: work on `main`, no branches
+unless asked, check `git status` for unexpected uncommitted changes before
+starting, one commit per task after all tests pass, push to `origin/main`
+after every commit. Python 3.11+, stdlib + pytest + `python-chess` for the
+original engine; `web/` is a Vite + React + TypeScript app (Node v24, npm)
+being built alongside it — a pure TS port of the engine is now well
+underway. Secrets (`LICHESS_API_TOKEN`) live in a gitignored `.env`, never
+printed.
 
 ## Where We Are
 
-- **Git repo now exists**: `github.com/ronraney/chessdfs`, branch `main`,
-  clean and pushed through commit `2c7c707`. CLAUDE.md's Git section: work on
-  `main` (no branches unless a task asks), check `git status` for
-  unexpected uncommitted changes before starting, one commit per task after
-  all tests pass (`Task NN — <title>` message), commit only the files the
-  task touched, never commit generated files (`.env`, `.venv/`,
-  `node_modules/`, `web/src/data/`, etc.), push to `origin/main` after every
-  commit.
 - **180 Python tests still passing**, run via `wsl.exe -- bash -lc "cd
   ~/chess-dfs && .venv/bin/python -m pytest tests/ -v"`. The Python engine
-  itself is unchanged since the web port began — all three web-port tasks so
-  far have been additive, TypeScript-only.
+  itself is unchanged since the web port began — every web-port task so
+  far has been additive, TypeScript-only.
 - **`web/` scaffolded** (Vite + React + TypeScript + Vitest + chess.js
-  ^1.4.0). `npm run dev`/`build`/`test` each run `npm run sync-data` first,
-  which copies `data/openings/` and `config/` into `web/src/data/`
-  (gitignored; originals untouched). No UI beyond the Vite default page yet.
-- **`web/src/engine/` holds a growing pure TypeScript port of `dfs_chess`**
-  (no DOM, no I/O, no unseeded randomness):
-  - `models.ts` — `Side`, `Piece`, `FieldTier`, `KingMode` (as frozen const
-    objects + derived union types, **not** `enum` — this tsconfig sets
-    `erasableSyntaxOnly: true`, which forbids real TS enums), `Player`
-    (`ownFor(tier)`), `Move`, `BuildState` (a plain **mutable** class,
-    mirroring Python's non-frozen dataclass; `board: Chess` from chess.js,
-    `pieceLocks: Map<Square, Player[]>`).
-  - `sport.ts` — `PieceBand`, `RosterSlot`, `SportConfig`,
-    `loadSportConfig(data)`. Takes already-parsed JSON, not a file path (the
-    engine stays I/O-free); tests import the synced
-    `web/src/data/config/sports/nfl.json` directly as a module
-    (`resolveJsonModule: true` in `web/tsconfig.app.json`).
-  - `pieces.ts` — `pieceForChessType`, `classify(player, sport)` (returns
-    `Piece`, throws — unreachably, given `loadSportConfig`'s catch-all-band
-    guarantee — if no band matches).
-  - `rules.ts` — `maxAssignable`, `lineupStillCompletable`,
-    `isLineupComplete`, `openRosterSlots`. All pure (`Player[]` +
-    `SportConfig` + a plain numeric `cap`); no dependency on `ContestConfig`
-    or a chess.js board yet.
-- **34 Vitest tests passing** (`npm run test`): 33 ported one-for-one from
-  Python (`test_models.py`: 3, `test_sport.py`: 2, `test_pieces.py`: 21,
-  `test_rules.py`: 7) plus the original Task 21 smoke test. `npm run build`
-  is clean (`tsc -b` + `vite build`); `npm run dev` confirmed starting.
-- **11 `test_rules.py` tests remain deferred**, pending `is_legal_move`/
-  `apply_move` — which need `ContestConfig` (`dfs_chess/config.py`, not yet
-  ported — no `config.ts` exists) plus real chess.js board-legality wiring.
-  Exact list and reasoning: `sessions/1026/10132026-git-setup-and-ts-engine-
-  port.md`. A further 21 tests (castling, King modes, captures) are out of
-  scope until their own tasks — by design, not a surprise.
-- **New skill**: `.claude/skills/start` — reads `sessions/HANDOFF.md` at the
-  top of a session, checks the git branch, and flags (rather than silently
-  working through) a task that doesn't fit current state.
-- `dfs_chess/build.py`, `loaders.py`, and `openings.py` remain entirely
-  unported on the TypeScript side.
+  ^1.4.0 + papaparse ^5.7.0). `npm run dev`/`build`/`test` each run `npm
+  run sync-data` first, which copies `data/openings/`, `data/samples/`,
+  and `config/` into `web/src/data/` (gitignored; originals untouched).
+  No UI beyond the Vite default page yet.
+- **`web/src/engine/` now covers the entire pure Python engine** (no DOM,
+  no I/O, no unseeded randomness):
+  - `models.ts`, `sport.ts`, `config.ts`, `pieces.ts`, `loaders.ts`,
+    `openings.ts` — unchanged this session; see prior session logs
+    (`sessions/1026/10132026-port-rules-loaders-openings-tasks-24-28.md`
+    and earlier) for what each covers.
+  - `rules.ts` — now the full `dfs_chess/rules.py`, including
+    `pushSilentMove` (Task 29; previously the one function left unported).
+    Also exports `findLegalMove`/`capturedSquare` (previously module-
+    private) for `build.ts` to reuse. **Fixed a latent bug this session**:
+    `applyMove`/`applyCaptureMove`/`castle`/`pushSilentMove` used to clone
+    the board via `new Chess(state.board.fen())` — FEN has no notion of
+    move history, so every clone silently discarded everything before the
+    most recent move. Invisible through `rules.test.ts` (never calls
+    `.history()`), but fatal to `build.ts`'s book-commitment tracking.
+    Fixed via a `cloneBoard` helper that round-trips through PGN instead
+    (preserves full history, including a non-default starting FEN via
+    PGN's `[SetUp]`/`[FEN]` headers).
+  - `build.ts` (**new, Task 29**) — the full turn-flow loop ported from
+    `dfs_chess/build.py`: `playWhiteMove`, `playBlackMove`,
+    `playBlackTemplateMove`, `checkWhiteDeadEnd`, `moveIsCompletable`,
+    `MoveResult`, `HAPPY_HUNTING`/`NO_LEGAL_MOVES`. Black's book
+    commitment, rank-closest line selection with seeded tie-breaking,
+    falling out of the book to uniform-random legal play, template mode,
+    dead ends, and the full/full "silent move" path are all covered.
+  - `rng.ts` (**new, Task 29**) — `SeededRandom`, a from-scratch seeded
+    PRNG (mulberry32) standing in for Python's `random.Random` (JS has no
+    seedable equivalent). Same seed → same TS pick, not the same pick
+    Python would make for that seed number — every ported randomized test
+    already asserted a property (membership, determinism, "varies across
+    seeds"), not a literal pinned value, so none needed converting.
+- **150 Vitest tests passing** (`npm run test`): 129 from before this
+  session + 21 new in `build.test.ts`, ported one-for-one from
+  `tests/test_build.py`. `npm run build` is clean (`tsc -b` + `vite
+  build`). One test (50-seed loop) needed its own vitest timeout raised to
+  20s — chess.js's repeated move generation is markedly slower than
+  python-chess's, not a logic issue.
+- **Not yet ported from the Python engine**: a "suggested opening" picker
+  combining `rankFamilies` with `ContestConfig`'s tier/rank methods (exists
+  only inline inside `cli.py`, no standalone Python function or isolated
+  test to match); `cli.py` itself; all UI; the Monte Carlo sim.
 
 ## Where We're Headed
 
-1. Port `dfs_chess/config.py` (`ContestConfig`) to `web/src/engine/
-   config.ts` — prerequisite for `is_legal_move`/`apply_move`.
-2. Port `is_legal_move`/`apply_move` (ordinary, non-capturing, non-castling
-   moves only) and their 11 deferred tests, using chess.js directly:
-   `Chess.moves({verbose: true})` for legal-move membership, `Chess.get
-   (square)` for piece-at-square, each `Move`'s `.isCapture()`/
-   `.isKingsideCastle()`/`.isQueensideCastle()` for the early-reject checks,
-   and FEN-based board cloning (`new Chess(fen)` — chess.js has no built-in
-   `.clone()`) for `apply_move`'s copy-then-push.
-3. Later, each its own task: castling (`can_castle`/`castle`), King modes
-   (`switch_king`/`place_kings`), captures (`is_legal_capture`/
-   `apply_capture_move`).
-4. Further out: `build.py` (the real turn-flow loop), `loaders.py`,
-   `openings.py` — still entirely unported.
-5. The Monte Carlo sim port from `rraney/nfl-dfs` — still needed, unchanged.
-6. Simulated "Top 10%" metric — still a known gap.
+1. The Monte Carlo sim port from `rraney/nfl-dfs` — still needed, unchanged.
+2. Simulated "Top 10%" metric — still a known gap.
+3. A decision on whether/how to port a "suggested opening" picker (see Open
+   Items) — likely alongside whatever first needs it (CLI or UI).
+4. Eventually: a real UI on top of the engine (currently just the Vite
+   default page), and a CLI if one is wanted on the TS side at all.
 
 ## Open Items
 
-- The `is_legal_move`/`apply_move` scope decision (narrow: pure functions
-  only, now done; broad scope — also porting `ContestConfig` immediately —
-  was considered and declined) and the exact 11 deferred test names: see
-  `sessions/1026/10132026-git-setup-and-ts-engine-port.md`.
+- **No "suggested opening" picker ported**: unchanged from before — see
+  `sessions/1026/10132026-port-family-ranking-suggestion-opening-preview.md`.
+- Chess.js has no public "resolve SAN without pushing" method, no public
+  "is this shape a castle/capture independent of legality" check, and (as
+  of this session) no public clone-with-history method either — three
+  separate workarounds now live across `rules.ts`/`openings.ts`/`build.ts`
+  (move-list matching by from/to, resolve-then-branch-on-the-matched-move,
+  and the PGN-round-trip `cloneBoard`), each deliberately duplicated rather
+  than factored into one shared utility, mirroring Python's own duplication
+  between `legal_depth` and `opening_preview`. Worth a look if a future
+  task wants to consolidate.
+- `build.ts`'s `playWhiteMove`/`resolvePlayers`/`applyResolvedPlayers`/
+  `isMovePlayableForBlack`/`playBlackTemplateMove` all resolve a caller-
+  supplied move via `findLegalMove` up front and throw a single generic
+  "illegal move" error if it doesn't match any legal move at all — Python's
+  originals instead inline `is_castling`/`is_capture` shape checks that can
+  evaluate even on an illegal move, routing to whichever of
+  `castle`/`apply_move`/`apply_capture_move` then raises its own specific
+  error. No test exercises this (every call site in `test_build.py` only
+  ever passes already-legal moves), so it's an untested, zero-observed-
+  behavior-difference implementation detail — see this session's log for
+  the full reasoning.
+- `cloneBoard`'s PGN-round-trip clone is slower than a true clone would be
+  (re-serializes and re-parses the whole game's move text on every single
+  move). Fine at NFL-build scale (~9 plies/side); worth knowing if a future
+  task drives many simulated builds at volume (e.g. the Monte Carlo sim).
 - Task-numbering collision (a prior session reused "Task 20c" for two
-  different pieces of work) and whether Ron intends to accept Scotch Game at
-  rank 2 / drop King's Indian Defense from the "top 9": both still open, see
-  `sessions/1026/10132026-pin-top-9-opening-ranks-test.md` and
+  different pieces of work) and whether Ron intends to accept Scotch Game
+  at rank 2 / drop King's Indian Defense from the "top 9": both still
+  open, see `sessions/1026/10132026-pin-top-9-opening-ranks-test.md` and
   `sessions/1026/10132026-never-moved-captures-field-tiers-and-family-
   ranking.md`.
 - `excluded_families` and the six tier-boundary numbers are still
@@ -123,7 +137,7 @@ live in a gitignored `.env`, never printed.
   sessions.
 - Kings still structurally can never be captured as the King piece itself
   (checkmate ends the position first — emergent, not a bug).
-- Full narrative detail for everything in this update:
-  `sessions/1026/10132026-git-setup-and-ts-engine-port.md` (this session —
-  git init, new `start` skill, Tasks 21–23); earlier logs in `sessions/1026/`
-  for everything predating that.
+- Full narrative detail for this session's work (Task 29: `build.ts`,
+  `rng.ts`, the `rules.ts` history-clone bug fix, every `test_build.py`
+  test ported): `sessions/1026/10132026-port-build-loop-task-29.md`.
+  Earlier logs in `sessions/1026/` for everything predating that.
