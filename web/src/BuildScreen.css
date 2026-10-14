@@ -6,32 +6,129 @@
   text-align: left;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
 }
 
-.opening-banner {
-  text-align: center;
+/* Header row -- Task 38b replaces the old large "Chess DFS" h1 fallback
+   with this: wordmark + contest/King-mode chips + the theme toggle every
+   screen carries. */
+.build-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
 }
 
-.opening-family {
-  margin: 8px 0 0;
+.build-wordmark {
+  font-family: var(--heading);
+  font-weight: 700;
+  font-size: 22px;
 }
 
-.opening-variation {
-  font-family: var(--sans);
-  font-size: 18px;
+.build-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 13px;
   color: var(--text);
+  white-space: nowrap;
+}
+
+/* Opening banner */
+.opening-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px 22px;
+}
+
+.opening-banner-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.opening-eyebrow {
   margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.opening-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.opening-banner h1 {
+  margin: 2px 0 0;
+  font-size: 38px;
+  line-height: 1.1;
 }
 
 .opening-eco {
+  font-family: var(--mono);
   font-size: 13px;
   color: var(--text);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin: 4px 0 0;
 }
 
+.opening-variation {
+  font-family: var(--heading);
+  font-style: italic;
+  font-size: 19px;
+  color: var(--text);
+  margin: 2px 0 0;
+}
+
+.opening-subtext {
+  font-size: 13px;
+  color: var(--text);
+  margin: 6px 0 0;
+}
+
+.opening-moves {
+  font-family: var(--mono);
+  font-size: 15px;
+  text-align: right;
+  margin: 0;
+  max-width: 100%;
+}
+
+.opening-moves .move-number {
+  color: var(--text);
+}
+
+.opening-moves .played {
+  color: var(--text-h);
+}
+
+.opening-moves .pending {
+  color: var(--text);
+  opacity: 0.5;
+}
+
+/* You / board / Field */
 .build-layout {
   display: grid;
   grid-template-columns: 1fr 2fr 1fr;
@@ -46,10 +143,10 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   border-top: 4px solid var(--accent);
-  padding: 14px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16px;
 }
 
 .side-column.field {
@@ -57,82 +154,184 @@
   border-top-color: var(--accent-field);
 }
 
-.side-column h2 {
-  margin: 0;
+.side-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
 }
 
-.side-stat {
-  font-family: var(--mono);
+.side-header h2 {
+  margin: 0;
+  color: var(--accent);
+}
+
+.side-column.field .side-header h2 {
+  color: var(--accent-field);
+}
+
+.side-meta {
   font-size: 13px;
   color: var(--text);
+}
+
+.side-stat-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.side-eyebrow {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.side-salary {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 34px;
+  color: var(--accent);
+}
+
+.side-column.field .side-salary {
+  color: var(--accent-field);
+}
+
+.side-detail {
+  margin: 0;
+  font-size: 14px;
+}
+
+.side-detail .mono {
+  font-family: var(--mono);
+}
+
+.side-ownership {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 24px;
+  color: var(--text-h);
 }
 
 .locked-players {
   list-style: none;
-  margin: 4px 0 0;
+  margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .locked-players li {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  font-size: 13px;
-  border-top: 1px solid var(--border);
-  padding-top: 6px;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
 }
 
-.locked-piece {
-  font-weight: 600;
-  min-width: 56px;
+.locked-glyph {
+  font-size: 20px;
+  width: 24px;
+  text-align: center;
 }
 
 .locked-name {
   flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.locked-pos,
-.locked-team,
 .locked-salary {
   font-family: var(--mono);
+  font-size: 13px;
   color: var(--text);
 }
 
+.side-open {
+  font-size: 13px;
+  color: var(--text);
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  margin: 0;
+}
+
+/* Board + Book continues */
 .board-column {
   grid-area: board;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+  align-items: stretch;
 }
 
 .board-column .build-board {
   max-width: 420px;
+  margin: 0 auto;
 }
 
-.suggestion-banner {
+.book-continues {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.book-continues-label {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.continue-option {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  text-align: center;
+  gap: 14px;
+  text-align: left;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 10px 16px;
+  padding: 10px 14px;
 }
 
-.suggestion-banner.off-line {
-  flex-direction: column;
+.continue-option.chosen {
+  border-color: var(--accent);
 }
 
-.suggestion-options {
+.continue-move {
+  font-family: var(--mono);
+  font-size: 15px;
+  width: 64px;
+  flex: 0 0 auto;
+  color: var(--text-h);
+}
+
+.continue-detail {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.continue-name {
+  font-size: 14px;
+  color: var(--text-h);
+}
+
+.continue-lock {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.play-own-move {
+  align-self: center;
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--text);
 }
 
 .move-list h2,
@@ -172,5 +371,13 @@
 
   .board-column .build-board {
     max-width: 320px;
+  }
+
+  .opening-banner {
+    flex-direction: column;
+  }
+
+  .opening-moves {
+    text-align: left;
   }
 }

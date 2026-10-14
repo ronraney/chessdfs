@@ -173,16 +173,14 @@ input[type='checkbox'] {
   accent-color: var(--accent);
 }
 
-/* The chessground board preview ships its own checker-pattern CSS
-   (chessground.brown.css, imported by BoardPreview.tsx/BuildBoard.tsx);
-   overriding it by descendant selector beats it on specificity regardless
-   of stylesheet order, without needing to drop that import. */
+/* chessground.brown.css (imported by BoardPreview.tsx/BuildBoard.tsx) paints
+   its own checker pattern directly on cg-board; Task 38b replaces it with
+   BoardSquares -- a real 8x8 grid of elements, themed from --board-light/
+   --board-dark, sitting behind cg-board in the DOM (see BoardSquares.tsx).
+   This override just clears brown.css's own background so that grid shows
+   through; move-dest/last-move/selected/check square colors still come
+   from brown.css unchanged, so that import stays. */
 .board-preview cg-board,
 .build-board cg-board {
-  background-color: var(--board-light);
-  background-image:
-    linear-gradient(45deg, var(--board-dark) 25%, transparent 25%, transparent 75%, var(--board-dark) 75%),
-    linear-gradient(45deg, var(--board-dark) 25%, transparent 25%, transparent 75%, var(--board-dark) 75%);
-  background-size: 25% 25%;
-  background-position: 0 0, 12.5% 12.5%;
+  background: none;
 }

@@ -1,11 +1,7 @@
-// Task 38: reworks Task 37's forced-both-sides template into "the chosen
-// line only suggests White's moves; White may play any legal move." White
-// drags on the board (BuildBoard); Black always replies via the engine's
-// own book-committed free play (build.playBlackMove, not
-// playBlackTemplateMove -- it already implements exactly "follow the
-// committed line while it matches, re-choose when it doesn't," RULES.md
-// "Black (the field)," so there's no template bookkeeping left to drive
-// here at all) after a short pause so the move reads as its own turn.
+// Task 38: "the chosen line only suggests White's moves; White may play
+// any legal move." White drags on the board (BuildBoard); Black always
+// replies via the engine's own book-committed free play (build.
+// playBlackMove) after a short pause so the move reads as its own turn.
 //
 // A White move is never committed to `state` until its pick is confirmed:
 // BuildBoard's `fen` is `previewFen` (the current `state` plus the
@@ -13,20 +9,32 @@
 // mechanics preview, not a DFS rule) while a pick is pending, and plain
 // `state.board.fen()` otherwise. Cancel just drops `pendingMove`, which
 // snaps `previewFen` back to `state`'s own fen -- no engine-level undo is
-// needed (see the session report for the explicit "is this supported"
-// check this task asked for).
+// needed.
+//
+// Task 38b: matches design/'s mockups. The opening banner is now driven by
+// `chosenOpening` itself (its family/eco/variation/moves are fixed, shown
+// regardless of how far the build has gone), not by replaying `state`'s
+// history through `openingLine` on every commit the way Task 38 did --
+// that's also what fixes "the banner falls back to a plain 'Chess DFS'
+// title before any move has been played" (there was no chosen-line data in
+// it at all until the first commit). "Now: <live name> · <eco>" and "Left
+// the line after <move>" are the dynamic half, read fresh off `history`
+// each render. The single "Suggested: X / Play it" banner is gone too --
+// replaced by "Book continues," which lists every offerable continuation
+// (not just the chosen line's own next move), the chosen one first and
+// highlighted.
 import { Chess } from "chess.js";
 import type { Dests, Key } from "@lichess-org/chessground/types";
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./BuildScreen.css";
 import { BOOK, LAST_RANK, NFL, RANKED_FAMILIES } from "./appData";
 import BuildBoard from "./BuildBoard";
-import { chessMoveForSan, dfsLegalMoves, suggestionFor } from "./buildFlow";
-import { eligiblePlayers, sideStats, type SideStats } from "./buildStats";
+import { dfsLegalMoves } from "./buildFlow";
+import { eligiblePlayers, pieceBandLabel, sideStats, type SideStats } from "./buildStats";
 import { playBlackMove, playWhiteMove } from "./engine/build";
 import type { ContestPreset } from "./engine/config";
 import { BuildState, KingMode, Piece, type Move, type Player } from "./engine/models";
-import { openingLine, splitFamily, type BookLine } from "./engine/openings";
+import { bookContinuations, openingLine, openingName, splitFamily, type BookLine } from "./engine/openings";
 import { pieceForChessType } from "./engine/pieces";
 import { SeededRandom } from "./engine/rng";
 import { placeKings, pushSilentMove, type ChessMove } from "./engine/rules";
@@ -43,6 +51,15 @@ const PIECE_LABEL: Record<Piece, string> = {
   PAWN: "Pawn",
 };
 
+const PIECE_GLYPH: Record<Piece, string> = {
+  KING: "♚",
+  QUEEN: "♛",
+  ROOK: "♜",
+  BISHOP: "♝",
+  KNIGHT: "♞",
+  PAWN: "♟",
+};
+
 const BLACK_REPLY_DELAY_MS = 600;
 
 interface Props {
@@ -57,6 +74,35 @@ interface Props {
 interface PendingMove {
   chessMove: ChessMove;
   piece: Piece;
+  san: string;
+}
+
+interface ContinuationOption {
+  san: string;
+  moveLabel: string;
+  openingLabel: string | null;
+  lockLabel: string;
+  isChosen: boolean;
+}
+
+function commonPrefixLength(a: readonly string[], b: readonly string[]): number {
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  return i;
+}
+
+function lockDescription(piece: Piece): string {
+  const band = pieceBandLabel(piece, NFL);
+  return band !== null ? `Locks a ${PIECE_LABEL[piece]}: ${band}` : `Locks a ${PIECE_LABEL[piece]}`;
+}
+
+function openSlotLabels(stats: SideStats): string[] {
+  const labels: string[] = [];
+  for (const slot of NFL.rosterSlots) {
+    const open = stats.openSlots[slot.name] ?? 0;
+    for (let i = 0; i < open; i++) labels.push(slot.name);
+  }
+  return labels;
 }
 
 export default function BuildScreen({ preset, players, kingMode, whiteKing, blackKing, chosenOpening }: Props) {
@@ -65,7 +111,6 @@ export default function BuildScreen({ preset, players, kingMode, whiteKing, blac
       ? placeKings(whiteKing, blackKing, NFL, preset.contest)
       : new BuildState(),
   );
-  const [lastOpening, setLastOpening] = useState<BookLine | null>(() => openingLine(state.board.history(), BOOK));
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
   const [pickError, setPickError] = useState<string | null>(null);
   const blackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -88,9 +133,9 @@ export default function BuildScreen({ preset, players, kingMode, whiteKing, blac
 
   const turn = state.board.turn();
   const history = state.board.history();
-  const isWhiteToAct = turn === "w" && pendingMove === null;
+  const moveNumber = Math.floor(history.length / 2) + 1;
 
-  const legalMoves = isWhiteToAct ? dfsLegalMoves(state, NFL, preset.contest, players, kingMode) : [];
+  const legalMoves = turn === "w" ? dfsLegalMoves(state, NFL, preset.contest, players, kingMode) : [];
   const legalSans = new Set(legalMoves.map((m) => m.san));
   const dests: Dests = new Map();
   for (const move of legalMoves) {
@@ -99,9 +144,42 @@ export default function BuildScreen({ preset, players, kingMode, whiteKing, blac
     dests.set(move.from, arr);
   }
 
-  const suggestion = isWhiteToAct ? filterSuggestion(suggestionFor(history, chosenOpening, BOOK), legalSans) : { kind: "none" as const };
-  const suggestionArrow =
-    suggestion.kind === "onLine" ? arrowFor(state, suggestion.move) : null;
+  const chosenLine: BookLine | null = chosenOpening.kind === "line" ? chosenOpening.line : null;
+  const playedCount = chosenLine !== null ? commonPrefixLength(history, chosenLine.moves) : 0;
+  const onChosenLine = chosenLine !== null && playedCount === history.length;
+  const chosenNextMove = onChosenLine && chosenLine !== null && playedCount < chosenLine.moves.length ? chosenLine.moves[playedCount] : null;
+
+  let bannerSubtext: string | null = null;
+  if (chosenLine !== null && !onChosenLine) {
+    // `playedCount` is the index of the first move that broke the match
+    // (frozen there even as `history` keeps growing afterward -- it's the
+    // longest common prefix, which never gets longer once it's stopped
+    // matching). onChosenLine is only ever false once at least one move
+    // has been played (at depth 0 the empty history trivially still
+    // matches, i.e. playedCount === history.length === 0), so that move
+    // always exists.
+    bannerSubtext = `Left the line after ${history[playedCount]}`;
+  } else {
+    const liveLine = openingLine(history, BOOK);
+    if (liveLine !== null) bannerSubtext = `Now: ${liveLine.name} · ${liveLine.eco}`;
+  }
+
+  const continuationOptions: ContinuationOption[] =
+    turn === "w"
+      ? [...bookContinuations(history, BOOK)]
+          .filter((san) => legalSans.has(san))
+          .map((san): ContinuationOption => {
+            const matched = legalMoves.find((m) => m.san === san)!;
+            return {
+              san,
+              moveLabel: `${moveNumber}. ${san}`,
+              openingLabel: openingName([...history, san], BOOK),
+              lockLabel: lockDescription(pieceForChessType(matched.piece)),
+              isChosen: san === chosenNextMove,
+            };
+          })
+          .sort((a, b) => (a.isChosen === b.isChosen ? a.san.localeCompare(b.san) : a.isChosen ? -1 : 1))
+      : [];
 
   const previewFen = useMemo(() => {
     if (pendingMove === null) return state.board.fen();
@@ -110,11 +188,17 @@ export default function BuildScreen({ preset, players, kingMode, whiteKing, blac
     return scratch.fen();
   }, [state, pendingMove]);
 
+  const lastRealMove = history.length > 0 ? (state.board.history({ verbose: true }).at(-1) ?? null) : null;
+  const lastMove: { orig: Key; dest: Key } | null =
+    pendingMove !== null
+      ? { orig: pendingMove.chessMove.from, dest: pendingMove.chessMove.to }
+      : lastRealMove !== null
+        ? { orig: lastRealMove.from, dest: lastRealMove.to }
+        : null;
+
   function commit(newState: BuildState): void {
     setState(newState);
     setPendingMove(null);
-    const line = openingLine(newState.board.history(), BOOK);
-    if (line !== null) setLastOpening(line);
 
     if (blackTimerRef.current !== null) clearTimeout(blackTimerRef.current);
     blackTimerRef.current =
@@ -124,8 +208,6 @@ export default function BuildScreen({ preset, players, kingMode, whiteKing, blac
             try {
               const result = playBlackMove(newState, BOOK, familyRanks, targetRank, NFL, preset.contest, players, rng, kingMode);
               setState(result.state);
-              const afterBlack = openingLine(result.state.board.history(), BOOK);
-              if (afterBlack !== null) setLastOpening(afterBlack);
             } catch {
               // Black has no legal move at all -- a dead end this task
               // doesn't handle yet (not reachable by anything this task
@@ -144,7 +226,7 @@ export default function BuildScreen({ preset, players, kingMode, whiteKing, blac
       return;
     }
     setPickError(null);
-    setPendingMove({ chessMove, piece });
+    setPendingMove({ chessMove, piece, san: matched.san });
   }
 
   function playSan(san: string): void {
@@ -170,54 +252,66 @@ export default function BuildScreen({ preset, players, kingMode, whiteKing, blac
 
   const whiteStats = sideStats(state.whiteMoves.map((m) => m.player), NFL, preset.contest);
   const blackStats = sideStats(state.blackMoves.map((m) => m.player), NFL, preset.contest);
-  const [family, variation] = lastOpening !== null ? splitFamily(lastOpening.name) : ["", ""];
+  const [family, variation] = chosenLine !== null ? splitFamily(chosenLine.name) : ["Your own opening", ""];
+  const entryTier = preset.contest.entryTier(LAST_RANK);
 
   return (
     <main className="build-screen">
-      <header className="app-header">
-        <ThemeToggle />
+      <header className="build-header">
+        <span className="build-wordmark">Chess DFS</span>
+        <div className="build-chips">
+          <span className="chip">
+            {preset.name} · {preset.contest.fieldSize.toLocaleString()} entries · {entryTier.name} field
+          </span>
+          <span className="chip">King: {kingMode === KingMode.EMERGE ? "Let him emerge" : "Place your King now"}</span>
+          <ThemeToggle />
+        </div>
       </header>
 
       <section className="opening-banner">
-        <h1 className="opening-family">{family || "Chess DFS"}</h1>
-        {variation !== "" && <p className="opening-variation">{variation}</p>}
-        {lastOpening !== null && <p className="opening-eco">{lastOpening.eco}</p>}
+        <div className="opening-banner-main">
+          <p className="opening-eyebrow">Opening</p>
+          <div className="opening-title-row">
+            <h1>{family}</h1>
+            {chosenLine !== null && <span className="opening-eco">{chosenLine.eco}</span>}
+          </div>
+          {variation !== "" && <p className="opening-variation">{variation}</p>}
+          {bannerSubtext !== null && <p className="opening-subtext">{bannerSubtext}</p>}
+        </div>
+        {chosenLine !== null && (
+          <p className="opening-moves">
+            <MovesProgress moves={chosenLine.moves} playedCount={playedCount} />
+          </p>
+        )}
       </section>
 
-      {isWhiteToAct && suggestion.kind === "onLine" && (
-        <section className="suggestion-banner">
-          <p>
-            Suggested: <strong>{suggestion.move}</strong> · {suggestion.lineName}
-          </p>
-          <button type="button" onClick={() => playSan(suggestion.move)}>
-            Play it
-          </button>
-        </section>
-      )}
-      {isWhiteToAct && suggestion.kind === "offLine" && (
-        <section className="suggestion-banner off-line">
-          <p>Book continuations:</p>
-          <div className="suggestion-options">
-            {suggestion.options.map((option) => (
-              <button key={option.move} type="button" onClick={() => playSan(option.move)}>
-                {option.name} ({option.move})
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
       <div className="build-layout">
-        <SideColumn side="you" label="You" stats={whiteStats} moves={state.whiteMoves} />
+        <SideColumn side="you" label="You" sideName="White" stats={whiteStats} moves={state.whiteMoves} />
         <div className="board-column">
-          <BuildBoard
-            fen={previewFen}
-            dests={pendingMove === null && turn === "w" ? dests : new Map()}
-            suggestionArrow={pendingMove === null ? suggestionArrow : null}
-            onMove={handleBoardMove}
-          />
+          <BuildBoard fen={previewFen} dests={pendingMove === null ? dests : new Map()} lastMove={lastMove} onMove={handleBoardMove} />
+
+          {turn === "w" && (
+            <div className="book-continues">
+              <p className="book-continues-label">Book continues</p>
+              {continuationOptions.map((option) => (
+                <button
+                  key={option.san}
+                  type="button"
+                  className={option.isChosen ? "continue-option chosen" : "continue-option"}
+                  onClick={() => playSan(option.san)}
+                >
+                  <span className="continue-move">{option.moveLabel}</span>
+                  <span className="continue-detail">
+                    <span className="continue-name">{option.openingLabel ?? option.san}</span>
+                    <span className="continue-lock">{option.lockLabel}</span>
+                  </span>
+                </button>
+              ))}
+              <p className="play-own-move">(Play your own move)</p>
+            </div>
+          )}
         </div>
-        <SideColumn side="field" label="Field" stats={blackStats} moves={state.blackMoves} />
+        <SideColumn side="field" label="Field" sideName="Black" stats={blackStats} moves={state.blackMoves} />
       </div>
 
       <section className="move-list">
@@ -233,6 +327,8 @@ export default function BuildScreen({ preset, players, kingMode, whiteKing, blac
       {pendingMove !== null && (
         <PickPanel
           piece={pendingMove.piece}
+          moveLabel={`${moveNumber}. ${pendingMove.san}`}
+          openingLabel={openingName([...history, pendingMove.san], BOOK)}
           candidates={eligiblePlayers(pendingMove.piece, state.lockedPlayerIds, players, NFL)}
           currentPlayers={state.whiteMoves.map((m) => m.player)}
           sport={NFL}
@@ -246,57 +342,81 @@ export default function BuildScreen({ preset, players, kingMode, whiteKing, blac
   );
 }
 
-function filterSuggestion(
-  raw: ReturnType<typeof suggestionFor>,
-  legalSans: ReadonlySet<string>,
-): ReturnType<typeof suggestionFor> {
-  if (raw.kind === "onLine") {
-    return legalSans.has(raw.move) ? raw : { kind: "none" };
+function MovesProgress({ moves, playedCount }: { moves: readonly string[]; playedCount: number }) {
+  const pairs: { num: number; white: string; black: string | undefined; whiteIdx: number; blackIdx: number }[] = [];
+  for (let i = 0; i < moves.length; i += 2) {
+    pairs.push({ num: i / 2 + 1, white: moves[i], black: moves[i + 1], whiteIdx: i, blackIdx: i + 1 });
   }
-  if (raw.kind === "offLine") {
-    const options = raw.options.filter((o) => legalSans.has(o.move));
-    return options.length > 0 ? { kind: "offLine", options } : { kind: "none" };
-  }
-  return raw;
-}
-
-function arrowFor(state: BuildState, san: string): { orig: Key; dest: Key } | null {
-  const matched = chessMoveForSan(state, san);
-  return matched === null ? null : { orig: matched.from, dest: matched.to };
+  return (
+    <>
+      {pairs.map((pair) => (
+        <span key={pair.num} className="move-pair">
+          <span className="move-number">{pair.num}.</span>{" "}
+          <span className={pair.whiteIdx < playedCount ? "played" : "pending"}>{pair.white}</span>
+          {pair.black !== undefined && (
+            <>
+              {" "}
+              <span className={pair.blackIdx < playedCount ? "played" : "pending"}>{pair.black}</span>
+            </>
+          )}{" "}
+        </span>
+      ))}
+    </>
+  );
 }
 
 function SideColumn({
   side,
   label,
+  sideName,
   stats,
   moves,
 }: {
   side: "you" | "field";
   label: string;
+  sideName: string;
   stats: SideStats;
   moves: readonly Move[];
 }) {
+  const openSlots = openSlotLabels(stats);
   return (
     <div className={`side-column ${side}`}>
-      <h2>{label}</h2>
-      <p className="side-stat">
-        Salary remaining: ${stats.salaryRemaining.toLocaleString()} (avg $
-        {stats.avgRemainingPerOpenSlot.toLocaleString(undefined, { maximumFractionDigits: 0 })}/open slot)
-      </p>
-      <p className="side-stat">Open slots: {stats.openSlotCount}</p>
-      <p className="side-stat">Core projection: {stats.projTotal.toFixed(1)} pts</p>
-      <p className="side-stat">Core ownership: {(stats.ownershipTotal * 100).toFixed(1)}%</p>
+      <div className="side-header">
+        <h2>{label}</h2>
+        <span className="side-meta">
+          {sideName} · {moves.length} locked
+        </span>
+      </div>
+
+      <div className="side-stat-block">
+        <p className="side-eyebrow">Salary remaining</p>
+        <p className="side-salary">${stats.salaryRemaining.toLocaleString()}</p>
+        <p className="side-detail">
+          <span className="mono">${stats.avgRemainingPerOpenSlot.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span> avg / open
+          slot · {stats.openSlotCount} open
+        </p>
+      </div>
+
+      <div className="side-stat-block">
+        <p className="side-eyebrow">Core ownership</p>
+        <p className="side-ownership">{(stats.ownershipTotal * 100).toFixed(1)}%</p>
+      </div>
+
       <ul className="locked-players">
         {moves.map((m) => (
           <li key={m.player.id}>
-            <span className="locked-piece">{PIECE_LABEL[m.piece]}</span>
-            <span className="locked-name">{m.player.name}</span>
-            <span className="locked-pos">{m.player.positions[0]}</span>
-            <span className="locked-team">{m.player.team}</span>
+            <span className="locked-glyph" aria-hidden="true">
+              {PIECE_GLYPH[m.piece]}
+            </span>
+            <span className="locked-name">
+              {m.player.name} · {m.player.positions[0]}
+            </span>
             <span className="locked-salary">${m.player.salary.toLocaleString()}</span>
           </li>
         ))}
       </ul>
+
+      {openSlots.length > 0 && <p className="side-open">Open: {openSlots.join(" · ")}</p>}
     </div>
   );
 }

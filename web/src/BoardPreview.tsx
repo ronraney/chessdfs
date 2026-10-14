@@ -3,12 +3,17 @@
 // chess logic of its own (per its own docs) -- it just renders a FEN;
 // `viewOnly` disables every interaction (drag, click-to-move, premoves),
 // since this is a preview, not a board to play on.
+//
+// Task 38b: the checker pattern is BoardSquares (a real 8x8 grid behind
+// chessground's own, now-transparent cg-board) -- see BoardSquares.tsx and
+// index.css.
 import "@lichess-org/chessground/assets/chessground.base.css";
 import "@lichess-org/chessground/assets/chessground.brown.css";
 import "@lichess-org/chessground/assets/chessground.cburnett.css";
 import { Chessground } from "@lichess-org/chessground";
 import type { Api } from "@lichess-org/chessground/api";
 import { useEffect, useRef } from "react";
+import BoardSquares from "./BoardSquares";
 
 interface Props {
   fen: string;
@@ -34,5 +39,10 @@ export default function BoardPreview({ fen }: Props) {
     apiRef.current?.set({ fen });
   }, [fen]);
 
-  return <div className="board-preview" ref={containerRef} />;
+  return (
+    <div className="board-preview">
+      <BoardSquares />
+      <div className="board-preview-cg" ref={containerRef} />
+    </div>
+  );
 }

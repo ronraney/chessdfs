@@ -71,6 +71,12 @@
   position: relative;
 }
 
+.board-preview-cg {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
 .play-this {
   margin-top: 4px;
   font-size: 16px;

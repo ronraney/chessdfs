@@ -8,8 +8,16 @@
 // `movable.events.after`, the callback a real drag would eventually
 // call) and `simulateMove` invokes it directly, exactly as chessground
 // itself would once a legal drop lands. Everything downstream of that
-// callback -- state, the pick panel, Black's automatic reply -- is real,
+// callback -- state, the pick modal, Black's automatic reply -- is real,
 // unmocked BuildScreen/engine code.
+//
+// Task 38b: rewritten for the redesigned screen -- the single "Suggested:
+// X / Play it" banner is gone (replaced by "Book continues," which lists
+// every offerable continuation, the chosen line's own next move first and
+// highlighted); the pick panel is a centered modal titled "Choose your
+// <Piece>" with a single "Lock player" button (candidates are fixed-sorted
+// by projection, the top one pre-selected) rather than Task 38's per-row
+// "Pick" buttons.
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -74,53 +82,85 @@ function fieldColumn(): HTMLElement {
   return screen.getByRole("heading", { level: 2, name: "Field" }).closest(".side-column") as HTMLElement;
 }
 
+function chosenContinueButton(): HTMLElement {
+  return document.querySelector(".continue-option.chosen") as HTMLElement;
+}
+
 beforeEach(() => {
   lastApi = null;
 });
 
 describe("BuildScreen -- move first, then pick", () => {
-  it("arrives on the board with no pick list, and suggests the chosen line's first move", () => {
+  it("shows the chosen line's banner before any move, with Book continues offering it first", () => {
     renderScreen();
     expect(document.querySelector(".build-board")).not.toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
-    const banner = document.querySelector(".suggestion-banner");
-    expect(banner?.textContent).toContain("Suggested:");
-    expect(banner?.textContent).toContain("e4");
-    expect(banner?.textContent).toContain("Ruy Lopez: Morphy Defense");
+
+    expect(screen.getByRole("heading", { level: 1, name: "Ruy Lopez" })).toBeInTheDocument();
+    expect(screen.getByText("C70")).toBeInTheDocument();
+    expect(screen.getByText("Morphy Defense")).toBeInTheDocument();
+
+    const chosen = chosenContinueButton();
+    expect(chosen).not.toBeNull();
+    expect(chosen.textContent).toContain("1. e4");
   });
 
-  it("the suggested move's 'Play it' makes that move and opens the pick list", async () => {
+  it("tapping the chosen Book continues button plays it and opens the pick modal", async () => {
     renderScreen();
     const user = userEvent.setup();
     const fenBefore = lastApi!.config.fen;
-    await user.click(screen.getByRole("button", { name: "Play it" }));
+    await user.click(chosenContinueButton());
 
-    expect(await screen.findByRole("dialog", { name: "Pick a Pawn" })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Choose your Pawn" })).toBeInTheDocument();
     expect(lastApi!.config.fen).not.toBe(fenBefore); // the board shows the move, even though it isn't locked in yet
   });
 
-  it("a non-suggested legal move is accepted, and Black responds after the pick locks", async () => {
+  it("after 1. e4, the last-move highlight is on e2 and e4", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    await user.click(chosenContinueButton());
+
+    await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    expect(lastApi!.config.lastMove).toEqual(["e2", "e4"]);
+  });
+
+  it("tapping a non-chosen Book continues button plays that move and opens the modal", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    const dQueenPawn = screen.getByText("1. d4").closest("button")!;
+    expect(dQueenPawn.className).not.toContain("chosen");
+
+    await user.click(dQueenPawn);
+
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    expect(dialog).toBeInTheDocument();
+    expect(document.querySelector(".moves-line")).toBeNull(); // still not committed
+  });
+
+  it("the pick modal shows the 'After this pick' footer, and Lock player commits the top candidate", async () => {
     renderScreen();
     const user = userEvent.setup();
     simulateMove("d2", "d4"); // deviates from the suggested e4
 
-    const dialog = await screen.findByRole("dialog", { name: "Pick a Pawn" });
-    await user.click(within(dialog).getAllByRole("button", { name: "Pick" })[0]);
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    expect(dialog.textContent).toContain("After this pick:");
 
-    expect(screen.queryByRole("dialog")).toBeNull(); // panel closes once the pick locks
+    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+
+    expect(screen.queryByRole("dialog")).toBeNull(); // modal closes once the pick locks
     expect(document.querySelector(".moves-line")?.textContent).toContain("d4"); // now actually locked in
     expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(0); // Black hasn't replied yet
 
     await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
   });
 
-  it("cancel restores the previous position", async () => {
+  it("cancel restores the previous position and the banner's chosen line", async () => {
     renderScreen();
     const user = userEvent.setup();
     const fenBefore = lastApi!.config.fen;
 
-    simulateMove("e2", "e4");
-    await screen.findByRole("dialog", { name: "Pick a Pawn" });
+    await user.click(chosenContinueButton());
+    await screen.findByRole("dialog", { name: "Choose your Pawn" });
     expect(lastApi!.config.fen).not.toBe(fenBefore); // the board shows the tentative move
 
     await user.click(screen.getByRole("button", { name: "Cancel" }));
@@ -128,19 +168,19 @@ describe("BuildScreen -- move first, then pick", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(lastApi!.config.fen).toBe(fenBefore); // visually reverted
     expect(document.querySelector(".hint")?.textContent).toBe("(no moves yet)"); // never actually committed
-    expect(document.querySelector(".suggestion-banner")?.textContent).toContain("Suggested:"); // back on the chosen line
+    expect(chosenContinueButton()?.textContent).toContain("1. e4"); // still on the chosen line
   });
 
-  it("after deviating, suggestions come from book continuations by name", async () => {
+  it("after deviating, the banner shows 'Left the line after <move>'", async () => {
     renderScreen();
     const user = userEvent.setup();
     simulateMove("d2", "d4"); // no longer the Ruy Lopez's own "e4"
-    const dialog = await screen.findByRole("dialog", { name: "Pick a Pawn" });
-    await user.click(within(dialog).getAllByRole("button", { name: "Pick" })[0]);
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
 
     await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
 
-    expect(screen.queryByText(/^Suggested:/)).toBeNull();
-    expect(screen.getByText("Book continuations:")).toBeInTheDocument();
+    expect(screen.getByText("Left the line after d4")).toBeInTheDocument();
+    expect(document.querySelector(".continue-option.chosen")).toBeNull(); // no chosen move left to highlight
   });
 });

@@ -1,14 +1,18 @@
-// Task 38: renamed from PickModal (Task 37) now that it's a side panel
-// beside the board, not a full-screen overlay -- same columns/sorting,
-// plus a Cancel button that takes the just-dragged move back (BuildScreen
-// never commits a move to engine state until the pick is confirmed, so
-// "cancel" is just closing this panel -- no engine-level undo needed).
-// Candidate list: buildStats.eligiblePlayers (unlocked + classify match,
-// same as dfs_chess/cli.py's _eligible_sorted; not pre-filtered by
-// legality -- see that function's own comment).
+// Task 38b: redrawn as the centered, dimmed-overlay modal shown in
+// design/4-club-build-pick.png and 6-slate-build-pick.png -- replaces Task
+// 38's always-open side panel. Candidates are fixed-sorted by projection
+// (the design shows no interactive sort controls, just "sorted by
+// projection"; no test exercised the old sortable-header behavior, so this
+// is a straight simplification, not a loss of coverage) and the flow is
+// now select-then-confirm: clicking a row only highlights it as the
+// current selection (defaulting to the top projection, i.e. the first
+// row) and updates the "After this pick" footer live; "Lock player" is
+// the one thing that actually calls onPick. Cancel (or the × button)
+// closes without picking -- BuildScreen never committed the move to engine
+// state in the first place, so there's nothing to undo.
 import { useMemo, useState } from "react";
 import "./PickPanel.css";
-import { sideStats } from "./buildStats";
+import { pieceBandLabel, sideStats } from "./buildStats";
 import type { ContestConfig } from "./engine/config";
 import type { Piece, Player } from "./engine/models";
 import type { SportConfig } from "./engine/sport";
@@ -22,10 +26,10 @@ const PIECE_LABEL: Record<Piece, string> = {
   PAWN: "Pawn",
 };
 
-type SortKey = "name" | "team" | "salary" | "proj" | "ownership" | "remaining";
-
 interface Props {
   piece: Piece;
+  moveLabel: string; // e.g. "4. Ba4"
+  openingLabel: string | null; // e.g. "Morphy Defense" -- null out of book
   candidates: readonly Player[];
   currentPlayers: readonly Player[];
   sport: SportConfig;
@@ -35,110 +39,103 @@ interface Props {
   error: string | null;
 }
 
-export default function PickPanel({ piece, candidates, currentPlayers, sport, contest, onPick, onCancel, error }: Props) {
-  const [sortKey, setSortKey] = useState<SortKey>("proj");
-  const [sortAsc, setSortAsc] = useState(false);
+export default function PickPanel({
+  piece,
+  moveLabel,
+  openingLabel,
+  candidates,
+  currentPlayers,
+  sport,
+  contest,
+  onPick,
+  onCancel,
+  error,
+}: Props) {
+  const sorted = useMemo(() => [...candidates].sort((a, b) => b.proj - a.proj), [candidates]);
+  const [selectedId, setSelectedId] = useState<string | null>(sorted[0]?.id ?? null);
+  const selected = sorted.find((p) => p.id === selectedId) ?? sorted[0] ?? null;
   const tier = contest.fieldTier();
+  const band = pieceBandLabel(piece, sport);
 
-  const rows = useMemo(
-    () =>
-      candidates.map((player) => ({
-        player,
-        after: sideStats([...currentPlayers, player], sport, contest),
-      })),
-    [candidates, currentPlayers, sport, contest],
+  const after = useMemo(
+    () => (selected === null ? null : sideStats([...currentPlayers, selected], sport, contest)),
+    [selected, currentPlayers, sport, contest],
   );
 
-  const sorted = useMemo(() => {
-    const byKey: Record<SortKey, (row: (typeof rows)[number]) => number | string> = {
-      name: (r) => r.player.name,
-      team: (r) => r.player.team,
-      salary: (r) => r.player.salary,
-      proj: (r) => r.player.proj,
-      ownership: (r) => r.player.ownFor(tier),
-      remaining: (r) => r.after.salaryRemaining,
-    };
-    const key = byKey[sortKey];
-    const copy = [...rows];
-    copy.sort((a, b) => {
-      const av = key(a);
-      const bv = key(b);
-      const cmp = typeof av === "string" ? av.localeCompare(bv as string) : av - (bv as number);
-      return sortAsc ? cmp : -cmp;
-    });
-    return copy;
-  }, [rows, sortKey, sortAsc, tier]);
-
-  function sortBy(key: SortKey): void {
-    if (key === sortKey) {
-      setSortAsc(!sortAsc);
-    } else {
-      setSortKey(key);
-      setSortAsc(key === "name" || key === "team");
-    }
-  }
-
-  function headerButton(key: SortKey, label: string) {
-    const active = key === sortKey;
-    return (
-      <button type="button" className={active ? "sort-header active" : "sort-header"} onClick={() => sortBy(key)}>
-        {label}
-        {active ? (sortAsc ? " ▲" : " ▼") : ""}
-      </button>
-    );
-  }
-
   return (
-    <div className="pick-panel" role="dialog" aria-label={`Pick a ${PIECE_LABEL[piece]}`}>
-      <div className="pick-panel-header">
-        <h2>Pick a {PIECE_LABEL[piece]}</h2>
-        <button type="button" className="cancel-pick" onClick={onCancel}>
-          Cancel
-        </button>
-      </div>
-      {error !== null && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
-      {candidates.length === 0 ? (
-        <p className="hint">No eligible {PIECE_LABEL[piece]} players available for that move.</p>
-      ) : (
-        <div className="pick-table-wrap">
-          <table className="pick-table">
-            <thead>
-              <tr>
-                <th>{headerButton("name", "Name")}</th>
-                <th>{headerButton("team", "Team")}</th>
-                <th>{headerButton("salary", "Salary")}</th>
-                <th>{headerButton("proj", "Proj")}</th>
-                <th>{headerButton("ownership", "Own")}</th>
-                <th>{headerButton("remaining", "After pick: salary rem")}</th>
-                <th>Avg/open slot</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map(({ player, after }) => (
-                <tr key={player.id}>
-                  <td>{player.name}</td>
-                  <td>{player.team}</td>
-                  <td>${player.salary.toLocaleString()}</td>
-                  <td>{player.proj.toFixed(1)}</td>
-                  <td>{(player.ownFor(tier) * 100).toFixed(1)}%</td>
-                  <td>${after.salaryRemaining.toLocaleString()}</td>
-                  <td>${after.avgRemainingPerOpenSlot.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                  <td>
-                    <button type="button" onClick={() => onPick(player)}>
-                      Pick
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div className="pick-modal-overlay">
+      <div className="pick-modal" role="dialog" aria-modal="true" aria-label={`Choose your ${PIECE_LABEL[piece]}`}>
+        <div className="pick-modal-header">
+          <div>
+            <p className="pick-eyebrow">
+              {moveLabel}
+              {openingLabel !== null && ` · ${openingLabel}`}
+            </p>
+            <h2>Choose your {PIECE_LABEL[piece]}</h2>
+            <p className="pick-subtitle">
+              {band !== null && `${band} · `}
+              sorted by projection
+            </p>
+          </div>
+          <button type="button" className="pick-modal-close" aria-label="Close" onClick={onCancel}>
+            ×
+          </button>
         </div>
-      )}
+
+        {error !== null && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
+
+        {candidates.length === 0 ? (
+          <p className="hint">No eligible {PIECE_LABEL[piece]} players available for that move.</p>
+        ) : (
+          <>
+            <div className="pick-column-header">
+              <span>Player</span>
+              <span>Salary</span>
+              <span>Proj</span>
+              <span>Own</span>
+            </div>
+            <div className="pick-row-list">
+              {sorted.map((player) => (
+                <button
+                  key={player.id}
+                  type="button"
+                  className={player.id === selected?.id ? "pick-row selected" : "pick-row"}
+                  onClick={() => setSelectedId(player.id)}
+                >
+                  <span className="pick-row-name">
+                    {player.name} · {player.team}
+                  </span>
+                  <span>${player.salary.toLocaleString()}</span>
+                  <span>{player.proj.toFixed(1)}</span>
+                  <span>{(player.ownFor(tier) * 100).toFixed(1)}%</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        <div className="pick-modal-footer">
+          {after !== null && (
+            <span className="pick-after">
+              After this pick: <strong>${after.salaryRemaining.toLocaleString()}</strong> left ·{" "}
+              ${after.avgRemainingPerOpenSlot.toLocaleString(undefined, { maximumFractionDigits: 0 })} / slot ·{" "}
+              {after.openSlotCount} open
+            </span>
+          )}
+          <div className="pick-modal-actions">
+            <button type="button" onClick={onCancel}>
+              Cancel
+            </button>
+            <button type="button" className="lock-player" disabled={selected === null} onClick={() => selected !== null && onPick(selected)}>
+              Lock player
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

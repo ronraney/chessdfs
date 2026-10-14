@@ -12,6 +12,30 @@ import { classify } from "./engine/pieces";
 import { openRosterSlots } from "./engine/rules";
 import type { SportConfig } from "./engine/sport";
 
+// Task 38b: a piece band's own position(s)/salary range, read off `sport`
+// (e.g. "WR · $5,000–6,999", "$7,000+" for Queen, which has no position
+// restriction) -- the pick modal's subtitle and the build screen's "Book
+// continues" entries both describe the same band, so the formatting lives
+// here once. `maxSalary` is exclusive (PieceBand.matches: `salary <
+// maxSalary`), hence the -1 on the displayed upper bound. Null if `sport`
+// has no band at all for `piece` (shouldn't happen for a real sport config
+// -- see pieces.classify's own comment -- but this stays a plain lookup,
+// not an assumption).
+export function pieceBandLabel(piece: Piece, sport: SportConfig): string | null {
+  const band = sport.pieceBands.find((b) => b.piece === piece);
+  if (band === undefined) return null;
+  const parts: string[] = [];
+  if (band.positions !== null) parts.push([...band.positions].join("/"));
+  if (band.minSalary !== null && band.maxSalary !== null) {
+    parts.push(`$${band.minSalary.toLocaleString()}–${(band.maxSalary - 1).toLocaleString()}`);
+  } else if (band.minSalary !== null) {
+    parts.push(`$${band.minSalary.toLocaleString()}+`);
+  } else if (band.maxSalary !== null) {
+    parts.push(`up to $${(band.maxSalary - 1).toLocaleString()}`);
+  }
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
 export interface SideStats {
   salaryRemaining: number;
   openSlots: Readonly<Record<string, number>>;

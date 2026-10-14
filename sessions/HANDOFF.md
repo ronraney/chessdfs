@@ -26,178 +26,188 @@ Python 3.11+, stdlib + pytest + `python-chess` for the original engine;
 `web/` is a Vite + React + TypeScript app (Node v24, npm) built alongside
 it. The TS port of the engine is complete, with a standing parity harness
 proving it matches Python on real, deterministic scenarios. The UI's player
-flow is now upload-free: **contest → King mode → opening** — a hidden admin
-screen handles the one CSV upload instead (see below). Secrets
+flow is upload-free: **contest → King mode → opening → build** — a hidden
+admin screen handles the one CSV upload instead. Secrets
 (`LICHESS_API_TOKEN`, `VITE_ADMIN_PASSWORD`) live in gitignored `.env` files,
-never printed.
+never printed. Club (light) and Slate (dark) themes exist app-wide, CSS-
+variable driven, with a header toggle.
 
 **Environment note**: this session accessed the repo from Windows via the
-`\\wsl.localhost\Ubuntu\...` UNC path. Two consequences worth knowing up
-front: (1) git needed a one-time `git config --global --add safe.directory`
-exception for that path (already applied) or every git command fails with
-"detected dubious ownership"; (2) `npm` cannot be invoked directly through
-that path — it spawns via `cmd.exe`, which rejects UNC working directories
-outright. Every `npm run ...` in this session went through
-`wsl.exe -- bash -lc "cd ~/chess-dfs/web && npm run ..."` instead.
+`\\wsl.localhost\Ubuntu\...` UNC path. Every git/npm command needs
+`wsl.exe -- bash -lc "cd ~/chess-dfs/... && ..."` — plain `npm run ...`
+through the Windows-side Bash tool fails outright (npm spawns via `cmd.exe`,
+which rejects the UNC working directory), and git needed a one-time
+`git config --global --add safe.directory` exception (already applied).
 
 ## Where We Are
 
 - **180 Python tests passing.** The Python engine itself is unchanged since
   the web port began — every web-port task so far has been additive,
-  TypeScript-only.
-- **218 Vitest tests passing** (`npm run test`), `tsc -b`, `npm run build`,
+  TypeScript-only, including this session's.
+- **252 Vitest tests passing** (`npm run test`), `tsc -b`, `npm run build`,
   and `npm run lint` (oxlint) all clean.
-- **`web/src/engine/`** covers the entire pure Python engine plus
-  TS-only additions with no Python original (`suggestOpening`/
-  `randomOpening` in `openings.ts`), proven against a 41-scenario parity
-  harness (`tools/export_parity.py` + `web/src/engine/__fixtures__/
-  parity.json` + `parity.test.ts`). Untouched this session.
-- **`web/src/App.tsx`** now has four real screens:
-  1. **Setup** (Task 32, upload removed Task 35): pick a contest preset
-     (name/entries/buy-in/field tier shown), pick King mode (Let him
-     emerge / Place your King now, with a QB picker in Placed mode —
-     Black's QB auto-derived as the highest-projection QB other than
-     White's pick). Reads its player list via `players` state, initialized
-     from `loadSavedPlayers()` (see `projectionsStore.ts` below) — if
-     nothing is saved (or it fails to parse), the whole setup is replaced
-     by a single "No slate loaded yet." message.
-  2. **Opening setup** (Task 34, `OpeningSetupScreen.tsx`): unchanged this
-     session.
-  3. **Build placeholder**: unchanged this session.
-  4. **Admin** (Task 35, new, `AdminScreen.tsx`): reachable only at the
-     `#/admin` hash — no link to it exists anywhere else in the app.
-     Routing lives in `App.tsx`: an `isAdminRoute` state flag, flipped by a
-     single `hashchange` listener (the listener also re-reads the saved
-     player list on the way back to the main flow, so an upload or a clear
-     made on `#/admin` shows up immediately without a page reload). Gated
-     by a password form compared against `import.meta.env.VITE_ADMIN_PASSWORD`
-     — **client-side only**: the comparison runs in browser JS against a
-     value baked into the built bundle, so it keeps the screen out of
-     casual reach but is not real access control; anyone reading the
-     shipped JS can recover the password or bypass the check. Once authed:
-     upload the projections CSV (`loadEtrCsv`, same engine loader the
-     player screens use), shows the player count or a clear parse error,
-     a "Clear projections" button. Auth state is plain component state —
-     not persisted across a reload or a round-trip through `#/admin`.
-  - **`web/src/projectionsStore.ts`** (new, Task 35): three functions
-    around `window.localStorage` (key `"chess-dfs:projections-csv"`) —
-    `getSavedProjectionsCsv`/`saveProjectionsCsv`/`clearProjectionsCsv`.
-    Stores the raw CSV text, not parsed players — `loadEtrCsv` is re-run
-    wherever it's read, so there's one parse path for both the admin's
-    count and the player screens' data.
-  - `config/contests.json` (Task 31/32) still the source for contests;
-    no admin editing of contests yet (explicitly out of scope for Task 35).
-  - `@lichess-org/chessground` renders the board preview — **GPL-3.0
-    licensed; still not decided whether that's acceptable for this
-    product** (see Open Items, unchanged).
-  - Tests: React Testing Library + jsdom. `App.test.tsx` (8 tests, rewritten
-    Task 35 — seeds player state via `saveProjectionsCsv` directly instead
-    of a file-upload interaction, plus two admin-routing integration
-    tests), `OpeningSetupScreen.test.tsx` (5 tests, unchanged),
-    `AdminScreen.test.tsx` (5 tests, new). `testFixtures.ts` (new) factors
-    out the shared sample-CSV-file helper both App and AdminScreen tests
-    use.
-- **Not yet built**: the actual build screen (playing moves, locking
-  players, in the UI); the Monte Carlo sim; a CLI on the TS side (if ever
-  wanted); any admin editing of contests.
+- **`web/src/engine/`** covers the entire pure Python engine plus a few
+  TS-only additions with no Python original: `suggestOpening`/
+  `randomOpening` (openings.ts, pre-existing) and, new this session,
+  `openingLine(moves, book): BookLine | null` (openings.ts) — `openingName`
+  now just calls it and keeps `.name`; the build screen's opening banner
+  needs the matching line's `eco` too, which `openingName` alone couldn't
+  expose (see Task 37 below). Everything still proven against the 41-
+  scenario parity harness (`tools/export_parity.py` + `web/src/engine/
+  __fixtures__/parity.json` + `parity.test.ts`).
+- **`web/src/App.tsx`** has four real screens:
+  1. **Setup**: pick a contest preset, pick King mode (Let him emerge /
+     Place your King now). Reads `players` from `loadSavedPlayers()`
+     (`projectionsStore.ts`) — "No slate loaded yet." if nothing's saved.
+  2. **Opening setup** (`OpeningSetupScreen.tsx`): pick-a-line screen —
+     suggested card, tier chips, search, explorer (family list expands to
+     variations), Random, "Play your own opening." **Bug fixed this
+     session (Task 38)**: clicking a family row previously only expanded
+     it — `onSelect` was never called for a bare family click, so
+     "choosing a family" silently did nothing to the current selection.
+     Now it calls `onSelect(family.line)` (the family's representative
+     line `rankFamilies` already resolves correctly, e.g. Morphy Defense
+     for Ruy Lopez, confirmed by `openings.test.ts`) *and* still toggles
+     expand, in the same click.
+  3. **Build** (`BuildScreen.tsx` — rewritten twice this session, Tasks 37
+     then 38; see below for the current design). Reachable after choosing
+     an opening.
+  4. **Admin** (`#/admin` only, no link anywhere else): CSV upload gate
+     behind `VITE_ADMIN_PASSWORD` (client-side only, not real access
+     control), "Clear projections."
+  - `web/src/theme.ts` + `ThemeToggle.tsx`: Club (light) / Slate (dark),
+    explicit choice in `localStorage` (`chess-dfs:theme`), default follows
+    `prefers-color-scheme` live when there's no explicit choice. Every
+    screen's header carries the toggle. All colors/fonts/board-squares are
+    CSS variables in `web/src/index.css`.
+  - `config/contests.json` still the source for contests; no admin editing
+    of contests.
+  - `@lichess-org/chessground` now does double duty: `BoardPreview.tsx`
+    (view-only, used by the opening-setup screen) and the new
+    `BuildBoard.tsx` (interactive — White drags, Task 38). Still **GPL-3.0
+    licensed; still not decided whether that's acceptable** — flagged
+    again this session since the build screen now depends on it far more
+    heavily than a static preview.
+  - Tests: React Testing Library + jsdom throughout, per-file opt-in (see
+    any test file's own header comment for why). `OpeningSetupScreen.
+    test.tsx` (7), `AdminScreen.test.tsx` (6), `App.test.tsx` (9),
+    `ThemeToggle.test.tsx` (5), `buildStats.test.ts` (7), `buildFlow.
+    test.ts` (11), `BuildScreen.test.tsx` (5) — the last one mocks
+    `@lichess-org/chessground` outright (jsdom has no real layout engine,
+    so chessground's pixel-based drag detection is unreachable here; see
+    Open Items) and drives real, unmocked `BuildScreen`/engine code
+    through a `simulateMove(orig, dest)` helper that calls the captured
+    `movable.events.after` directly, same as a real drop eventually would.
+
+### The build screen, current design (post–Task 38)
+
+Arrives on an empty interactive board with both side columns visible, no
+pick panel. A suggestion banner shows either the chosen opening line's next
+White move (an arrow on the board + "Suggested: `<move>` · `<line name>`" +
+"Play it") while White is still on that line, or every book continuation
+from the current position by name (each individually clickable) once
+White's left it, or nothing once truly out of book. "Play your own opening"
+gets the identical flow with no suggestions at all.
+
+White drags a legal (chess-AND-DFS-legal; captures/castling excluded
+outright "for now," per Task 38's own wording — next task adds them) piece;
+the move is **not** committed to the engine yet — the board shows a preview
+FEN (current state + the tentative move, via a throwaway chess.js clone)
+while a side panel (`PickPanel.tsx` — a true side panel on wide screens,
+bottom sheet ≤760px) opens beside it, listing eligible players for the
+moved piece (sortable by any column, "after this pick" salary preview).
+Confirming a pick commits the move for real and schedules Black's reply
+600ms later via `build.playBlackMove` (Black commits to a book line while
+White stays on it, re-chooses the moment White deviates — entirely the
+engine's own existing logic, not special-cased here) plus one `SeededRandom`
+generated fresh per build and held stable for its whole lifetime. Cancel
+just drops the pending move — the preview FEN snaps back to the real
+committed state on its own, no engine-level undo needed. There's no "Line
+complete" ending anymore; play just continues past wherever the chosen line
+runs out.
+
+- **Not yet built**: captures/castling as offerable White moves (explicitly
+  next); any free-play ending/dead-end UI (if Black ever has zero legal
+  moves, `BuildScreen.tsx` currently catches that and silently no-ops —
+  flagged, not handled); the Monte Carlo sim; any admin editing of
+  contests; a CLI on the TS side.
 
 ## Where We're Headed
 
-1. Ron needs to create **`web/.env`** with his own `VITE_ADMIN_PASSWORD=...`
-   — not created this session, deliberately (no secret was invented on his
-   behalf). It's covered by the root `.gitignore`'s bare `.env` pattern
-   already (verified via `git check-ignore`), so no gitignore change is
-   needed once he adds it.
-2. Decide on chessground's GPL-3.0 license (see Open Items) before this
-   goes further — it's a real obligation, not a technicality.
-3. The actual build screen: wire `build.ts`'s `playWhiteMove`/
-   `playBlackMove`/etc. into the UI so a chosen opening leads to a real,
-   playable (for White) build.
-4. The Monte Carlo sim port from `rraney/nfl-dfs` — still needed, unchanged.
-5. Simulated "Top 10%" metric — still a known gap.
+1. Captures and castling as real, offerable White moves on the build
+   screen — explicitly the next build-screen task per Task 38's own
+   wording ("castling and capture moves by White are not offered as legal
+   targets (next task adds them)").
+2. Decide on chessground's GPL-3.0 license — now a heavier dependency than
+   before (interactive board, not just a static preview).
+3. The Monte Carlo sim port from `rraney/nfl-dfs` — still needed, unchanged.
+4. Simulated "Top 10%" metric — still a known gap.
+5. Ron needs to create **`web/.env`** with his own `VITE_ADMIN_PASSWORD=...`
+   — still not created, deliberately (no secret invented on his behalf);
+   covered by the root `.gitignore`'s bare `.env` pattern already.
 6. If the engine changes, re-run `tools/export_parity.py` and `npm run
    test` to keep the parity fixture honest.
 
 ## Open Items
 
-- **`VITE_ADMIN_PASSWORD` not yet set.** See "Where We're Headed" above —
-  `web/.env` doesn't exist yet; the admin screen is unusable in dev/build
-  until Ron adds it. Tests don't depend on it (`vi.stubEnv` instead). See
-  `sessions/1026/10142026-task-35-hidden-admin-screen.md`.
+- **Still no real browser verification of any screen.** Re-confirmed again
+  this session: `libasound.so.2` is absent system-wide, no sudo available,
+  and even `apt-get install --dry-run`'s simulation fails on an unrelated
+  Docker keyring conflict. Whoever next has shell/sudo access to this
+  environment should fix it, not re-diagnose it. See `sessions/1026/
+  10142026-tasks-36-38-themes-and-build-screen-rework.md`.
+- **No "Back" navigation exists anywhere on the build screen**, across both
+  the Task 37 and Task 38 rewrites — the old placeholder had one; neither
+  task's prompt said to keep or drop it. Flagged twice now, still
+  unconfirmed either way. Same log as above.
+- **PLACED king mode's "silent King move while dragging" path has no
+  dedicated test** — every current build-screen test uses EMERGE mode. The
+  code path exists (mirrors Task 14's "later King moves lock no player"
+  rule) but is currently unexercised by anything that runs. Same log.
+- **A new, untracked `design/` directory appeared this session**
+  (Club/Slate build-screen mockup PNGs + HTML, with the same
+  `:Zone.Identifier` sidecar files already seen on the sample CSVs) — looks
+  like Ron's own planning reference, not created by this session. Left
+  alone, not committed. Same log.
+- **`VITE_ADMIN_PASSWORD` not yet set** — `web/.env` doesn't exist yet; the
+  admin screen is unusable in dev/build until Ron adds it. Tests don't
+  depend on it (`vi.stubEnv` instead).
 - **Admin login isn't persisted** across a reload or leaving/returning to
-  `#/admin` in the same session — unspecified either way, revisit if
-  that's annoying in practice. Same log as above.
-- **`/start` didn't appear as a slash command** at the start of this
-  session even though the skill file (`'.claude/skills/start/SKILL.md'`)
-  is correctly formed and identical in shape to `wrap-up`'s. Likely a
-  stale skill-list scan from before that directory existed (added Oct 13,
-  two days after `wrap-up`) — a window reload should fix it. Not
-  independently confirmed; worth a closer look if it recurs. Same log as
-  above.
-- **This environment needs `wsl.exe -- bash -lc "cd ~/chess-dfs/... && ..."`
-  for any `npm` command**, not just git — `npm` spawns via `cmd.exe`,
-  which rejects the UNC working directory outright. Plain `npm run ...`
-  through the Windows-side Bash tool fails immediately. Same log as above.
-- **chessground's GPL-3.0 license, unresolved.** Its own README: "your
-  combined work may be distributed only under the GPL. You must release
-  your source code to the users of your website." Flagged to Ron in
-  Task 34's report; no decision yet. See `sessions/1026/
-  10142026-tasks-31-34-opening-setup-and-engine-speed.md`.
-- **No real browser verification of any screen.** Tried to drive the app
-  with Playwright during Task 34; headless Chromium wouldn't launch —
-  missing system library `libasound.so.2`, and installing it needs `sudo`,
-  unavailable non-interactively here. Verified via the RTL/jsdom test suite
-  only. Whoever has shell/sudo access to this environment should either
-  install the missing lib or note it needs a different environment, then
-  consider `/run-skill-generator` once running the app actually works.
-- **`openingPreview`/`legalDepth` are slow (~49ms/call) and uncached.**
-  Built in Tasks 17/27, untouched since. Worked around at the UI layer only
-  (`appData.ts`'s `previewFor` cache, a 3-char search minimum, a 20-result
-  cap) — not fixed in the engine itself. Worth its own task if the explorer
-  needs to scale further or the Monte Carlo sim ever calls either in a hot
-  loop. See `sessions/1026/10142026-tasks-31-34-opening-setup-and-engine-speed.md`.
-- `cloneBoard`'s PGN-round-trip clone — profiled in Task 33 and confirmed
-  minor (~6–16% of a hot test's time). Left as-is; revisit only if it
-  becomes the bottleneck again (e.g. the Monte Carlo sim driving many
-  simulated builds at volume).
-- Chess.js has no public "resolve SAN without pushing" method, no public
-  "is this shape a castle/capture independent of legality" check, no
-  public clone-with-history method, and treats "capture" and "en passant"
-  as disjoint move flags where python-chess treats a capture as a capture
-  regardless — four workarounds live across `rules.ts`/`openings.ts`/
-  `build.ts` (move-list matching by from/to, resolve-then-branch-on-the-
-  matched-move, the PGN-round-trip `cloneBoard`, and `isCaptureMove`),
-  each deliberately centralized.
-- `build.ts`'s `playWhiteMove`/`resolvePlayers`/`applyResolvedPlayers`/
-  `isMovePlayableForBlack`/`playBlackTemplateMove` all resolve a
-  caller-supplied move via `findLegalMove` up front and throw a single
-  generic "illegal move" error if it doesn't match any legal move at all
-  — Python's originals inline shape checks that route to a more specific
-  error instead. No test exercises this — untested, zero-observed-
-  behavior-difference implementation detail.
-- Task-numbering collision (a prior session reused "Task 20c" for two
-  different pieces of work) and whether Ron intends to accept Scotch Game
-  at rank 2 / drop King's Indian Defense from the "top 9": both still
-  open, see `sessions/1026/10132026-pin-top-9-opening-ranks-test.md` and
-  `sessions/1026/10132026-never-moved-captures-field-tiers-and-family-
-  ranking.md`.
+  `#/admin` in the same session — unspecified either way.
+- **`openingPreview`/`legalDepth` are slow (~49ms/call) and uncached** at
+  the engine level — worked around at the UI layer only (`appData.ts`'s
+  `previewFor` cache, a 3-char search minimum, a 20-result cap). The
+  explorer's "select All families" interaction now visibly costs ~12–14s
+  in its own test for exactly this reason. Worth its own task if it needs
+  to scale further.
+- `cloneBoard`'s PGN-round-trip clone — profiled, confirmed minor. Left as-is.
+- Chess.js has no public "resolve SAN without pushing," "is this shape a
+  castle/capture independent of legality," clone-with-history, or capture-
+  vs-en-passant-unification API — four workarounds live across `rules.ts`/
+  `openings.ts`/`build.ts`, each deliberately centralized.
+- `build.ts`'s `playWhiteMove`/`resolvePlayers`/etc. throw a single generic
+  "illegal move" error where Python's originals route to a more specific
+  one — untested, zero-observed-behavior-difference implementation detail.
+- Task-numbering collision (a prior session reused "Task 20c" twice) and
+  whether Ron intends to accept Scotch Game at rank 2 / drop King's Indian
+  Defense from the "top 9": both still open — see `sessions/1026/
+  10132026-pin-top-9-opening-ranks-test.md` and `sessions/1026/
+  10132026-never-moved-captures-field-tiers-and-family-ranking.md`.
 - `excluded_families` and the six tier-boundary numbers are still
-  Python-level defaults/parameters on the Python side, not a config file —
-  same logs as above.
+  Python-level defaults/parameters, not a config file — same logs as above.
 - CLI wording for the Python CLI's opening-setup screen is still an
   unconfirmed guess, not confirmed UX — same logs as above.
 - `openings.book_weights()`/`loaders.load_popularity()`/
-  `data/openings/popularity.json` still have no engine caller (Python
-  side).
+  `data/openings/popularity.json` still have no engine caller (Python side).
 - No dedicated `contest_type` (GPP/H2H) field in `ContestConfig`; pawn
   promotion's DFS classification unresolved; the `logs/` vs `sessions/`
   doc-process mismatch; the `Top_Ten` sim-vs-postmortem distinction — all
   still open, carried forward unchanged across several sessions.
 - Kings still structurally can never be captured as the King piece itself
   (checkmate ends the position first — emergent, not a bug).
-- Full narrative detail for this session (Task 35: admin screen, upload
-  removal, the oxlint `set-state-in-effect` fix, the WSL/UNC git + npm
-  environment notes): `sessions/1026/10142026-task-35-hidden-admin-screen.md`.
-  Prior session (Tasks 31–34): `sessions/1026/
-  10142026-tasks-31-34-opening-setup-and-engine-speed.md`. Earlier logs in
-  `sessions/1026/` for everything predating that.
+- Full narrative detail for this session (Tasks 36–38: theming, the
+  template-play build screen, then its move-first-then-pick/suggestion-only
+  rework, the ECO-exposure engine addition, two bug fixes): `sessions/1026/
+  10142026-tasks-36-38-themes-and-build-screen-rework.md`. Earlier same-day
+  session (Task 35): `sessions/1026/10142026-task-35-hidden-admin-screen.md`.
+  Earlier logs in `sessions/1026/` for everything predating today.

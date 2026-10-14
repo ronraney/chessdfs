@@ -1,0 +1,40 @@
+.board-squares {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+}
+
+.board-square {
+  position: relative;
+}
+
+.board-square.light {
+  background: var(--board-light);
+}
+
+.board-square.dark {
+  background: var(--board-dark);
+}
+
+.board-square-rank,
+.board-square-file {
+  position: absolute;
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1;
+  color: var(--text-h);
+  opacity: 0.55;
+}
+
+.board-square-rank {
+  top: 3px;
+  left: 3px;
+}
+
+.board-square-file {
+  bottom: 3px;
+  right: 3px;
+}
