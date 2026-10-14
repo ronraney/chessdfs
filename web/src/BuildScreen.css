@@ -9,6 +9,36 @@
   gap: 20px;
 }
 
+/* Task 38d: dismissible onboarding strip, shown above everything else
+   until the player dismisses it (remembered in localStorage). */
+.how-it-works {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.how-it-works p {
+  margin: 0;
+  flex: 1 1 auto;
+  font-size: 14px;
+  color: var(--text-h);
+}
+
+.how-it-works-close {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  color: var(--text-h);
+  white-space: nowrap;
+}
+
 /* Header row -- Task 38b replaces the old large "Chess DFS" h1 fallback
    with this: wordmark + contest/King-mode chips + the theme toggle every
    screen carries. */
@@ -282,6 +312,19 @@
 .board-column .build-board {
   max-width: 420px;
   margin: 0 auto;
+}
+
+/* Task 38d: always states the next action, directly above the board. */
+.status-line {
+  margin: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-h);
 }
 
 .book-continues {

@@ -92,7 +92,12 @@ function chosenContinueButton(): HTMLElement {
 
 beforeEach(() => {
   lastApi = null;
+  window.localStorage.clear();
 });
+
+function statusLine(): HTMLElement {
+  return document.querySelector(".status-line") as HTMLElement;
+}
 
 describe("BuildScreen -- move first, then pick", () => {
   it("shows the chosen line's banner before any move, with Book continues offering it first", () => {
@@ -196,5 +201,59 @@ describe("BuildScreen -- move first, then pick", () => {
 
     expect(screen.getByText("Left the line after d4")).toBeInTheDocument();
     expect(document.querySelector(".continue-option.chosen")).toBeNull(); // no chosen move left to highlight
+  });
+});
+
+describe("BuildScreen -- status line (Task 38d)", () => {
+  it("shows 'Your move' on arrival", () => {
+    renderScreen();
+    expect(statusLine().textContent).toContain("Your move");
+  });
+
+  it("shows 'Pick your <piece>' once a move is played and the modal is open", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    await user.click(chosenContinueButton());
+
+    await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    expect(statusLine().textContent).toBe("Pick your Pawn.");
+  });
+
+  it("shows the Field's move once Black replies, then the White-to-move text", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    await user.click(chosenContinueButton());
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+
+    expect(statusLine().textContent).toBe("The Field is moving…");
+
+    await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+
+    expect(statusLine().textContent).toMatch(/^Field played .+ and locked .+\. Your move\./);
+  });
+});
+
+describe("BuildScreen -- How it works strip (Task 38d)", () => {
+  it("shows the strip by default, hides it once dismissed, and stays hidden after reload", async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(
+      <BuildScreen
+        preset={H2H}
+        players={PLAYERS}
+        kingMode={KingMode.EMERGE}
+        whiteKing={null}
+        blackKing={null}
+        chosenOpening={{ kind: "line", line: MORPHY_DEFENSE }}
+      />,
+    );
+    expect(screen.getByText(/You're White\./)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Got it" }));
+    expect(screen.queryByText(/You're White\./)).toBeNull();
+
+    unmount(); // simulates a reload -- a fresh mount, same localStorage
+    renderScreen();
+    expect(screen.queryByText(/You're White\./)).toBeNull();
   });
 });

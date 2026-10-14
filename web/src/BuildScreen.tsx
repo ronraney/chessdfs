@@ -60,6 +60,10 @@ const PIECE_GLYPH: Record<Piece, string> = {
   PAWN: "♟",
 };
 
+const HOW_IT_WORKS_KEY = "chess-dfs:how-it-works-dismissed";
+const HOW_IT_WORKS_TEXT =
+  "You're White. Each move locks a DFS player of that piece's type: pawns are cheap plays, knights TEs, bishops WRs, rooks RBs, queens $7K+ studs, the king your QB. The Field (Black) does the same. Build a 4–5 player core, then stop or keep going.";
+
 const BLACK_REPLY_DELAY_MS = 600;
 // At the very start of a build, `bookContinuations` returns essentially
 // every first move recorded anywhere in the 3,865-line book -- dozens of
@@ -123,6 +127,9 @@ export default function BuildScreen({ preset, players, kingMode, whiteKing, blac
   );
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
   const [pickError, setPickError] = useState<string | null>(null);
+  const [howItWorksDismissed, setHowItWorksDismissed] = useState<boolean>(
+    () => window.localStorage.getItem(HOW_IT_WORKS_KEY) === "1",
+  );
   const blackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -173,6 +180,27 @@ export default function BuildScreen({ preset, players, kingMode, whiteKing, blac
     const liveLine = openingLine(history, BOOK);
     if (liveLine !== null) bannerSubtext = `Now: ${liveLine.name} · ${liveLine.eco}`;
   }
+
+  // Task 38d: the "what do I do now" status line above the board. Priority
+  // order mirrors the sequence a build actually goes through: a pending
+  // pick (modal open) always wins, then whether Black's reply is still in
+  // flight (the setTimeout in commit()), and only otherwise White's own
+  // to-move text -- prefixed with what Black just played, whenever there
+  // is a Black move to report (i.e. every time but the very first, since
+  // turn is only ever "w" again right after Black's reply resolves).
+  const whiteToMoveText =
+    onChosenLine && chosenNextMove !== null
+      ? `Your move. Play ${chosenNextMove} to stay on ${chosenLine!.name}, pick another book move below, or drag any piece.`
+      : "Your move. Drag any piece — each move locks a player of that piece's type.";
+  const lastBlackMove = state.blackMoves.at(-1) ?? null;
+  const statusLine: string =
+    pendingMove !== null
+      ? `Pick your ${PIECE_LABEL[pendingMove.piece]}.`
+      : turn === "b"
+        ? "The Field is moving…"
+        : lastBlackMove !== null
+          ? `Field played ${lastBlackMove.san} and locked ${lastBlackMove.player.name}. ${whiteToMoveText}`
+          : whiteToMoveText;
 
   const continuationOptions: ContinuationOption[] =
     turn === "w"
@@ -268,6 +296,11 @@ export default function BuildScreen({ preset, players, kingMode, whiteKing, blac
     setPickError(null);
   }
 
+  function dismissHowItWorks(): void {
+    window.localStorage.setItem(HOW_IT_WORKS_KEY, "1");
+    setHowItWorksDismissed(true);
+  }
+
   const whiteStats = sideStats(state.whiteMoves.map((m) => m.player), NFL, preset.contest);
   const blackStats = sideStats(state.blackMoves.map((m) => m.player), NFL, preset.contest);
   const [family, variation] = chosenLine !== null ? splitFamily(chosenLine.name) : ["Your own opening", ""];
@@ -284,6 +317,15 @@ export default function BuildScreen({ preset, players, kingMode, whiteKing, blac
 
   return (
     <main className="build-screen">
+      {!howItWorksDismissed && (
+        <div className="how-it-works">
+          <p>{HOW_IT_WORKS_TEXT}</p>
+          <button type="button" className="how-it-works-close" onClick={dismissHowItWorks}>
+            Got it
+          </button>
+        </div>
+      )}
+
       <header className="build-header">
         <span className="build-wordmark">Chess DFS</span>
         <div className="build-chips">
@@ -315,6 +357,7 @@ export default function BuildScreen({ preset, players, kingMode, whiteKing, blac
       <div className="build-layout">
         <SideColumn side="you" label="You" sideName="White" stats={whiteStats} moves={state.whiteMoves} />
         <div className="board-column">
+          <p className="status-line">{statusLine}</p>
           <BuildBoard fen={previewFen} dests={pendingMove === null ? dests : new Map()} lastMove={lastMove} onMove={handleBoardMove} />
 
           {turn === "w" && (
