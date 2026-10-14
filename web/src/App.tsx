@@ -17,6 +17,7 @@ import type { ChosenOpening } from "./OpeningSetupScreen";
 import OpeningSetupScreen from "./OpeningSetupScreen";
 import { classify } from "./engine/pieces";
 import { getSavedProjectionsCsv } from "./projectionsStore";
+import ThemeToggle from "./ThemeToggle";
 
 function loadSavedPlayers(): Player[] | null {
   const csv = getSavedProjectionsCsv();
@@ -74,6 +75,9 @@ function App() {
   if (players === null) {
     return (
       <main className="setup">
+        <header className="app-header">
+          <ThemeToggle />
+        </header>
         <h1>Chess DFS</h1>
         <p className="status">No slate loaded yet.</p>
       </main>
@@ -96,6 +100,9 @@ function App() {
   if (screen === "build" && selectedPreset !== null && chosenOpening !== null) {
     return (
       <main className="setup">
+        <header className="app-header">
+          <ThemeToggle />
+        </header>
         <h1>Chess DFS</h1>
         <h2>Build — coming next</h2>
         <p>
@@ -121,6 +128,9 @@ function App() {
 
   return (
     <main className="setup">
+      <header className="app-header">
+        <ThemeToggle />
+      </header>
       <h1>Chess DFS</h1>
 
       <section className="step">

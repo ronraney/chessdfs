@@ -1,0 +1,27 @@
+.theme-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.theme-option {
+  font: inherit;
+  font-size: 14px;
+  padding: 10px 16px;
+  min-height: 44px;
+  min-width: 44px;
+  border: none;
+  background: var(--card);
+  color: var(--text);
+}
+
+.theme-option + .theme-option {
+  border-left: 1px solid var(--border);
+}
+
+.theme-option.selected {
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 600;
+}

@@ -20,6 +20,7 @@ import { BOOK, LAST_RANK, RANKED_FAMILIES, RANK_BY_FAMILY, previewFor, statsFor,
 import BoardPreview from "./BoardPreview";
 import type { ContestPreset } from "./engine/config";
 import { Piece } from "./engine/models";
+import ThemeToggle from "./ThemeToggle";
 import {
   findOpeningLines,
   randomOpening,
@@ -129,6 +130,9 @@ export default function OpeningSetupScreen({ preset, onChoose, onBack }: Props) 
 
   return (
     <main className="setup opening-setup">
+      <header className="app-header">
+        <ThemeToggle />
+      </header>
       <h1>Chess DFS</h1>
       <button type="button" className="back-link" onClick={onBack}>
         ← Back

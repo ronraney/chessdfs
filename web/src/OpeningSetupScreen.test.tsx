@@ -23,6 +23,11 @@ describe("OpeningSetupScreen", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Sicilian Defense" })).toBeInTheDocument();
   });
 
+  it("shows the theme toggle", () => {
+    renderScreen();
+    expect(screen.getByRole("group", { name: "Theme" })).toBeInTheDocument();
+  });
+
   it("pre-selects the contest's own tier chip", () => {
     // H2H (2 entries) resolves to the Small tier.
     renderScreen();

@@ -29,6 +29,11 @@ describe("AdminScreen", () => {
     vi.unstubAllEnvs();
   });
 
+  it("shows the theme toggle", () => {
+    render(<AdminScreen />);
+    expect(screen.getByRole("group", { name: "Theme" })).toBeInTheDocument();
+  });
+
   it("wrong password shows no upload control", async () => {
     render(<AdminScreen />);
     const user = userEvent.setup();

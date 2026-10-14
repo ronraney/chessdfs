@@ -11,6 +11,7 @@ import { useState, type ChangeEvent, type FormEvent } from "react";
 import "./App.css";
 import { loadEtrCsv } from "./engine/loaders";
 import { clearProjectionsCsv, getSavedProjectionsCsv, saveProjectionsCsv } from "./projectionsStore";
+import ThemeToggle from "./ThemeToggle";
 
 // Blob#text() isn't implemented by jsdom (the test environment), so
 // FileReader is used instead -- same reasoning as the old App.tsx upload.
@@ -76,6 +77,9 @@ function AdminScreen() {
   if (!authed) {
     return (
       <main className="setup">
+        <header className="app-header">
+          <ThemeToggle />
+        </header>
         <h1>Admin</h1>
         <form className="step" onSubmit={handleSubmitPassword}>
           <label htmlFor="admin-password">Password</label>
@@ -100,6 +104,9 @@ function AdminScreen() {
 
   return (
     <main className="setup">
+      <header className="app-header">
+        <ThemeToggle />
+      </header>
       <h1>Admin</h1>
       <section className="step">
         <h2>Projections</h2>

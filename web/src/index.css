@@ -1,23 +1,33 @@
+/* Task 36: Club (light, default) and Slate (dark) themes. `--accent` is the
+   single interactive color Club defines; Slate splits it into `--accent`
+   (You) and `--accent-field` (Field) -- Club has no second color in spec,
+   so `--accent-field` just reuses `--accent` there. An explicit choice is
+   written to <html data-theme> by theme.ts/ThemeToggle; absent one, the
+   prefers-color-scheme block below decides, which is how "default follows
+   the device setting" stays true. */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
+  --bg: #f4efe6;
+  --card: #fbf8f2;
+  --border: #d9cfbf;
+  --text-h: #1e1b16;
+  --text: #6b6358;
+  --accent: #8a2d2a;
+  --accent-field: #8a2d2a;
+  --accent-bg: rgba(138, 45, 42, 0.1);
+  --accent-border: rgba(138, 45, 42, 0.5);
+  --board-light: #ead9b8;
+  --board-dark: #a97b54;
+  --danger: #b3261e;
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  --heading: 'Cormorant Garamond', Georgia, serif;
+  --sans: 'Source Sans 3', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
 
   font: 18px/145% var(--sans);
   letter-spacing: 0.18px;
-  color-scheme: light dark;
+  color-scheme: light;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
@@ -31,23 +41,50 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
+  :root:not([data-theme='club']) {
+    --bg: #0e1116;
+    --card: #161b22;
+    --border: #2a313c;
+    --text-h: #e6eaf0;
+    --text: #8b95a5;
+    --accent: #c6f135;
+    --accent-field: #8ab4f8;
+    --accent-bg: rgba(198, 241, 53, 0.1);
+    --accent-border: rgba(198, 241, 53, 0.5);
+    --board-light: #3c4452;
+    --board-dark: #262c36;
+    --danger: #ff6b6b;
     --shadow:
       rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+    --heading: 'Space Grotesk', system-ui, sans-serif;
+    --sans: 'Space Grotesk', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+
+    color-scheme: dark;
   }
+}
+
+:root[data-theme='slate'] {
+  --bg: #0e1116;
+  --card: #161b22;
+  --border: #2a313c;
+  --text-h: #e6eaf0;
+  --text: #8b95a5;
+  --accent: #c6f135;
+  --accent-field: #8ab4f8;
+  --accent-bg: rgba(198, 241, 53, 0.1);
+  --accent-border: rgba(198, 241, 53, 0.5);
+  --board-light: #3c4452;
+  --board-dark: #262c36;
+  --shadow:
+    rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+
+  --heading: 'Space Grotesk', system-ui, sans-serif;
+  --sans: 'Space Grotesk', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+
+  color-scheme: dark;
 }
 
 #root {
@@ -95,17 +132,56 @@ p {
   margin: 0;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+/* Header + theme toggle, present on every screen. */
+.app-header {
+  display: flex;
+  justify-content: flex-end;
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+/* Base form-control theming -- screen-specific CSS (App.css,
+   OpeningSetupScreen.css) layers more specific rules on top of this where
+   needed; this just keeps every input/select/button out of the browser's
+   unthemed default look and at a >=44px tap target. */
+button,
+input:not([type='radio']):not([type='checkbox']),
+select {
+  font: inherit;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+button {
+  cursor: pointer;
+  color: var(--text-h);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 14px;
+}
+
+input:not([type='radio']):not([type='checkbox']),
+select {
+  color: var(--text-h);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+input[type='radio'],
+input[type='checkbox'] {
+  accent-color: var(--accent);
+}
+
+/* The chessground board preview ships its own checker-pattern CSS
+   (chessground.brown.css, imported by BoardPreview.tsx); overriding it by
+   descendant selector beats it on specificity regardless of stylesheet
+   order, without needing to drop that import. */
+.board-preview cg-board {
+  background-color: var(--board-light);
+  background-image:
+    linear-gradient(45deg, var(--board-dark) 25%, transparent 25%, transparent 75%, var(--board-dark) 75%),
+    linear-gradient(45deg, var(--board-dark) 25%, transparent 25%, transparent 75%, var(--board-dark) 75%);
+  background-size: 25% 25%;
+  background-position: 0 0, 12.5% 12.5%;
 }

@@ -44,6 +44,11 @@ describe("App setup screen", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Chess DFS" })).toBeInTheDocument();
   });
 
+  it("shows the theme toggle", () => {
+    render(<App />);
+    expect(screen.getByRole("group", { name: "Theme" })).toBeInTheDocument();
+  });
+
   it('shows "No slate loaded yet" when no projections are saved', () => {
     render(<App />);
     expect(screen.getByText("No slate loaded yet.")).toBeInTheDocument();
