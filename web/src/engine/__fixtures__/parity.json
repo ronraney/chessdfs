@@ -1,0 +1,8229 @@
+{
+  "scenario_count": 33,
+  "scenarios": [
+    {
+      "name": "classify_all_sample_players",
+      "kind": "classify_all_players",
+      "num_players": 301,
+      "players": [
+        {
+          "id": "44391896",
+          "name": "Jahmyr Gibbs",
+          "positions": [
+            "RB"
+          ],
+          "team": "DET",
+          "opp": "@ARI",
+          "salary": 9800,
+          "proj": 29.5,
+          "own_small": 0.402,
+          "own_large": 0.342
+        },
+        {
+          "id": "44392166",
+          "name": "Jaxon Smith-Njigba",
+          "positions": [
+            "WR"
+          ],
+          "team": "SEA",
+          "opp": "SF",
+          "salary": 8800,
+          "proj": 22.6,
+          "own_small": 0.152,
+          "own_large": 0.138
+        },
+        {
+          "id": "44391898",
+          "name": "Christian McCaffrey",
+          "positions": [
+            "RB"
+          ],
+          "team": "SF",
+          "opp": "@SEA",
+          "salary": 8200,
+          "proj": 20.5,
+          "own_small": 0.049,
+          "own_large": 0.083
+        },
+        {
+          "id": "44392168",
+          "name": "Ja'Marr Chase",
+          "positions": [
+            "WR"
+          ],
+          "team": "CIN",
+          "opp": "@MIA",
+          "salary": 8100,
+          "proj": 19.4,
+          "own_small": 0.081,
+          "own_large": 0.09
+        },
+        {
+          "id": "44392170",
+          "name": "Amon-Ra St. Brown",
+          "positions": [
+            "WR"
+          ],
+          "team": "DET",
+          "opp": "@ARI",
+          "salary": 7900,
+          "proj": 21.4,
+          "own_small": 0.267,
+          "own_large": 0.239
+        },
+        {
+          "id": "44391900",
+          "name": "Jonathan Taylor",
+          "positions": [
+            "RB"
+          ],
+          "team": "IND",
+          "opp": "@PIT",
+          "salary": 7800,
+          "proj": 19.7,
+          "own_small": 0.105,
+          "own_large": 0.133
+        },
+        {
+          "id": "44392172",
+          "name": "Chris Olave",
+          "positions": [
+            "WR"
+          ],
+          "team": "NO",
+          "opp": "MIN",
+          "salary": 7700,
+          "proj": 17.6,
+          "own_small": 0.068,
+          "own_large": 0.075
+        },
+        {
+          "id": "44392174",
+          "name": "Nico Collins",
+          "positions": [
+            "WR"
+          ],
+          "team": "HOU",
+          "opp": "@TEN",
+          "salary": 7500,
+          "proj": 17.3,
+          "own_small": 0.095,
+          "own_large": 0.106
+        },
+        {
+          "id": "44392176",
+          "name": "Justin Jefferson",
+          "positions": [
+            "WR"
+          ],
+          "team": "MIN",
+          "opp": "@NO",
+          "salary": 7300,
+          "proj": 17.4,
+          "own_small": 0.11599999999999999,
+          "own_large": 0.102
+        },
+        {
+          "id": "44391902",
+          "name": "Ashton Jeanty",
+          "positions": [
+            "RB"
+          ],
+          "team": "LV",
+          "opp": "@NE",
+          "salary": 7200,
+          "proj": 15.8,
+          "own_small": 0.009000000000000001,
+          "own_large": 0.031
+        },
+        {
+          "id": "44392178",
+          "name": "Tee Higgins",
+          "positions": [
+            "WR"
+          ],
+          "team": "CIN",
+          "opp": "@MIA",
+          "salary": 7100,
+          "proj": 12.5,
+          "own_small": 0.002,
+          "own_large": 0.006999999999999999
+        },
+        {
+          "id": "44392588",
+          "name": "Brock Bowers",
+          "positions": [
+            "TE"
+          ],
+          "team": "LV",
+          "opp": "@NE",
+          "salary": 7000,
+          "proj": 18.4,
+          "own_small": 0.095,
+          "own_large": 0.133
+        },
+        {
+          "id": "44391824",
+          "name": "Joe Burrow",
+          "positions": [
+            "QB"
+          ],
+          "team": "CIN",
+          "opp": "@MIA",
+          "salary": 6900,
+          "proj": 19.2,
+          "own_small": 0.005,
+          "own_large": 0.019
+        },
+        {
+          "id": "44391904",
+          "name": "Chase Brown",
+          "positions": [
+            "RB"
+          ],
+          "team": "CIN",
+          "opp": "@MIA",
+          "salary": 6900,
+          "proj": 18.8,
+          "own_small": 0.102,
+          "own_large": 0.139
+        },
+        {
+          "id": "44392590",
+          "name": "Trey McBride",
+          "positions": [
+            "TE"
+          ],
+          "team": "ARI",
+          "opp": "DET",
+          "salary": 6700,
+          "proj": 20.5,
+          "own_small": 0.395,
+          "own_large": 0.325
+        },
+        {
+          "id": "44391906",
+          "name": "Jaylen Warren",
+          "positions": [
+            "RB"
+          ],
+          "team": "PIT",
+          "opp": "IND",
+          "salary": 6700,
+          "proj": 19.8,
+          "own_small": 0.193,
+          "own_large": 0.177
+        },
+        {
+          "id": "44391825",
+          "name": "Jared Goff",
+          "positions": [
+            "QB"
+          ],
+          "team": "DET",
+          "opp": "@ARI",
+          "salary": 6600,
+          "proj": 22.1,
+          "own_small": 0.16,
+          "own_large": 0.133
+        },
+        {
+          "id": "44392180",
+          "name": "Garrett Wilson",
+          "positions": [
+            "WR"
+          ],
+          "team": "NYJ",
+          "opp": "CLE",
+          "salary": 6600,
+          "proj": 16.8,
+          "own_small": 0.126,
+          "own_large": 0.139
+        },
+        {
+          "id": "44391908",
+          "name": "Aaron Jones Sr.",
+          "positions": [
+            "RB"
+          ],
+          "team": "MIN",
+          "opp": "@NO",
+          "salary": 6500,
+          "proj": 19.1,
+          "own_small": 0.146,
+          "own_large": 0.163
+        },
+        {
+          "id": "44391826",
+          "name": "Brock Purdy",
+          "positions": [
+            "QB"
+          ],
+          "team": "SF",
+          "opp": "@SEA",
+          "salary": 6500,
+          "proj": 19.0,
+          "own_small": 0.026000000000000002,
+          "own_large": 0.033
+        },
+        {
+          "id": "44392182",
+          "name": "Mike Evans",
+          "positions": [
+            "WR"
+          ],
+          "team": "SF",
+          "opp": "@SEA",
+          "salary": 6500,
+          "proj": 12.8,
+          "own_small": 0.005,
+          "own_large": 0.018000000000000002
+        },
+        {
+          "id": "44392184",
+          "name": "Christian Watson",
+          "positions": [
+            "WR"
+          ],
+          "team": "GB",
+          "opp": "CHI",
+          "salary": 6400,
+          "proj": 14.3,
+          "own_small": 0.066,
+          "own_large": 0.086
+        },
+        {
+          "id": "44391827",
+          "name": "Drake Maye",
+          "positions": [
+            "QB"
+          ],
+          "team": "NE",
+          "opp": "LV",
+          "salary": 6300,
+          "proj": 20.0,
+          "own_small": 0.045,
+          "own_large": 0.057999999999999996
+        },
+        {
+          "id": "44392186",
+          "name": "Malik Nabers",
+          "positions": [
+            "WR"
+          ],
+          "team": "NYG",
+          "opp": "@WAS",
+          "salary": 6300,
+          "proj": 13.5,
+          "own_small": 0.031,
+          "own_large": 0.047
+        },
+        {
+          "id": "44392188",
+          "name": "Michael Wilson",
+          "positions": [
+            "WR"
+          ],
+          "team": "ARI",
+          "opp": "DET",
+          "salary": 6200,
+          "proj": 18.2,
+          "own_small": 0.41700000000000004,
+          "own_large": 0.34700000000000003
+        },
+        {
+          "id": "44391912",
+          "name": "D'Andre Swift",
+          "positions": [
+            "RB"
+          ],
+          "team": "CHI",
+          "opp": "@GB",
+          "salary": 6200,
+          "proj": 19.7,
+          "own_small": 0.414,
+          "own_large": 0.369
+        },
+        {
+          "id": "44391914",
+          "name": "Jeremiyah Love",
+          "positions": [
+            "RB"
+          ],
+          "team": "ARI",
+          "opp": "DET",
+          "salary": 6100,
+          "proj": 12.6,
+          "own_small": 0.05,
+          "own_large": 0.044000000000000004
+        },
+        {
+          "id": "44392190",
+          "name": "Jaylen Waddle",
+          "positions": [
+            "WR"
+          ],
+          "team": "DEN",
+          "opp": "@LAC",
+          "salary": 6100,
+          "proj": 13.3,
+          "own_small": 0.047,
+          "own_large": 0.061
+        },
+        {
+          "id": "44391829",
+          "name": "Tyler Shough",
+          "positions": [
+            "QB"
+          ],
+          "team": "NO",
+          "opp": "MIN",
+          "salary": 6100,
+          "proj": 17.5,
+          "own_small": 0.009000000000000001,
+          "own_large": 0.02
+        },
+        {
+          "id": "44392192",
+          "name": "Josh Downs",
+          "positions": [
+            "WR"
+          ],
+          "team": "IND",
+          "opp": "@PIT",
+          "salary": 6000,
+          "proj": 12.1,
+          "own_small": 0.013999999999999999,
+          "own_large": 0.025
+        },
+        {
+          "id": "44391916",
+          "name": "Omarion Hampton",
+          "positions": [
+            "RB"
+          ],
+          "team": "LAC",
+          "opp": "DEN",
+          "salary": 6000,
+          "proj": 9.4,
+          "own_small": 0.002,
+          "own_large": 0.003
+        },
+        {
+          "id": "44391918",
+          "name": "Cam Skattebo",
+          "positions": [
+            "RB"
+          ],
+          "team": "NYG",
+          "opp": "@WAS",
+          "salary": 6000,
+          "proj": 13.8,
+          "own_small": 0.033,
+          "own_large": 0.045
+        },
+        {
+          "id": "44391830",
+          "name": "Jayden Daniels",
+          "positions": [
+            "QB"
+          ],
+          "team": "WAS",
+          "opp": "NYG",
+          "salary": 6000,
+          "proj": 18.4,
+          "own_small": 0.024,
+          "own_large": 0.031
+        },
+        {
+          "id": "44392194",
+          "name": "Jameson Williams",
+          "positions": [
+            "WR"
+          ],
+          "team": "DET",
+          "opp": "@ARI",
+          "salary": 5900,
+          "proj": 12.9,
+          "own_small": 0.141,
+          "own_large": 0.113
+        },
+        {
+          "id": "44391831",
+          "name": "C.J. Stroud",
+          "positions": [
+            "QB"
+          ],
+          "team": "HOU",
+          "opp": "@TEN",
+          "salary": 5900,
+          "proj": 17.9,
+          "own_small": 0.02,
+          "own_large": 0.028999999999999998
+        },
+        {
+          "id": "44391922",
+          "name": "David Montgomery",
+          "positions": [
+            "RB"
+          ],
+          "team": "HOU",
+          "opp": "@TEN",
+          "salary": 5800,
+          "proj": 11.2,
+          "own_small": 0.003,
+          "own_large": 0.008
+        },
+        {
+          "id": "44391832",
+          "name": "Sam Darnold",
+          "positions": [
+            "QB"
+          ],
+          "team": "SEA",
+          "opp": "SF",
+          "salary": 5800,
+          "proj": 17.6,
+          "own_small": 0.036000000000000004,
+          "own_large": 0.033
+        },
+        {
+          "id": "44391924",
+          "name": "Quinshon Judkins",
+          "positions": [
+            "RB"
+          ],
+          "team": "CLE",
+          "opp": "@NYJ",
+          "salary": 5700,
+          "proj": 14.2,
+          "own_small": 0.11,
+          "own_large": 0.081
+        },
+        {
+          "id": "44391833",
+          "name": "Jordan Love",
+          "positions": [
+            "QB"
+          ],
+          "team": "GB",
+          "opp": "CHI",
+          "salary": 5700,
+          "proj": 17.6,
+          "own_small": 0.049,
+          "own_large": 0.046
+        },
+        {
+          "id": "44392198",
+          "name": "Matthew Golden",
+          "positions": [
+            "WR"
+          ],
+          "team": "GB",
+          "opp": "CHI",
+          "salary": 5700,
+          "proj": 13.2,
+          "own_small": 0.10300000000000001,
+          "own_large": 0.102
+        },
+        {
+          "id": "44391834",
+          "name": "Bo Nix",
+          "positions": [
+            "QB"
+          ],
+          "team": "DEN",
+          "opp": "@LAC",
+          "salary": 5600,
+          "proj": 17.8,
+          "own_small": 0.037000000000000005,
+          "own_large": 0.037000000000000005
+        },
+        {
+          "id": "44391926",
+          "name": "Tony Pollard",
+          "positions": [
+            "RB"
+          ],
+          "team": "TEN",
+          "opp": "HOU",
+          "salary": 5600,
+          "proj": 10.8,
+          "own_small": 0.006,
+          "own_large": 0.005
+        },
+        {
+          "id": "44391835",
+          "name": "Jacoby Brissett",
+          "positions": [
+            "QB"
+          ],
+          "team": "ARI",
+          "opp": "DET",
+          "salary": 5500,
+          "proj": 20.8,
+          "own_small": 0.28300000000000003,
+          "own_large": 0.204
+        },
+        {
+          "id": "44391930",
+          "name": "Rhamondre Stevenson",
+          "positions": [
+            "RB"
+          ],
+          "team": "NE",
+          "opp": "LV",
+          "salary": 5500,
+          "proj": 12.5,
+          "own_small": 0.005,
+          "own_large": 0.023
+        },
+        {
+          "id": "44392202",
+          "name": "Deebo Samuel Sr.",
+          "positions": [
+            "WR"
+          ],
+          "team": "SF",
+          "opp": "@SEA",
+          "salary": 5500,
+          "proj": 11.2,
+          "own_small": 0.011000000000000001,
+          "own_large": 0.013999999999999999
+        },
+        {
+          "id": "44391836",
+          "name": "Kirk Cousins",
+          "positions": [
+            "QB"
+          ],
+          "team": "LV",
+          "opp": "@NE",
+          "salary": 5400,
+          "proj": 15.2,
+          "own_small": 0.012,
+          "own_large": 0.022000000000000002
+        },
+        {
+          "id": "44391934",
+          "name": "Alvin Kamara",
+          "positions": [
+            "RB"
+          ],
+          "team": "NO",
+          "opp": "MIN",
+          "salary": 5400,
+          "proj": 11.4,
+          "own_small": 0.002,
+          "own_large": 0.016
+        },
+        {
+          "id": "44391932",
+          "name": "Braelon Allen",
+          "positions": [
+            "RB"
+          ],
+          "team": "NYJ",
+          "opp": "CLE",
+          "salary": 5400,
+          "proj": 16.2,
+          "own_small": 0.262,
+          "own_large": 0.23399999999999999
+        },
+        {
+          "id": "44392208",
+          "name": "DK Metcalf",
+          "positions": [
+            "WR"
+          ],
+          "team": "PIT",
+          "opp": "IND",
+          "salary": 5400,
+          "proj": 13.5,
+          "own_small": 0.131,
+          "own_large": 0.127
+        },
+        {
+          "id": "44391936",
+          "name": "Ollie Gordon II",
+          "positions": [
+            "RB"
+          ],
+          "team": "MIA",
+          "opp": "CIN",
+          "salary": 5300,
+          "proj": 11.8,
+          "own_small": 0.002,
+          "own_large": 0.011000000000000001
+        },
+        {
+          "id": "44391837",
+          "name": "Aaron Rodgers",
+          "positions": [
+            "QB"
+          ],
+          "team": "PIT",
+          "opp": "IND",
+          "salary": 5300,
+          "proj": 16.0,
+          "own_small": 0.034,
+          "own_large": 0.034
+        },
+        {
+          "id": "44391938",
+          "name": "Emanuel Wilson",
+          "positions": [
+            "RB"
+          ],
+          "team": "SEA",
+          "opp": "SF",
+          "salary": 5300,
+          "proj": 15.9,
+          "own_small": 0.23600000000000002,
+          "own_large": 0.223
+        },
+        {
+          "id": "44392210",
+          "name": "Carnell Tate",
+          "positions": [
+            "WR"
+          ],
+          "team": "TEN",
+          "opp": "HOU",
+          "salary": 5300,
+          "proj": 12.3,
+          "own_small": 0.057999999999999996,
+          "own_large": 0.057
+        },
+        {
+          "id": "44392212",
+          "name": "Terry McLaurin",
+          "positions": [
+            "WR"
+          ],
+          "team": "WAS",
+          "opp": "NYG",
+          "salary": 5300,
+          "proj": 11.7,
+          "own_small": 0.038,
+          "own_large": 0.042
+        },
+        {
+          "id": "44392214",
+          "name": "Denzel Boston",
+          "positions": [
+            "WR"
+          ],
+          "team": "CLE",
+          "opp": "@NYJ",
+          "salary": 5200,
+          "proj": 10.9,
+          "own_small": 0.028999999999999998,
+          "own_large": 0.045
+        },
+        {
+          "id": "44391942",
+          "name": "RJ Harvey",
+          "positions": [
+            "RB"
+          ],
+          "team": "DEN",
+          "opp": "@LAC",
+          "salary": 5200,
+          "proj": 11.9,
+          "own_small": 0.017,
+          "own_large": 0.034
+        },
+        {
+          "id": "44391838",
+          "name": "Kyler Murray",
+          "positions": [
+            "QB"
+          ],
+          "team": "MIN",
+          "opp": "@NO",
+          "salary": 5200,
+          "proj": 17.1,
+          "own_small": 0.033,
+          "own_large": 0.04
+        },
+        {
+          "id": "44392216",
+          "name": "Devaughn Vele",
+          "positions": [
+            "WR"
+          ],
+          "team": "NO",
+          "opp": "MIN",
+          "salary": 5200,
+          "proj": 10.4,
+          "own_small": 0.011000000000000001,
+          "own_large": 0.015
+        },
+        {
+          "id": "44392592",
+          "name": "George Kittle",
+          "positions": [
+            "TE"
+          ],
+          "team": "SF",
+          "opp": "@SEA",
+          "salary": 5200,
+          "proj": 13.9,
+          "own_small": 0.091,
+          "own_large": 0.106
+        },
+        {
+          "id": "44391946",
+          "name": "Tyler Allgeier",
+          "positions": [
+            "RB"
+          ],
+          "team": "ARI",
+          "opp": "DET",
+          "salary": 5100,
+          "proj": 8.1,
+          "own_small": 0.002,
+          "own_large": 0.003
+        },
+        {
+          "id": "44391839",
+          "name": "Deshaun Watson",
+          "positions": [
+            "QB"
+          ],
+          "team": "CLE",
+          "opp": "@NYJ",
+          "salary": 5100,
+          "proj": 16.4,
+          "own_small": 0.048,
+          "own_large": 0.051
+        },
+        {
+          "id": "44391840",
+          "name": "Justin Herbert",
+          "positions": [
+            "QB"
+          ],
+          "team": "LAC",
+          "opp": "DEN",
+          "salary": 5100,
+          "proj": 16.1,
+          "own_small": 0.046,
+          "own_large": 0.045
+        },
+        {
+          "id": "44391944",
+          "name": "Rachaad White",
+          "positions": [
+            "RB"
+          ],
+          "team": "WAS",
+          "opp": "NYG",
+          "salary": 5100,
+          "proj": 8.0,
+          "own_small": 0.002,
+          "own_large": 0.003
+        },
+        {
+          "id": "44391948",
+          "name": "J.K. Dobbins",
+          "positions": [
+            "RB"
+          ],
+          "team": "DEN",
+          "opp": "@LAC",
+          "salary": 5000,
+          "proj": 9.7,
+          "own_small": 0.005,
+          "own_large": 0.013999999999999999
+        },
+        {
+          "id": "44391841",
+          "name": "Daniel Jones",
+          "positions": [
+            "QB"
+          ],
+          "team": "IND",
+          "opp": "@PIT",
+          "salary": 5000,
+          "proj": 14.0,
+          "own_small": 0.002,
+          "own_large": 0.01
+        },
+        {
+          "id": "44392594",
+          "name": "Tyler Warren",
+          "positions": [
+            "TE"
+          ],
+          "team": "IND",
+          "opp": "@PIT",
+          "salary": 5000,
+          "proj": 12.7,
+          "own_small": 0.036000000000000004,
+          "own_large": 0.053
+        },
+        {
+          "id": "44391950",
+          "name": "TreVeyon Henderson",
+          "positions": [
+            "RB"
+          ],
+          "team": "NE",
+          "opp": "LV",
+          "salary": 5000,
+          "proj": 11.7,
+          "own_small": 0.025,
+          "own_large": 0.031
+        },
+        {
+          "id": "44392220",
+          "name": "Romeo Doubs",
+          "positions": [
+            "WR"
+          ],
+          "team": "NE",
+          "opp": "LV",
+          "salary": 5000,
+          "proj": 12.1,
+          "own_small": 0.102,
+          "own_large": 0.102
+        },
+        {
+          "id": "44391842",
+          "name": "Geno Smith",
+          "positions": [
+            "QB"
+          ],
+          "team": "NYJ",
+          "opp": "CLE",
+          "salary": 5000,
+          "proj": 14.4,
+          "own_small": 0.018000000000000002,
+          "own_large": 0.032
+        },
+        {
+          "id": "44392222",
+          "name": "Luther Burden III",
+          "positions": [
+            "WR"
+          ],
+          "team": "CHI",
+          "opp": "@GB",
+          "salary": 4900,
+          "proj": 12.7,
+          "own_small": 0.14300000000000002,
+          "own_large": 0.134
+        },
+        {
+          "id": "44392596",
+          "name": "Sam LaPorta",
+          "positions": [
+            "TE"
+          ],
+          "team": "DET",
+          "opp": "@ARI",
+          "salary": 4900,
+          "proj": 13.4,
+          "own_small": 0.166,
+          "own_large": 0.135
+        },
+        {
+          "id": "44391952",
+          "name": "Kendre Miller",
+          "positions": [
+            "RB"
+          ],
+          "team": "NO",
+          "opp": "MIN",
+          "salary": 4900,
+          "proj": 7.0,
+          "own_small": 0.001,
+          "own_large": 0.001
+        },
+        {
+          "id": "44391843",
+          "name": "Cam Ward",
+          "positions": [
+            "QB"
+          ],
+          "team": "TEN",
+          "opp": "HOU",
+          "salary": 4900,
+          "proj": 12.9,
+          "own_small": 0.001,
+          "own_large": 0.003
+        },
+        {
+          "id": "44391954",
+          "name": "Jacory Croskey-Merritt",
+          "positions": [
+            "RB"
+          ],
+          "team": "WAS",
+          "opp": "NYG",
+          "salary": 4900,
+          "proj": 10.8,
+          "own_small": 0.026000000000000002,
+          "own_large": 0.02
+        },
+        {
+          "id": "44391956",
+          "name": "MarShawn Lloyd",
+          "positions": [
+            "RB"
+          ],
+          "team": "GB",
+          "opp": "CHI",
+          "salary": 4800,
+          "proj": 10.3,
+          "own_small": 0.013000000000000001,
+          "own_large": 0.016
+        },
+        {
+          "id": "44391958",
+          "name": "Woody Marks",
+          "positions": [
+            "RB"
+          ],
+          "team": "HOU",
+          "opp": "@TEN",
+          "salary": 4800,
+          "proj": 8.3,
+          "own_small": 0.002,
+          "own_large": 0.003
+        },
+        {
+          "id": "44392224",
+          "name": "Tre Tucker",
+          "positions": [
+            "WR"
+          ],
+          "team": "LV",
+          "opp": "@NE",
+          "salary": 4800,
+          "proj": 10.0,
+          "own_small": 0.017,
+          "own_large": 0.027000000000000003
+        },
+        {
+          "id": "44391960",
+          "name": "Jaylen Wright",
+          "positions": [
+            "RB"
+          ],
+          "team": "MIA",
+          "opp": "CIN",
+          "salary": 4800,
+          "proj": 5.0,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392598",
+          "name": "T.J. Hockenson",
+          "positions": [
+            "TE"
+          ],
+          "team": "MIN",
+          "opp": "@NO",
+          "salary": 4800,
+          "proj": 12.4,
+          "own_small": 0.057999999999999996,
+          "own_large": 0.066
+        },
+        {
+          "id": "44391844",
+          "name": "Jameis Winston",
+          "positions": [
+            "QB"
+          ],
+          "team": "NYG",
+          "opp": "@WAS",
+          "salary": 4800,
+          "proj": 13.4,
+          "own_small": 0.002,
+          "own_large": 0.009000000000000001
+        },
+        {
+          "id": "44391845",
+          "name": "Tyson Bagent",
+          "positions": [
+            "QB"
+          ],
+          "team": "CHI",
+          "opp": "@GB",
+          "salary": 4700,
+          "proj": 17.1,
+          "own_small": 0.076,
+          "own_large": 0.08199999999999999
+        },
+        {
+          "id": "44392226",
+          "name": "Rome Odunze",
+          "positions": [
+            "WR"
+          ],
+          "team": "CHI",
+          "opp": "@GB",
+          "salary": 4700,
+          "proj": 9.7,
+          "own_small": 0.034,
+          "own_large": 0.048
+        },
+        {
+          "id": "44391964",
+          "name": "Raheim Sanders",
+          "positions": [
+            "RB"
+          ],
+          "team": "CLE",
+          "opp": "@NYJ",
+          "salary": 4700,
+          "proj": 4.8,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392600",
+          "name": "Tucker Kraft",
+          "positions": [
+            "TE"
+          ],
+          "team": "GB",
+          "opp": "CHI",
+          "salary": 4700,
+          "proj": 12.2,
+          "own_small": 0.069,
+          "own_large": 0.076
+        },
+        {
+          "id": "44391966",
+          "name": "Kaelon Black",
+          "positions": [
+            "RB"
+          ],
+          "team": "SF",
+          "opp": "@SEA",
+          "salary": 4700,
+          "proj": 3.5,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392602",
+          "name": "Colston Loveland",
+          "positions": [
+            "TE"
+          ],
+          "team": "CHI",
+          "opp": "@GB",
+          "salary": 4600,
+          "proj": 10.7,
+          "own_small": 0.017,
+          "own_large": 0.037000000000000005
+        },
+        {
+          "id": "44392230",
+          "name": "Courtland Sutton",
+          "positions": [
+            "WR"
+          ],
+          "team": "DEN",
+          "opp": "@LAC",
+          "salary": 4600,
+          "proj": 10.1,
+          "own_small": 0.02,
+          "own_large": 0.027999999999999997
+        },
+        {
+          "id": "44391968",
+          "name": "Kaleb Johnson",
+          "positions": [
+            "RB"
+          ],
+          "team": "GB",
+          "opp": "CHI",
+          "salary": 4600,
+          "proj": 7.8,
+          "own_small": 0.005,
+          "own_large": 0.003
+        },
+        {
+          "id": "44391846",
+          "name": "Malik Willis",
+          "positions": [
+            "QB"
+          ],
+          "team": "MIA",
+          "opp": "CIN",
+          "salary": 4600,
+          "proj": 15.1,
+          "own_small": 0.031,
+          "own_large": 0.03
+        },
+        {
+          "id": "44392228",
+          "name": "Malik Washington",
+          "positions": [
+            "WR"
+          ],
+          "team": "MIA",
+          "opp": "CIN",
+          "salary": 4600,
+          "proj": 12.4,
+          "own_small": 0.14400000000000002,
+          "own_large": 0.142
+        },
+        {
+          "id": "44391970",
+          "name": "Tyjae Spears",
+          "positions": [
+            "RB"
+          ],
+          "team": "TEN",
+          "opp": "HOU",
+          "salary": 4600,
+          "proj": 5.9,
+          "own_small": 0.001,
+          "own_large": 0.001
+        },
+        {
+          "id": "44391974",
+          "name": "Keaton Mitchell",
+          "positions": [
+            "RB"
+          ],
+          "team": "LAC",
+          "opp": "DEN",
+          "salary": 4500,
+          "proj": 9.7,
+          "own_small": 0.009000000000000001,
+          "own_large": 0.012
+        },
+        {
+          "id": "44392604",
+          "name": "Juwan Johnson",
+          "positions": [
+            "TE"
+          ],
+          "team": "NO",
+          "opp": "MIN",
+          "salary": 4500,
+          "proj": 9.7,
+          "own_small": 0.006,
+          "own_large": 0.022000000000000002
+        },
+        {
+          "id": "44391978",
+          "name": "Najee Harris",
+          "positions": [
+            "RB"
+          ],
+          "team": "NYG",
+          "opp": "@WAS",
+          "salary": 4500,
+          "proj": 4.8,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44391976",
+          "name": "George Holani",
+          "positions": [
+            "RB"
+          ],
+          "team": "SEA",
+          "opp": "SF",
+          "salary": 4500,
+          "proj": 6.7,
+          "own_small": 0.001,
+          "own_large": 0.001
+        },
+        {
+          "id": "44392234",
+          "name": "Wan'Dale Robinson",
+          "positions": [
+            "WR"
+          ],
+          "team": "TEN",
+          "opp": "HOU",
+          "salary": 4500,
+          "proj": 9.5,
+          "own_small": 0.01,
+          "own_large": 0.015
+        },
+        {
+          "id": "44391984",
+          "name": "Samaje Perine",
+          "positions": [
+            "RB"
+          ],
+          "team": "CIN",
+          "opp": "@MIA",
+          "salary": 4400,
+          "proj": 5.5,
+          "own_small": 0.001,
+          "own_large": 0.001
+        },
+        {
+          "id": "44392606",
+          "name": "Harold Fannin Jr.",
+          "positions": [
+            "TE"
+          ],
+          "team": "CLE",
+          "opp": "@NYJ",
+          "salary": 4400,
+          "proj": 10.3,
+          "own_small": 0.019,
+          "own_large": 0.031
+        },
+        {
+          "id": "44391980",
+          "name": "CJ Donaldson",
+          "positions": [
+            "RB"
+          ],
+          "team": "NO",
+          "opp": "MIN",
+          "salary": 4400,
+          "proj": 2.0,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44391982",
+          "name": "Austin Ekeler",
+          "positions": [
+            "RB"
+          ],
+          "team": "WAS",
+          "opp": "NYG",
+          "salary": 4400,
+          "proj": 5.6,
+          "own_small": 0.001,
+          "own_large": 0.001
+        },
+        {
+          "id": "44391986",
+          "name": "Sione Vaki",
+          "positions": [
+            "RB"
+          ],
+          "team": "DET",
+          "opp": "@ARI",
+          "salary": 4300,
+          "proj": 3.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44391988",
+          "name": "Seth McGowan",
+          "positions": [
+            "RB"
+          ],
+          "team": "IND",
+          "opp": "@PIT",
+          "salary": 4300,
+          "proj": 2.8,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392240",
+          "name": "Keenan Allen",
+          "positions": [
+            "WR"
+          ],
+          "team": "IND",
+          "opp": "@PIT",
+          "salary": 4300,
+          "proj": 8.1,
+          "own_small": 0.001,
+          "own_large": 0.002
+        },
+        {
+          "id": "44391990",
+          "name": "Kimani Vidal",
+          "positions": [
+            "RB"
+          ],
+          "team": "LAC",
+          "opp": "DEN",
+          "salary": 4300,
+          "proj": 4.6,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392250",
+          "name": "Malachi Fields",
+          "positions": [
+            "WR"
+          ],
+          "team": "NYG",
+          "opp": "@WAS",
+          "salary": 4300,
+          "proj": 6.0,
+          "own_small": 0.001,
+          "own_large": 0.001
+        },
+        {
+          "id": "44392608",
+          "name": "Isaiah Likely",
+          "positions": [
+            "TE"
+          ],
+          "team": "NYG",
+          "opp": "@WAS",
+          "salary": 4300,
+          "proj": 11.8,
+          "own_small": 0.083,
+          "own_large": 0.087
+        },
+        {
+          "id": "44391998",
+          "name": "Roschon Johnson",
+          "positions": [
+            "RB"
+          ],
+          "team": "CHI",
+          "opp": "@GB",
+          "salary": 4200,
+          "proj": 4.0,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392244",
+          "name": "KC Concepcion Jr.",
+          "positions": [
+            "WR"
+          ],
+          "team": "CLE",
+          "opp": "@NYJ",
+          "salary": 4200,
+          "proj": 11.1,
+          "own_small": 0.107,
+          "own_large": 0.10400000000000001
+        },
+        {
+          "id": "44391994",
+          "name": "Tyler Badie",
+          "positions": [
+            "RB"
+          ],
+          "team": "DEN",
+          "opp": "@LAC",
+          "salary": 4200,
+          "proj": 2.0,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44391992",
+          "name": "Mike Washington Jr.",
+          "positions": [
+            "RB"
+          ],
+          "team": "LV",
+          "opp": "@NE",
+          "salary": 4200,
+          "proj": 6.1,
+          "own_small": 0.01,
+          "own_large": 0.026000000000000002
+        },
+        {
+          "id": "44391996",
+          "name": "Isaiah Davis",
+          "positions": [
+            "RB"
+          ],
+          "team": "NYJ",
+          "opp": "CLE",
+          "salary": 4200,
+          "proj": 4.0,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392610",
+          "name": "Mike Gesicki",
+          "positions": [
+            "TE"
+          ],
+          "team": "CIN",
+          "opp": "@MIA",
+          "salary": 4100,
+          "proj": 6.6,
+          "own_small": 0.032,
+          "own_large": 0.012
+        },
+        {
+          "id": "44392000",
+          "name": "Jaleel McLaughlin",
+          "positions": [
+            "RB"
+          ],
+          "team": "CLE",
+          "opp": "@NYJ",
+          "salary": 4100,
+          "proj": 0.9,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392242",
+          "name": "Tre' Harris",
+          "positions": [
+            "WR"
+          ],
+          "team": "LAC",
+          "opp": "DEN",
+          "salary": 4100,
+          "proj": 13.1,
+          "own_small": 0.34600000000000003,
+          "own_large": 0.27
+        },
+        {
+          "id": "44392248",
+          "name": "Jauan Jennings",
+          "positions": [
+            "WR"
+          ],
+          "team": "MIN",
+          "opp": "@NO",
+          "salary": 4100,
+          "proj": 5.1,
+          "own_small": 0.001,
+          "own_large": 0.001
+        },
+        {
+          "id": "44392038",
+          "name": "Bam Knight",
+          "positions": [
+            "RB"
+          ],
+          "team": "ARI",
+          "opp": "DET",
+          "salary": 4000,
+          "proj": 0.5,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392034",
+          "name": "Zavier Scott",
+          "positions": [
+            "RB"
+          ],
+          "team": "CHI",
+          "opp": "@GB",
+          "salary": 4000,
+          "proj": 1.1,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392156",
+          "name": "Tahj Brooks",
+          "positions": [
+            "RB"
+          ],
+          "team": "CIN",
+          "opp": "@MIA",
+          "salary": 4000,
+          "proj": 0.2,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392112",
+          "name": "Michael Burton",
+          "positions": [
+            "RB"
+          ],
+          "team": "CLE",
+          "opp": "@NYJ",
+          "salary": 4000,
+          "proj": 0.5,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392062",
+          "name": "Adam Prentice",
+          "positions": [
+            "RB"
+          ],
+          "team": "DEN",
+          "opp": "@LAC",
+          "salary": 4000,
+          "proj": 0.6,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392044",
+          "name": "Jacob Saylors",
+          "positions": [
+            "RB"
+          ],
+          "team": "DET",
+          "opp": "@ARI",
+          "salary": 4000,
+          "proj": 0.6,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392030",
+          "name": "Pierre Strong Jr.",
+          "positions": [
+            "RB"
+          ],
+          "team": "GB",
+          "opp": "CHI",
+          "salary": 4000,
+          "proj": 2.4,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392086",
+          "name": "Dare Ogunbowale",
+          "positions": [
+            "RB"
+          ],
+          "team": "HOU",
+          "opp": "@TEN",
+          "salary": 4000,
+          "proj": 0.2,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392254",
+          "name": "Xavier Hutchinson",
+          "positions": [
+            "WR"
+          ],
+          "team": "HOU",
+          "opp": "@TEN",
+          "salary": 4000,
+          "proj": 4.7,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392612",
+          "name": "Dalton Schultz",
+          "positions": [
+            "TE"
+          ],
+          "team": "HOU",
+          "opp": "@TEN",
+          "salary": 4000,
+          "proj": 9.6,
+          "own_small": 0.013000000000000001,
+          "own_large": 0.033
+        },
+        {
+          "id": "44392140",
+          "name": "Dylan Laube",
+          "positions": [
+            "RB"
+          ],
+          "team": "LV",
+          "opp": "@NE",
+          "salary": 4000,
+          "proj": 0.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392146",
+          "name": "Roman Hemby",
+          "positions": [
+            "RB"
+          ],
+          "team": "LV",
+          "opp": "@NE",
+          "salary": 4000,
+          "proj": 0.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392144",
+          "name": "Connor Heyward",
+          "positions": [
+            "RB"
+          ],
+          "team": "LV",
+          "opp": "@NE",
+          "salary": 4000,
+          "proj": 0.9,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392052",
+          "name": "Alec Ingold",
+          "positions": [
+            "RB"
+          ],
+          "team": "LAC",
+          "opp": "DEN",
+          "salary": 4000,
+          "proj": 1.4,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392150",
+          "name": "Carlos Washington Jr.",
+          "positions": [
+            "RB"
+          ],
+          "team": "MIA",
+          "opp": "CIN",
+          "salary": 4000,
+          "proj": 0.2,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392154",
+          "name": "DJ Herman",
+          "positions": [
+            "RB"
+          ],
+          "team": "MIA",
+          "opp": "CIN",
+          "salary": 4000,
+          "proj": 1.2,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392122",
+          "name": "Demond Claiborne",
+          "positions": [
+            "RB"
+          ],
+          "team": "MIN",
+          "opp": "@NO",
+          "salary": 4000,
+          "proj": 1.6,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392164",
+          "name": "DeeJay Dallas",
+          "positions": [
+            "RB"
+          ],
+          "team": "MIN",
+          "opp": "@NO",
+          "salary": 4000,
+          "proj": 1.7,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392130",
+          "name": "Max Bredeson",
+          "positions": [
+            "RB"
+          ],
+          "team": "MIN",
+          "opp": "@NO",
+          "salary": 4000,
+          "proj": 0.2,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392132",
+          "name": "Corey Kiner",
+          "positions": [
+            "RB"
+          ],
+          "team": "NE",
+          "opp": "LV",
+          "salary": 4000,
+          "proj": 0.5,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392162",
+          "name": "Tyrone Tracy Jr.",
+          "positions": [
+            "RB"
+          ],
+          "team": "NYG",
+          "opp": "@WAS",
+          "salary": 4000,
+          "proj": 2.6,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392072",
+          "name": "Patrick Ricard",
+          "positions": [
+            "RB"
+          ],
+          "team": "NYG",
+          "opp": "@WAS",
+          "salary": 4000,
+          "proj": 1.0,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392102",
+          "name": "Kene Nwangwu",
+          "positions": [
+            "RB"
+          ],
+          "team": "NYJ",
+          "opp": "CLE",
+          "salary": 4000,
+          "proj": 0.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392106",
+          "name": "Andrew Beck",
+          "positions": [
+            "RB"
+          ],
+          "team": "NYJ",
+          "opp": "CLE",
+          "salary": 4000,
+          "proj": 0.2,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392092",
+          "name": "Travis Homer",
+          "positions": [
+            "RB"
+          ],
+          "team": "PIT",
+          "opp": "IND",
+          "salary": 4000,
+          "proj": 2.2,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392094",
+          "name": "Riley Nowakowski",
+          "positions": [
+            "RB"
+          ],
+          "team": "PIT",
+          "opp": "IND",
+          "salary": 4000,
+          "proj": 0.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392096",
+          "name": "Lew Nichols",
+          "positions": [
+            "RB"
+          ],
+          "team": "PIT",
+          "opp": "IND",
+          "salary": 4000,
+          "proj": 0.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392016",
+          "name": "Brady Russell",
+          "positions": [
+            "RB"
+          ],
+          "team": "SEA",
+          "opp": "SF",
+          "salary": 4000,
+          "proj": 0.5,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392068",
+          "name": "Robert Henry Jr.",
+          "positions": [
+            "RB"
+          ],
+          "team": "SEA",
+          "opp": "SF",
+          "salary": 4000,
+          "proj": 0.4,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392014",
+          "name": "Velus Jones Jr.",
+          "positions": [
+            "RB"
+          ],
+          "team": "SEA",
+          "opp": "SF",
+          "salary": 4000,
+          "proj": 0.2,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392256",
+          "name": "Rashid Shaheed",
+          "positions": [
+            "WR"
+          ],
+          "team": "SEA",
+          "opp": "SF",
+          "salary": 4000,
+          "proj": 8.0,
+          "own_small": 0.015,
+          "own_large": 0.011000000000000001
+        },
+        {
+          "id": "44392078",
+          "name": "Nick Singleton",
+          "positions": [
+            "RB"
+          ],
+          "team": "TEN",
+          "opp": "HOU",
+          "salary": 4000,
+          "proj": 1.1,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392262",
+          "name": "Kalif Raymond",
+          "positions": [
+            "WR"
+          ],
+          "team": "CHI",
+          "opp": "@GB",
+          "salary": 3900,
+          "proj": 7.4,
+          "own_small": 0.006999999999999999,
+          "own_large": 0.011000000000000001
+        },
+        {
+          "id": "44392258",
+          "name": "Kayshon Boutte",
+          "positions": [
+            "WR"
+          ],
+          "team": "HOU",
+          "opp": "@TEN",
+          "salary": 3900,
+          "proj": 7.1,
+          "own_small": 0.005,
+          "own_large": 0.004
+        },
+        {
+          "id": "44392614",
+          "name": "Pat Freiermuth",
+          "positions": [
+            "TE"
+          ],
+          "team": "PIT",
+          "opp": "IND",
+          "salary": 3900,
+          "proj": 8.4,
+          "own_small": 0.001,
+          "own_large": 0.008
+        },
+        {
+          "id": "44392266",
+          "name": "Darnell Mooney",
+          "positions": [
+            "WR"
+          ],
+          "team": "NYG",
+          "opp": "@WAS",
+          "salary": 3800,
+          "proj": 4.4,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392616",
+          "name": "Kenyon Sadiq",
+          "positions": [
+            "TE"
+          ],
+          "team": "NYJ",
+          "opp": "CLE",
+          "salary": 3800,
+          "proj": 9.6,
+          "own_small": 0.031,
+          "own_large": 0.03
+        },
+        {
+          "id": "44392264",
+          "name": "Cooper Kupp",
+          "positions": [
+            "WR"
+          ],
+          "team": "SEA",
+          "opp": "SF",
+          "salary": 3800,
+          "proj": 6.7,
+          "own_small": 0.001,
+          "own_large": 0.006999999999999999
+        },
+        {
+          "id": "44392268",
+          "name": "Antonio Williams",
+          "positions": [
+            "WR"
+          ],
+          "team": "WAS",
+          "opp": "NYG",
+          "salary": 3800,
+          "proj": 8.6,
+          "own_small": 0.073,
+          "own_large": 0.07
+        },
+        {
+          "id": "44392274",
+          "name": "Jerry Jeudy",
+          "positions": [
+            "WR"
+          ],
+          "team": "CLE",
+          "opp": "@NYJ",
+          "salary": 3700,
+          "proj": 3.7,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392618",
+          "name": "Hunter Henry",
+          "positions": [
+            "TE"
+          ],
+          "team": "NE",
+          "opp": "LV",
+          "salary": 3700,
+          "proj": 9.1,
+          "own_small": 0.037000000000000005,
+          "own_large": 0.055
+        },
+        {
+          "id": "44392272",
+          "name": "Isaiah Williams",
+          "positions": [
+            "WR"
+          ],
+          "team": "NYJ",
+          "opp": "CLE",
+          "salary": 3700,
+          "proj": 6.9,
+          "own_small": 0.006,
+          "own_large": 0.009000000000000001
+        },
+        {
+          "id": "44392270",
+          "name": "Roman Wilson",
+          "positions": [
+            "WR"
+          ],
+          "team": "PIT",
+          "opp": "IND",
+          "salary": 3700,
+          "proj": 9.6,
+          "own_small": 0.138,
+          "own_large": 0.121
+        },
+        {
+          "id": "44392282",
+          "name": "Colbie Young",
+          "positions": [
+            "WR"
+          ],
+          "team": "CIN",
+          "opp": "@MIA",
+          "salary": 3600,
+          "proj": 1.5,
+          "own_small": 0.001,
+          "own_large": 0.001
+        },
+        {
+          "id": "44392278",
+          "name": "Laquon Treadwell",
+          "positions": [
+            "WR"
+          ],
+          "team": "IND",
+          "opp": "@PIT",
+          "salary": 3600,
+          "proj": 4.8,
+          "own_small": 0.0,
+          "own_large": 0.001
+        },
+        {
+          "id": "44392620",
+          "name": "Oronde Gadsden II",
+          "positions": [
+            "TE"
+          ],
+          "team": "LAC",
+          "opp": "DEN",
+          "salary": 3600,
+          "proj": 10.4,
+          "own_small": 0.09300000000000001,
+          "own_large": 0.077
+        },
+        {
+          "id": "44392276",
+          "name": "Chris Bell",
+          "positions": [
+            "WR"
+          ],
+          "team": "MIA",
+          "opp": "CIN",
+          "salary": 3600,
+          "proj": 8.0,
+          "own_small": 0.019,
+          "own_large": 0.019
+        },
+        {
+          "id": "44392288",
+          "name": "Dohnte Meyers",
+          "positions": [
+            "WR"
+          ],
+          "team": "CIN",
+          "opp": "@MIA",
+          "salary": 3500,
+          "proj": 6.4,
+          "own_small": 0.005,
+          "own_large": 0.013999999999999999
+        },
+        {
+          "id": "44392622",
+          "name": "Michael Mayer",
+          "positions": [
+            "TE"
+          ],
+          "team": "LV",
+          "opp": "@NE",
+          "salary": 3500,
+          "proj": 7.9,
+          "own_small": 0.009000000000000001,
+          "own_large": 0.021
+        },
+        {
+          "id": "44392290",
+          "name": "DeMario Douglas",
+          "positions": [
+            "WR"
+          ],
+          "team": "NE",
+          "opp": "LV",
+          "salary": 3500,
+          "proj": 7.7,
+          "own_small": 0.024,
+          "own_large": 0.027999999999999997
+        },
+        {
+          "id": "44392284",
+          "name": "Brandin Cooks",
+          "positions": [
+            "WR"
+          ],
+          "team": "SF",
+          "opp": "@SEA",
+          "salary": 3500,
+          "proj": 1.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392286",
+          "name": "Calvin Ridley",
+          "positions": [
+            "WR"
+          ],
+          "team": "TEN",
+          "opp": "HOU",
+          "salary": 3500,
+          "proj": 2.4,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392852",
+          "name": "Bengals",
+          "positions": [
+            "DST"
+          ],
+          "team": "CIN",
+          "opp": "@MIA",
+          "salary": 3500,
+          "proj": 8.2,
+          "own_small": 0.033,
+          "own_large": 0.038
+        },
+        {
+          "id": "44392300",
+          "name": "Kendrick Bourne",
+          "positions": [
+            "WR"
+          ],
+          "team": "ARI",
+          "opp": "DET",
+          "salary": 3400,
+          "proj": 8.0,
+          "own_small": 0.146,
+          "own_large": 0.092
+        },
+        {
+          "id": "44392296",
+          "name": "Marvin Mims Jr.",
+          "positions": [
+            "WR"
+          ],
+          "team": "DEN",
+          "opp": "@LAC",
+          "salary": 3400,
+          "proj": 4.2,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392294",
+          "name": "Isaac TeSlaa",
+          "positions": [
+            "WR"
+          ],
+          "team": "DET",
+          "opp": "@ARI",
+          "salary": 3400,
+          "proj": 6.6,
+          "own_small": 0.047,
+          "own_large": 0.034
+        },
+        {
+          "id": "44392298",
+          "name": "Germie Bernard",
+          "positions": [
+            "WR"
+          ],
+          "team": "PIT",
+          "opp": "IND",
+          "salary": 3400,
+          "proj": 6.3,
+          "own_small": 0.001,
+          "own_large": 0.005
+        },
+        {
+          "id": "44392853",
+          "name": "Texans",
+          "positions": [
+            "DST"
+          ],
+          "team": "HOU",
+          "opp": "@TEN",
+          "salary": 3400,
+          "proj": 9.1,
+          "own_small": 0.079,
+          "own_large": 0.071
+        },
+        {
+          "id": "44392310",
+          "name": "Mitch Tinsley",
+          "positions": [
+            "WR"
+          ],
+          "team": "CIN",
+          "opp": "@MIA",
+          "salary": 3300,
+          "proj": 0.7,
+          "own_small": 0.001,
+          "own_large": 0.001
+        },
+        {
+          "id": "44392302",
+          "name": "Cody White",
+          "positions": [
+            "WR"
+          ],
+          "team": "LV",
+          "opp": "@NE",
+          "salary": 3300,
+          "proj": 6.0,
+          "own_small": 0.003,
+          "own_large": 0.003
+        },
+        {
+          "id": "44392308",
+          "name": "Marquez Valdes-Scantling",
+          "positions": [
+            "WR"
+          ],
+          "team": "LAC",
+          "opp": "DEN",
+          "salary": 3300,
+          "proj": 5.1,
+          "own_small": 0.001,
+          "own_large": 0.003
+        },
+        {
+          "id": "44392624",
+          "name": "Chig Okonkwo",
+          "positions": [
+            "TE"
+          ],
+          "team": "WAS",
+          "opp": "NYG",
+          "salary": 3300,
+          "proj": 7.0,
+          "own_small": 0.01,
+          "own_large": 0.01
+        },
+        {
+          "id": "44392854",
+          "name": "Steelers",
+          "positions": [
+            "DST"
+          ],
+          "team": "PIT",
+          "opp": "IND",
+          "salary": 3300,
+          "proj": 6.6,
+          "own_small": 0.011000000000000001,
+          "own_large": 0.01
+        },
+        {
+          "id": "44392316",
+          "name": "Troy Franklin",
+          "positions": [
+            "WR"
+          ],
+          "team": "DEN",
+          "opp": "@LAC",
+          "salary": 3200,
+          "proj": 5.3,
+          "own_small": 0.003,
+          "own_large": 0.004
+        },
+        {
+          "id": "44392320",
+          "name": "Skyy Moore",
+          "positions": [
+            "WR"
+          ],
+          "team": "GB",
+          "opp": "CHI",
+          "salary": 3200,
+          "proj": 4.6,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392314",
+          "name": "Jaylin Noel",
+          "positions": [
+            "WR"
+          ],
+          "team": "HOU",
+          "opp": "@TEN",
+          "salary": 3200,
+          "proj": 5.7,
+          "own_small": 0.003,
+          "own_large": 0.005
+        },
+        {
+          "id": "44392312",
+          "name": "Efton Chism III",
+          "positions": [
+            "WR"
+          ],
+          "team": "NE",
+          "opp": "LV",
+          "salary": 3200,
+          "proj": 6.2,
+          "own_small": 0.009000000000000001,
+          "own_large": 0.011000000000000001
+        },
+        {
+          "id": "44392626",
+          "name": "AJ Barner",
+          "positions": [
+            "TE"
+          ],
+          "team": "SEA",
+          "opp": "SF",
+          "salary": 3200,
+          "proj": 7.9,
+          "own_small": 0.028999999999999998,
+          "own_large": 0.018000000000000002
+        },
+        {
+          "id": "44392318",
+          "name": "Treylon Burks",
+          "positions": [
+            "WR"
+          ],
+          "team": "WAS",
+          "opp": "NYG",
+          "salary": 3200,
+          "proj": 4.2,
+          "own_small": 0.001,
+          "own_large": 0.001
+        },
+        {
+          "id": "44392855",
+          "name": "Broncos",
+          "positions": [
+            "DST"
+          ],
+          "team": "DEN",
+          "opp": "@LAC",
+          "salary": 3200,
+          "proj": 8.0,
+          "own_small": 0.065,
+          "own_large": 0.077
+        },
+        {
+          "id": "44392322",
+          "name": "Deion Burks",
+          "positions": [
+            "WR"
+          ],
+          "team": "IND",
+          "opp": "@PIT",
+          "salary": 3100,
+          "proj": 1.2,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392324",
+          "name": "Derius Davis",
+          "positions": [
+            "WR"
+          ],
+          "team": "LAC",
+          "opp": "DEN",
+          "salary": 3100,
+          "proj": 2.6,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392628",
+          "name": "Greg Dulcich",
+          "positions": [
+            "TE"
+          ],
+          "team": "MIA",
+          "opp": "CIN",
+          "salary": 3100,
+          "proj": 6.6,
+          "own_small": 0.006,
+          "own_large": 0.012
+        },
+        {
+          "id": "44392328",
+          "name": "Kyle Williams",
+          "positions": [
+            "WR"
+          ],
+          "team": "NE",
+          "opp": "LV",
+          "salary": 3100,
+          "proj": 3.8,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392330",
+          "name": "Dyami Brown",
+          "positions": [
+            "WR"
+          ],
+          "team": "WAS",
+          "opp": "NYG",
+          "salary": 3100,
+          "proj": 4.4,
+          "own_small": 0.001,
+          "own_large": 0.004
+        },
+        {
+          "id": "44392856",
+          "name": "Vikings",
+          "positions": [
+            "DST"
+          ],
+          "team": "MIN",
+          "opp": "@NO",
+          "salary": 3100,
+          "proj": 7.8,
+          "own_small": 0.066,
+          "own_large": 0.068
+        },
+        {
+          "id": "44392394",
+          "name": "Reggie Virgil",
+          "positions": [
+            "WR"
+          ],
+          "team": "ARI",
+          "opp": "DET",
+          "salary": 3000,
+          "proj": 0.4,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392390",
+          "name": "Simi Fehoko",
+          "positions": [
+            "WR"
+          ],
+          "team": "ARI",
+          "opp": "DET",
+          "salary": 3000,
+          "proj": 1.5,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392388",
+          "name": "Jalen Brooks",
+          "positions": [
+            "WR"
+          ],
+          "team": "ARI",
+          "opp": "DET",
+          "salary": 3000,
+          "proj": 3.1,
+          "own_small": 0.002,
+          "own_large": 0.005
+        },
+        {
+          "id": "44392382",
+          "name": "Zavion Thomas",
+          "positions": [
+            "WR"
+          ],
+          "team": "CHI",
+          "opp": "@GB",
+          "salary": 3000,
+          "proj": 1.0,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392338",
+          "name": "Jahdae Walker",
+          "positions": [
+            "WR"
+          ],
+          "team": "CHI",
+          "opp": "@GB",
+          "salary": 3000,
+          "proj": 0.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392508",
+          "name": "Isaiah Bond",
+          "positions": [
+            "WR"
+          ],
+          "team": "CLE",
+          "opp": "@NYJ",
+          "salary": 3000,
+          "proj": 1.0,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392512",
+          "name": "Malachi Corley",
+          "positions": [
+            "WR"
+          ],
+          "team": "CLE",
+          "opp": "@NYJ",
+          "salary": 3000,
+          "proj": 0.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392420",
+          "name": "Lil'Jordan Humphrey",
+          "positions": [
+            "WR"
+          ],
+          "team": "DEN",
+          "opp": "@LAC",
+          "salary": 3000,
+          "proj": 1.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392400",
+          "name": "Tay Martin",
+          "positions": [
+            "WR"
+          ],
+          "team": "DET",
+          "opp": "@ARI",
+          "salary": 3000,
+          "proj": 0.4,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392398",
+          "name": "Tom Kennedy",
+          "positions": [
+            "WR"
+          ],
+          "team": "DET",
+          "opp": "@ARI",
+          "salary": 3000,
+          "proj": 0.4,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392370",
+          "name": "Bo Melton",
+          "positions": [
+            "WR"
+          ],
+          "team": "GB",
+          "opp": "CHI",
+          "salary": 3000,
+          "proj": 1.8,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392372",
+          "name": "J. Michael Sturdivant",
+          "positions": [
+            "WR"
+          ],
+          "team": "GB",
+          "opp": "CHI",
+          "salary": 3000,
+          "proj": 1.2,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392458",
+          "name": "Jared Wayne",
+          "positions": [
+            "WR"
+          ],
+          "team": "HOU",
+          "opp": "@TEN",
+          "salary": 3000,
+          "proj": 1.9,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392486",
+          "name": "Nick Westbrook-Ikhine",
+          "positions": [
+            "WR"
+          ],
+          "team": "IND",
+          "opp": "@PIT",
+          "salary": 3000,
+          "proj": 0.6,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392484",
+          "name": "Anthony Gould",
+          "positions": [
+            "WR"
+          ],
+          "team": "IND",
+          "opp": "@PIT",
+          "salary": 3000,
+          "proj": 0.6,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392560",
+          "name": "Deven Thompkins",
+          "positions": [
+            "WR"
+          ],
+          "team": "LV",
+          "opp": "@NE",
+          "salary": 3000,
+          "proj": 0.6,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392556",
+          "name": "Malik Benson",
+          "positions": [
+            "WR"
+          ],
+          "team": "LV",
+          "opp": "@NE",
+          "salary": 3000,
+          "proj": 1.4,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392554",
+          "name": "Dareke Young",
+          "positions": [
+            "WR"
+          ],
+          "team": "LV",
+          "opp": "@NE",
+          "salary": 3000,
+          "proj": 1.7,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392416",
+          "name": "Theo Wease Jr.",
+          "positions": [
+            "WR"
+          ],
+          "team": "LAC",
+          "opp": "DEN",
+          "salary": 3000,
+          "proj": 1.1,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392566",
+          "name": "Kevin Coleman Jr.",
+          "positions": [
+            "WR"
+          ],
+          "team": "MIA",
+          "opp": "CIN",
+          "salary": 3000,
+          "proj": 5.0,
+          "own_small": 0.001,
+          "own_large": 0.003
+        },
+        {
+          "id": "44392568",
+          "name": "Jalen Tolbert",
+          "positions": [
+            "WR"
+          ],
+          "team": "MIA",
+          "opp": "CIN",
+          "salary": 3000,
+          "proj": 1.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392570",
+          "name": "Ryan Miller",
+          "positions": [
+            "WR"
+          ],
+          "team": "MIA",
+          "opp": "CIN",
+          "salary": 3000,
+          "proj": 1.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392534",
+          "name": "Tai Felton",
+          "positions": [
+            "WR"
+          ],
+          "team": "MIN",
+          "opp": "@NO",
+          "salary": 3000,
+          "proj": 3.0,
+          "own_small": 0.0,
+          "own_large": 0.001
+        },
+        {
+          "id": "44392536",
+          "name": "Myles Price",
+          "positions": [
+            "WR"
+          ],
+          "team": "MIN",
+          "opp": "@NO",
+          "salary": 3000,
+          "proj": 1.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392538",
+          "name": "Jeshaun Jones",
+          "positions": [
+            "WR"
+          ],
+          "team": "MIN",
+          "opp": "@NO",
+          "salary": 3000,
+          "proj": 0.6,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392518",
+          "name": "Bryce Lance",
+          "positions": [
+            "WR"
+          ],
+          "team": "NO",
+          "opp": "MIN",
+          "salary": 3000,
+          "proj": 4.1,
+          "own_small": 0.002,
+          "own_large": 0.002
+        },
+        {
+          "id": "44392522",
+          "name": "Barion Brown",
+          "positions": [
+            "WR"
+          ],
+          "team": "NO",
+          "opp": "MIN",
+          "salary": 3000,
+          "proj": 0.7,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392528",
+          "name": "Cedric Tillman",
+          "positions": [
+            "WR"
+          ],
+          "team": "NO",
+          "opp": "MIN",
+          "salary": 3000,
+          "proj": 0.6,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392630",
+          "name": "Noah Fant",
+          "positions": [
+            "TE"
+          ],
+          "team": "NO",
+          "opp": "MIN",
+          "salary": 3000,
+          "proj": 4.6,
+          "own_small": 0.0,
+          "own_large": 0.001
+        },
+        {
+          "id": "44392438",
+          "name": "Charlie Jones",
+          "positions": [
+            "WR"
+          ],
+          "team": "NYG",
+          "opp": "@WAS",
+          "salary": 3000,
+          "proj": 1.0,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392446",
+          "name": "Dalen Cambre",
+          "positions": [
+            "WR"
+          ],
+          "team": "NYG",
+          "opp": "@WAS",
+          "salary": 3000,
+          "proj": 0.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392500",
+          "name": "Tim Patrick",
+          "positions": [
+            "WR"
+          ],
+          "team": "NYJ",
+          "opp": "CLE",
+          "salary": 3000,
+          "proj": 3.1,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392494",
+          "name": "Malik McClain",
+          "positions": [
+            "WR"
+          ],
+          "team": "NYJ",
+          "opp": "CLE",
+          "salary": 3000,
+          "proj": 0.6,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392470",
+          "name": "Ben Skowronek",
+          "positions": [
+            "WR"
+          ],
+          "team": "PIT",
+          "opp": "IND",
+          "salary": 3000,
+          "proj": 1.4,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392480",
+          "name": "Brandon Smith",
+          "positions": [
+            "WR"
+          ],
+          "team": "PIT",
+          "opp": "IND",
+          "salary": 3000,
+          "proj": 0.6,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392336",
+          "name": "Jordan Watkins",
+          "positions": [
+            "WR"
+          ],
+          "team": "SF",
+          "opp": "@SEA",
+          "salary": 3000,
+          "proj": 1.7,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392586",
+          "name": "Jacob Cowing",
+          "positions": [
+            "WR"
+          ],
+          "team": "SF",
+          "opp": "@SEA",
+          "salary": 3000,
+          "proj": 2.2,
+          "own_small": 0.001,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392340",
+          "name": "Tory Horton",
+          "positions": [
+            "WR"
+          ],
+          "team": "SEA",
+          "opp": "SF",
+          "salary": 3000,
+          "proj": 3.1,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392450",
+          "name": "Chimere Dike",
+          "positions": [
+            "WR"
+          ],
+          "team": "TEN",
+          "opp": "HOU",
+          "salary": 3000,
+          "proj": 1.2,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392448",
+          "name": "Elic Ayomanor",
+          "positions": [
+            "WR"
+          ],
+          "team": "TEN",
+          "opp": "HOU",
+          "salary": 3000,
+          "proj": 4.1,
+          "own_small": 0.001,
+          "own_large": 0.001
+        },
+        {
+          "id": "44392428",
+          "name": "Luke McCaffrey",
+          "positions": [
+            "WR"
+          ],
+          "team": "WAS",
+          "opp": "NYG",
+          "salary": 3000,
+          "proj": 0.6,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392434",
+          "name": "Van Jefferson",
+          "positions": [
+            "WR"
+          ],
+          "team": "WAS",
+          "opp": "NYG",
+          "salary": 3000,
+          "proj": 0.6,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392857",
+          "name": "Lions",
+          "positions": [
+            "DST"
+          ],
+          "team": "DET",
+          "opp": "@ARI",
+          "salary": 3000,
+          "proj": 5.9,
+          "own_small": 0.022000000000000002,
+          "own_large": 0.018000000000000002
+        },
+        {
+          "id": "44392858",
+          "name": "Patriots",
+          "positions": [
+            "DST"
+          ],
+          "team": "NE",
+          "opp": "LV",
+          "salary": 3000,
+          "proj": 7.0,
+          "own_small": 0.032,
+          "own_large": 0.028999999999999998
+        },
+        {
+          "id": "44392632",
+          "name": "Darnell Washington",
+          "positions": [
+            "TE"
+          ],
+          "team": "PIT",
+          "opp": "IND",
+          "salary": 2900,
+          "proj": 6.2,
+          "own_small": 0.001,
+          "own_large": 0.002
+        },
+        {
+          "id": "44392859",
+          "name": "Bears",
+          "positions": [
+            "DST"
+          ],
+          "team": "CHI",
+          "opp": "@GB",
+          "salary": 2900,
+          "proj": 6.0,
+          "own_small": 0.002,
+          "own_large": 0.006999999999999999
+        },
+        {
+          "id": "44392860",
+          "name": "Commanders",
+          "positions": [
+            "DST"
+          ],
+          "team": "WAS",
+          "opp": "NYG",
+          "salary": 2900,
+          "proj": 8.1,
+          "own_small": 0.106,
+          "own_large": 0.10800000000000001
+        },
+        {
+          "id": "44392636",
+          "name": "Evan Engram",
+          "positions": [
+            "TE"
+          ],
+          "team": "DEN",
+          "opp": "@LAC",
+          "salary": 2800,
+          "proj": 5.7,
+          "own_small": 0.002,
+          "own_large": 0.002
+        },
+        {
+          "id": "44392634",
+          "name": "Gunnar Helm",
+          "positions": [
+            "TE"
+          ],
+          "team": "TEN",
+          "opp": "HOU",
+          "salary": 2800,
+          "proj": 5.1,
+          "own_small": 0.003,
+          "own_large": 0.003
+        },
+        {
+          "id": "44392861",
+          "name": "Browns",
+          "positions": [
+            "DST"
+          ],
+          "team": "CLE",
+          "opp": "@NYJ",
+          "salary": 2800,
+          "proj": 7.6,
+          "own_small": 0.09300000000000001,
+          "own_large": 0.086
+        },
+        {
+          "id": "44392862",
+          "name": "Seahawks",
+          "positions": [
+            "DST"
+          ],
+          "team": "SEA",
+          "opp": "SF",
+          "salary": 2800,
+          "proj": 6.5,
+          "own_small": 0.024,
+          "own_large": 0.032
+        },
+        {
+          "id": "44392642",
+          "name": "Elijah Higgins",
+          "positions": [
+            "TE"
+          ],
+          "team": "ARI",
+          "opp": "DET",
+          "salary": 2700,
+          "proj": 4.2,
+          "own_small": 0.0,
+          "own_large": 0.002
+        },
+        {
+          "id": "44392640",
+          "name": "Jonnu Smith",
+          "positions": [
+            "TE"
+          ],
+          "team": "GB",
+          "opp": "CHI",
+          "salary": 2700,
+          "proj": 2.5,
+          "own_small": 0.002,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392638",
+          "name": "Eli Raridon",
+          "positions": [
+            "TE"
+          ],
+          "team": "NE",
+          "opp": "LV",
+          "salary": 2700,
+          "proj": 4.2,
+          "own_small": 0.0,
+          "own_large": 0.001
+        },
+        {
+          "id": "44392863",
+          "name": "Packers",
+          "positions": [
+            "DST"
+          ],
+          "team": "GB",
+          "opp": "CHI",
+          "salary": 2700,
+          "proj": 5.7,
+          "own_small": 0.01,
+          "own_large": 0.013000000000000001
+        },
+        {
+          "id": "44392864",
+          "name": "Jets",
+          "positions": [
+            "DST"
+          ],
+          "team": "NYJ",
+          "opp": "CLE",
+          "salary": 2700,
+          "proj": 7.8,
+          "own_small": 0.13,
+          "own_large": 0.11
+        },
+        {
+          "id": "44392644",
+          "name": "Cole Kmet",
+          "positions": [
+            "TE"
+          ],
+          "team": "CHI",
+          "opp": "@GB",
+          "salary": 2600,
+          "proj": 3.4,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392648",
+          "name": "Drew Sample",
+          "positions": [
+            "TE"
+          ],
+          "team": "CIN",
+          "opp": "@MIA",
+          "salary": 2600,
+          "proj": 1.9,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392646",
+          "name": "Theo Johnson",
+          "positions": [
+            "TE"
+          ],
+          "team": "NYG",
+          "opp": "@WAS",
+          "salary": 2600,
+          "proj": 2.8,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392865",
+          "name": "Saints",
+          "positions": [
+            "DST"
+          ],
+          "team": "NO",
+          "opp": "MIN",
+          "salary": 2600,
+          "proj": 6.1,
+          "own_small": 0.040999999999999995,
+          "own_large": 0.035
+        },
+        {
+          "id": "44392866",
+          "name": "Giants",
+          "positions": [
+            "DST"
+          ],
+          "team": "NYG",
+          "opp": "@WAS",
+          "salary": 2600,
+          "proj": 5.8,
+          "own_small": 0.009000000000000001,
+          "own_large": 0.018000000000000002
+        },
+        {
+          "id": "44392698",
+          "name": "Teagan Quitoriano",
+          "positions": [
+            "TE"
+          ],
+          "team": "ARI",
+          "opp": "DET",
+          "salary": 2500,
+          "proj": 1.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392680",
+          "name": "Sam Roush",
+          "positions": [
+            "TE"
+          ],
+          "team": "CHI",
+          "opp": "@GB",
+          "salary": 2500,
+          "proj": 1.7,
+          "own_small": 0.0,
+          "own_large": 0.001
+        },
+        {
+          "id": "44392844",
+          "name": "Erick All Jr.",
+          "positions": [
+            "TE"
+          ],
+          "team": "CIN",
+          "opp": "@MIA",
+          "salary": 2500,
+          "proj": 1.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392846",
+          "name": "Tanner Hudson",
+          "positions": [
+            "TE"
+          ],
+          "team": "CIN",
+          "opp": "@MIA",
+          "salary": 2500,
+          "proj": 1.4,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392848",
+          "name": "Jack Endries",
+          "positions": [
+            "TE"
+          ],
+          "team": "CIN",
+          "opp": "@MIA",
+          "salary": 2500,
+          "proj": 0.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392788",
+          "name": "Blake Whiteheart",
+          "positions": [
+            "TE"
+          ],
+          "team": "CLE",
+          "opp": "@NYJ",
+          "salary": 2500,
+          "proj": 1.8,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392718",
+          "name": "Adam Trautman",
+          "positions": [
+            "TE"
+          ],
+          "team": "DEN",
+          "opp": "@LAC",
+          "salary": 2500,
+          "proj": 1.8,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392720",
+          "name": "Nate Adkins",
+          "positions": [
+            "TE"
+          ],
+          "team": "DEN",
+          "opp": "@LAC",
+          "salary": 2500,
+          "proj": 1.8,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392700",
+          "name": "Brock Wright",
+          "positions": [
+            "TE"
+          ],
+          "team": "DET",
+          "opp": "@ARI",
+          "salary": 2500,
+          "proj": 2.1,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392702",
+          "name": "Jackson Meeks",
+          "positions": [
+            "TE"
+          ],
+          "team": "DET",
+          "opp": "@ARI",
+          "salary": 2500,
+          "proj": 0.6,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392670",
+          "name": "Mark Redman",
+          "positions": [
+            "TE"
+          ],
+          "team": "GB",
+          "opp": "CHI",
+          "salary": 2500,
+          "proj": 1.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392672",
+          "name": "Josh Whyle",
+          "positions": [
+            "TE"
+          ],
+          "team": "GB",
+          "opp": "CHI",
+          "salary": 2500,
+          "proj": 0.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392756",
+          "name": "Cade Stover",
+          "positions": [
+            "TE"
+          ],
+          "team": "HOU",
+          "opp": "@TEN",
+          "salary": 2500,
+          "proj": 1.4,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392652",
+          "name": "Foster Moreau",
+          "positions": [
+            "TE"
+          ],
+          "team": "HOU",
+          "opp": "@TEN",
+          "salary": 2500,
+          "proj": 2.9,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392758",
+          "name": "Brevin Jordan",
+          "positions": [
+            "TE"
+          ],
+          "team": "HOU",
+          "opp": "@TEN",
+          "salary": 2500,
+          "proj": 1.0,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392768",
+          "name": "Mo Alie-Cox",
+          "positions": [
+            "TE"
+          ],
+          "team": "IND",
+          "opp": "@PIT",
+          "salary": 2500,
+          "proj": 1.2,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392770",
+          "name": "Drew Ogletree",
+          "positions": [
+            "TE"
+          ],
+          "team": "IND",
+          "opp": "@PIT",
+          "salary": 2500,
+          "proj": 1.1,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392826",
+          "name": "Ian Thomas",
+          "positions": [
+            "TE"
+          ],
+          "team": "LV",
+          "opp": "@NE",
+          "salary": 2500,
+          "proj": 1.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392710",
+          "name": "Hayden Rucci",
+          "positions": [
+            "TE"
+          ],
+          "team": "LAC",
+          "opp": "DEN",
+          "salary": 2500,
+          "proj": 0.5,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392650",
+          "name": "Charlie Kolar",
+          "positions": [
+            "TE"
+          ],
+          "team": "LAC",
+          "opp": "DEN",
+          "salary": 2500,
+          "proj": 3.6,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392834",
+          "name": "Will Kacmarek",
+          "positions": [
+            "TE"
+          ],
+          "team": "MIA",
+          "opp": "CIN",
+          "salary": 2500,
+          "proj": 2.1,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392836",
+          "name": "Seydou Traore",
+          "positions": [
+            "TE"
+          ],
+          "team": "MIA",
+          "opp": "CIN",
+          "salary": 2500,
+          "proj": 0.2,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392808",
+          "name": "Gavin Bartholomew",
+          "positions": [
+            "TE"
+          ],
+          "team": "MIN",
+          "opp": "@NO",
+          "salary": 2500,
+          "proj": 1.2,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392810",
+          "name": "Ben Yurosek",
+          "positions": [
+            "TE"
+          ],
+          "team": "MIN",
+          "opp": "@NO",
+          "salary": 2500,
+          "proj": 1.0,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392820",
+          "name": "Tanner Arkin",
+          "positions": [
+            "TE"
+          ],
+          "team": "NE",
+          "opp": "LV",
+          "salary": 2500,
+          "proj": 0.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392818",
+          "name": "Cameron Latu",
+          "positions": [
+            "TE"
+          ],
+          "team": "NE",
+          "opp": "LV",
+          "salary": 2500,
+          "proj": 0.5,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392796",
+          "name": "Oscar Delp",
+          "positions": [
+            "TE"
+          ],
+          "team": "NO",
+          "opp": "MIN",
+          "salary": 2500,
+          "proj": 1.1,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392740",
+          "name": "Chris Manhertz",
+          "positions": [
+            "TE"
+          ],
+          "team": "NYG",
+          "opp": "@WAS",
+          "salary": 2500,
+          "proj": 0.4,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392780",
+          "name": "Mason Taylor",
+          "positions": [
+            "TE"
+          ],
+          "team": "NYJ",
+          "opp": "CLE",
+          "salary": 2500,
+          "proj": 4.5,
+          "own_small": 0.003,
+          "own_large": 0.005
+        },
+        {
+          "id": "44392782",
+          "name": "Jeremy Ruckert",
+          "positions": [
+            "TE"
+          ],
+          "team": "NYJ",
+          "opp": "CLE",
+          "salary": 2500,
+          "proj": 1.5,
+          "own_small": 0.0,
+          "own_large": 0.001
+        },
+        {
+          "id": "44392784",
+          "name": "Jelani Woods",
+          "positions": [
+            "TE"
+          ],
+          "team": "NYJ",
+          "opp": "CLE",
+          "salary": 2500,
+          "proj": 0.5,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392764",
+          "name": "Robert Tonyan",
+          "positions": [
+            "TE"
+          ],
+          "team": "PIT",
+          "opp": "IND",
+          "salary": 2500,
+          "proj": 0.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392666",
+          "name": "Jack Stoll",
+          "positions": [
+            "TE"
+          ],
+          "team": "SF",
+          "opp": "@SEA",
+          "salary": 2500,
+          "proj": 0.2,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392660",
+          "name": "Luke Farrell",
+          "positions": [
+            "TE"
+          ],
+          "team": "SF",
+          "opp": "@SEA",
+          "salary": 2500,
+          "proj": 1.5,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392662",
+          "name": "Brayden Willis",
+          "positions": [
+            "TE"
+          ],
+          "team": "SF",
+          "opp": "@SEA",
+          "salary": 2500,
+          "proj": 1.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392656",
+          "name": "Elijah Arroyo",
+          "positions": [
+            "TE"
+          ],
+          "team": "SEA",
+          "opp": "SF",
+          "salary": 2500,
+          "proj": 2.0,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392654",
+          "name": "Eric Saubert",
+          "positions": [
+            "TE"
+          ],
+          "team": "SEA",
+          "opp": "SF",
+          "salary": 2500,
+          "proj": 1.2,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392746",
+          "name": "Daniel Bellinger",
+          "positions": [
+            "TE"
+          ],
+          "team": "TEN",
+          "opp": "HOU",
+          "salary": 2500,
+          "proj": 2.9,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392748",
+          "name": "David Martin-Robinson",
+          "positions": [
+            "TE"
+          ],
+          "team": "TEN",
+          "opp": "HOU",
+          "salary": 2500,
+          "proj": 0.2,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392730",
+          "name": "Ben Sinnott",
+          "positions": [
+            "TE"
+          ],
+          "team": "WAS",
+          "opp": "NYG",
+          "salary": 2500,
+          "proj": 1.2,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392732",
+          "name": "John Bates",
+          "positions": [
+            "TE"
+          ],
+          "team": "WAS",
+          "opp": "NYG",
+          "salary": 2500,
+          "proj": 1.3,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392734",
+          "name": "Colson Yankoff",
+          "positions": [
+            "TE"
+          ],
+          "team": "WAS",
+          "opp": "NYG",
+          "salary": 2500,
+          "proj": 0.5,
+          "own_small": 0.0,
+          "own_large": 0.0
+        },
+        {
+          "id": "44392867",
+          "name": "Colts",
+          "positions": [
+            "DST"
+          ],
+          "team": "IND",
+          "opp": "@PIT",
+          "salary": 2500,
+          "proj": 5.7,
+          "own_small": 0.032,
+          "own_large": 0.025
+        },
+        {
+          "id": "44392868",
+          "name": "Raiders",
+          "positions": [
+            "DST"
+          ],
+          "team": "LV",
+          "opp": "@NE",
+          "salary": 2500,
+          "proj": 6.1,
+          "own_small": 0.059000000000000004,
+          "own_large": 0.067
+        },
+        {
+          "id": "44392869",
+          "name": "49ers",
+          "positions": [
+            "DST"
+          ],
+          "team": "SF",
+          "opp": "@SEA",
+          "salary": 2400,
+          "proj": 5.5,
+          "own_small": 0.022000000000000002,
+          "own_large": 0.023
+        },
+        {
+          "id": "44392870",
+          "name": "Chargers",
+          "positions": [
+            "DST"
+          ],
+          "team": "LAC",
+          "opp": "DEN",
+          "salary": 2300,
+          "proj": 5.4,
+          "own_small": 0.024,
+          "own_large": 0.028999999999999998
+        },
+        {
+          "id": "44392871",
+          "name": "Cardinals",
+          "positions": [
+            "DST"
+          ],
+          "team": "ARI",
+          "opp": "DET",
+          "salary": 2200,
+          "proj": 3.3,
+          "own_small": 0.001,
+          "own_large": 0.003
+        },
+        {
+          "id": "44392872",
+          "name": "Titans",
+          "positions": [
+            "DST"
+          ],
+          "team": "TEN",
+          "opp": "HOU",
+          "salary": 2100,
+          "proj": 5.9,
+          "own_small": 0.09,
+          "own_large": 0.078
+        },
+        {
+          "id": "44392873",
+          "name": "Dolphins",
+          "positions": [
+            "DST"
+          ],
+          "team": "MIA",
+          "opp": "CIN",
+          "salary": 2000,
+          "proj": 4.9,
+          "own_small": 0.048,
+          "own_large": 0.053
+        }
+      ],
+      "expected": [
+        {
+          "id": "44391896",
+          "piece": "QUEEN"
+        },
+        {
+          "id": "44392166",
+          "piece": "QUEEN"
+        },
+        {
+          "id": "44391898",
+          "piece": "QUEEN"
+        },
+        {
+          "id": "44392168",
+          "piece": "QUEEN"
+        },
+        {
+          "id": "44392170",
+          "piece": "QUEEN"
+        },
+        {
+          "id": "44391900",
+          "piece": "QUEEN"
+        },
+        {
+          "id": "44392172",
+          "piece": "QUEEN"
+        },
+        {
+          "id": "44392174",
+          "piece": "QUEEN"
+        },
+        {
+          "id": "44392176",
+          "piece": "QUEEN"
+        },
+        {
+          "id": "44391902",
+          "piece": "QUEEN"
+        },
+        {
+          "id": "44392178",
+          "piece": "QUEEN"
+        },
+        {
+          "id": "44392588",
+          "piece": "QUEEN"
+        },
+        {
+          "id": "44391824",
+          "piece": "KING"
+        },
+        {
+          "id": "44391904",
+          "piece": "ROOK"
+        },
+        {
+          "id": "44392590",
+          "piece": "KNIGHT"
+        },
+        {
+          "id": "44391906",
+          "piece": "ROOK"
+        },
+        {
+          "id": "44391825",
+          "piece": "KING"
+        },
+        {
+          "id": "44392180",
+          "piece": "BISHOP"
+        },
+        {
+          "id": "44391908",
+          "piece": "ROOK"
+        },
+        {
+          "id": "44391826",
+          "piece": "KING"
+        },
+        {
+          "id": "44392182",
+          "piece": "BISHOP"
+        },
+        {
+          "id": "44392184",
+          "piece": "BISHOP"
+        },
+        {
+          "id": "44391827",
+          "piece": "KING"
+        },
+        {
+          "id": "44392186",
+          "piece": "BISHOP"
+        },
+        {
+          "id": "44392188",
+          "piece": "BISHOP"
+        },
+        {
+          "id": "44391912",
+          "piece": "ROOK"
+        },
+        {
+          "id": "44391914",
+          "piece": "ROOK"
+        },
+        {
+          "id": "44392190",
+          "piece": "BISHOP"
+        },
+        {
+          "id": "44391829",
+          "piece": "KING"
+        },
+        {
+          "id": "44392192",
+          "piece": "BISHOP"
+        },
+        {
+          "id": "44391916",
+          "piece": "ROOK"
+        },
+        {
+          "id": "44391918",
+          "piece": "ROOK"
+        },
+        {
+          "id": "44391830",
+          "piece": "KING"
+        },
+        {
+          "id": "44392194",
+          "piece": "BISHOP"
+        },
+        {
+          "id": "44391831",
+          "piece": "KING"
+        },
+        {
+          "id": "44391922",
+          "piece": "ROOK"
+        },
+        {
+          "id": "44391832",
+          "piece": "KING"
+        },
+        {
+          "id": "44391924",
+          "piece": "ROOK"
+        },
+        {
+          "id": "44391833",
+          "piece": "KING"
+        },
+        {
+          "id": "44392198",
+          "piece": "BISHOP"
+        },
+        {
+          "id": "44391834",
+          "piece": "KING"
+        },
+        {
+          "id": "44391926",
+          "piece": "ROOK"
+        },
+        {
+          "id": "44391835",
+          "piece": "KING"
+        },
+        {
+          "id": "44391930",
+          "piece": "ROOK"
+        },
+        {
+          "id": "44392202",
+          "piece": "BISHOP"
+        },
+        {
+          "id": "44391836",
+          "piece": "KING"
+        },
+        {
+          "id": "44391934",
+          "piece": "ROOK"
+        },
+        {
+          "id": "44391932",
+          "piece": "ROOK"
+        },
+        {
+          "id": "44392208",
+          "piece": "BISHOP"
+        },
+        {
+          "id": "44391936",
+          "piece": "ROOK"
+        },
+        {
+          "id": "44391837",
+          "piece": "KING"
+        },
+        {
+          "id": "44391938",
+          "piece": "ROOK"
+        },
+        {
+          "id": "44392210",
+          "piece": "BISHOP"
+        },
+        {
+          "id": "44392212",
+          "piece": "BISHOP"
+        },
+        {
+          "id": "44392214",
+          "piece": "BISHOP"
+        },
+        {
+          "id": "44391942",
+          "piece": "ROOK"
+        },
+        {
+          "id": "44391838",
+          "piece": "KING"
+        },
+        {
+          "id": "44392216",
+          "piece": "BISHOP"
+        },
+        {
+          "id": "44392592",
+          "piece": "KNIGHT"
+        },
+        {
+          "id": "44391946",
+          "piece": "ROOK"
+        },
+        {
+          "id": "44391839",
+          "piece": "KING"
+        },
+        {
+          "id": "44391840",
+          "piece": "KING"
+        },
+        {
+          "id": "44391944",
+          "piece": "ROOK"
+        },
+        {
+          "id": "44391948",
+          "piece": "ROOK"
+        },
+        {
+          "id": "44391841",
+          "piece": "KING"
+        },
+        {
+          "id": "44392594",
+          "piece": "KNIGHT"
+        },
+        {
+          "id": "44391950",
+          "piece": "ROOK"
+        },
+        {
+          "id": "44392220",
+          "piece": "BISHOP"
+        },
+        {
+          "id": "44391842",
+          "piece": "KING"
+        },
+        {
+          "id": "44392222",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392596",
+          "piece": "KNIGHT"
+        },
+        {
+          "id": "44391952",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44391843",
+          "piece": "KING"
+        },
+        {
+          "id": "44391954",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44391956",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44391958",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392224",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44391960",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392598",
+          "piece": "KNIGHT"
+        },
+        {
+          "id": "44391844",
+          "piece": "KING"
+        },
+        {
+          "id": "44391845",
+          "piece": "KING"
+        },
+        {
+          "id": "44392226",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44391964",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392600",
+          "piece": "KNIGHT"
+        },
+        {
+          "id": "44391966",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392602",
+          "piece": "KNIGHT"
+        },
+        {
+          "id": "44392230",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44391968",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44391846",
+          "piece": "KING"
+        },
+        {
+          "id": "44392228",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44391970",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44391974",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392604",
+          "piece": "KNIGHT"
+        },
+        {
+          "id": "44391978",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44391976",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392234",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44391984",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392606",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44391980",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44391982",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44391986",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44391988",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392240",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44391990",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392250",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392608",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44391998",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392244",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44391994",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44391992",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44391996",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392610",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392000",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392242",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392248",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392038",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392034",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392156",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392112",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392062",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392044",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392030",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392086",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392254",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392612",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392140",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392146",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392144",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392052",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392150",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392154",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392122",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392164",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392130",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392132",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392162",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392072",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392102",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392106",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392092",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392094",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392096",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392016",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392068",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392014",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392256",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392078",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392262",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392258",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392614",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392266",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392616",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392264",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392268",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392274",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392618",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392272",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392270",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392282",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392278",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392620",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392276",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392288",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392622",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392290",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392284",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392286",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392852",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392300",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392296",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392294",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392298",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392853",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392310",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392302",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392308",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392624",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392854",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392316",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392320",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392314",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392312",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392626",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392318",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392855",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392322",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392324",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392628",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392328",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392330",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392856",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392394",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392390",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392388",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392382",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392338",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392508",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392512",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392420",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392400",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392398",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392370",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392372",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392458",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392486",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392484",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392560",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392556",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392554",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392416",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392566",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392568",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392570",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392534",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392536",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392538",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392518",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392522",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392528",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392630",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392438",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392446",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392500",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392494",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392470",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392480",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392336",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392586",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392340",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392450",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392448",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392428",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392434",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392857",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392858",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392632",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392859",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392860",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392636",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392634",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392861",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392862",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392642",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392640",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392638",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392863",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392864",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392644",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392648",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392646",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392865",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392866",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392698",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392680",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392844",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392846",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392848",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392788",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392718",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392720",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392700",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392702",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392670",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392672",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392756",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392652",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392758",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392768",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392770",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392826",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392710",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392650",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392834",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392836",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392808",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392810",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392820",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392818",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392796",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392740",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392780",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392782",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392784",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392764",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392666",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392660",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392662",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392656",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392654",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392746",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392748",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392730",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392732",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392734",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392867",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392868",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392869",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392870",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392871",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392872",
+          "piece": "PAWN"
+        },
+        {
+          "id": "44392873",
+          "piece": "PAWN"
+        }
+      ]
+    },
+    {
+      "name": "ordinary_move_white_e4",
+      "kind": "legal_move",
+      "players": [
+        {
+          "id": "w1",
+          "name": "w1",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        }
+      ],
+      "setup": [],
+      "move": "e2e4",
+      "player_id": "w1",
+      "cap": 50000,
+      "field_size": 1000,
+      "expected": {
+        "legal": true,
+        "san": "e4",
+        "piece": "PAWN",
+        "locked_player_ids": [
+          "w1"
+        ]
+      }
+    },
+    {
+      "name": "ordinary_move_black_e5_reply",
+      "kind": "legal_move",
+      "players": [
+        {
+          "id": "w1",
+          "name": "w1",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "b1",
+          "name": "b1",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        }
+      ],
+      "setup": [
+        {
+          "move": "e2e4",
+          "player_id": "w1"
+        }
+      ],
+      "move": "e7e5",
+      "player_id": "b1",
+      "cap": 50000,
+      "field_size": 1000,
+      "expected": {
+        "legal": true,
+        "san": "e5",
+        "piece": "PAWN",
+        "locked_player_ids": [
+          "b1",
+          "w1"
+        ]
+      }
+    },
+    {
+      "name": "illegal_chess_move_pawn_jump",
+      "kind": "legal_move",
+      "players": [
+        {
+          "id": "p1",
+          "name": "p1",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        }
+      ],
+      "setup": [],
+      "move": "e2e5",
+      "player_id": "p1",
+      "cap": 50000,
+      "field_size": 1000,
+      "expected": {
+        "legal": false
+      }
+    },
+    {
+      "name": "illegal_piece_mismatch",
+      "kind": "legal_move",
+      "players": [
+        {
+          "id": "rb1",
+          "name": "rb1",
+          "positions": [
+            "RB"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5200,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        }
+      ],
+      "setup": [],
+      "move": "b1c3",
+      "player_id": "rb1",
+      "cap": 50000,
+      "field_size": 1000,
+      "expected": {
+        "legal": false
+      }
+    },
+    {
+      "name": "illegal_already_locked_repick",
+      "kind": "legal_move",
+      "players": [
+        {
+          "id": "w1",
+          "name": "w1",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "b1",
+          "name": "b1",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "rb1",
+          "name": "rb1",
+          "positions": [
+            "RB"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5200,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "b2",
+          "name": "b2",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        }
+      ],
+      "setup": [
+        {
+          "move": "a2a4",
+          "player_id": "w1"
+        },
+        {
+          "move": "h7h5",
+          "player_id": "b1"
+        },
+        {
+          "move": "a1a3",
+          "player_id": "rb1"
+        },
+        {
+          "move": "h5h4",
+          "player_id": "b2"
+        }
+      ],
+      "move": "a3a5",
+      "player_id": "rb1",
+      "cap": 50000,
+      "field_size": 1000,
+      "expected": {
+        "legal": false
+      }
+    },
+    {
+      "name": "illegal_cap_overflow_white",
+      "kind": "legal_move",
+      "players": [
+        {
+          "id": "dst1",
+          "name": "dst1",
+          "positions": [
+            "DST"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5200,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "b1",
+          "name": "b1",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "dst2",
+          "name": "dst2",
+          "positions": [
+            "DST"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5100,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        }
+      ],
+      "setup": [
+        {
+          "move": "e2e4",
+          "player_id": "dst1"
+        },
+        {
+          "move": "a7a6",
+          "player_id": "b1"
+        }
+      ],
+      "move": "d2d4",
+      "player_id": "dst2",
+      "cap": 10000,
+      "field_size": 1000,
+      "expected": {
+        "legal": false
+      }
+    },
+    {
+      "name": "roster_completable_flex_absorbs_third_rb",
+      "kind": "roster_completable",
+      "players": [
+        {
+          "id": "rb0",
+          "name": "rb0",
+          "positions": [
+            "RB"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5200,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "rb1",
+          "name": "rb1",
+          "positions": [
+            "RB"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5200,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "rb2",
+          "name": "rb2",
+          "positions": [
+            "RB"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5200,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        }
+      ],
+      "cap": 50000,
+      "expected": {
+        "completable": true
+      }
+    },
+    {
+      "name": "roster_completable_second_dst_illegal",
+      "kind": "roster_completable",
+      "players": [
+        {
+          "id": "dst1",
+          "name": "dst1",
+          "positions": [
+            "DST"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 2500,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "dst2",
+          "name": "dst2",
+          "positions": [
+            "DST"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 2600,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        }
+      ],
+      "cap": 50000,
+      "expected": {
+        "completable": false
+      }
+    },
+    {
+      "name": "castle_emerge_queenside",
+      "kind": "castle",
+      "players": [
+        {
+          "id": "w_pawn",
+          "name": "w_pawn",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "b1",
+          "name": "b1",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "te1",
+          "name": "te1",
+          "positions": [
+            "TE"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 4600,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "b2",
+          "name": "b2",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "wr1",
+          "name": "wr1",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "b3",
+          "name": "b3",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "rb_queen",
+          "name": "rb_queen",
+          "positions": [
+            "RB"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 7200,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "b4",
+          "name": "b4",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "qb1",
+          "name": "qb1",
+          "positions": [
+            "QB"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 6000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "rb1",
+          "name": "rb1",
+          "positions": [
+            "RB"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5200,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        }
+      ],
+      "setup": [
+        {
+          "move": "d2d4",
+          "player_id": "w_pawn"
+        },
+        {
+          "move": "a7a6",
+          "player_id": "b1"
+        },
+        {
+          "move": "b1c3",
+          "player_id": "te1"
+        },
+        {
+          "move": "a6a5",
+          "player_id": "b2"
+        },
+        {
+          "move": "c1f4",
+          "player_id": "wr1"
+        },
+        {
+          "move": "a5a4",
+          "player_id": "b3"
+        },
+        {
+          "move": "d1d3",
+          "player_id": "rb_queen"
+        },
+        {
+          "move": "a4a3",
+          "player_id": "b4"
+        }
+      ],
+      "move": "e1c1",
+      "king_mode": "EMERGE",
+      "king_player_id": "qb1",
+      "rook_player_id": "rb1",
+      "expected": {
+        "san": "O-O-O",
+        "locked_player_ids": [
+          "b1",
+          "b2",
+          "b3",
+          "b4",
+          "qb1",
+          "rb1",
+          "rb_queen",
+          "te1",
+          "w_pawn",
+          "wr1"
+        ],
+        "white_castled": true,
+        "king_piece": "KING",
+        "rook_piece": "ROOK"
+      }
+    },
+    {
+      "name": "castle_placed_queenside",
+      "kind": "castle",
+      "players": [
+        {
+          "id": "w_pawn",
+          "name": "w_pawn",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "b1",
+          "name": "b1",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "te1",
+          "name": "te1",
+          "positions": [
+            "TE"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 4600,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "b2",
+          "name": "b2",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "wr1",
+          "name": "wr1",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "b3",
+          "name": "b3",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "rb_queen",
+          "name": "rb_queen",
+          "positions": [
+            "RB"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 7200,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "b4",
+          "name": "b4",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "qb_w",
+          "name": "qb_w",
+          "positions": [
+            "QB"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 6500,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "qb_b",
+          "name": "qb_b",
+          "positions": [
+            "QB"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 6200,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "rb1",
+          "name": "rb1",
+          "positions": [
+            "RB"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5200,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        }
+      ],
+      "white_king_player_id": "qb_w",
+      "black_king_player_id": "qb_b",
+      "setup": [
+        {
+          "move": "d2d4",
+          "player_id": "w_pawn"
+        },
+        {
+          "move": "a7a6",
+          "player_id": "b1"
+        },
+        {
+          "move": "b1c3",
+          "player_id": "te1"
+        },
+        {
+          "move": "a6a5",
+          "player_id": "b2"
+        },
+        {
+          "move": "c1f4",
+          "player_id": "wr1"
+        },
+        {
+          "move": "a5a4",
+          "player_id": "b3"
+        },
+        {
+          "move": "d1d3",
+          "player_id": "rb_queen"
+        },
+        {
+          "move": "a4a3",
+          "player_id": "b4"
+        }
+      ],
+      "move": "e1c1",
+      "king_mode": "PLACED",
+      "rook_player_id": "rb1",
+      "expected": {
+        "san": "O-O-O",
+        "locked_player_ids": [
+          "b1",
+          "b2",
+          "b3",
+          "b4",
+          "qb_b",
+          "qb_w",
+          "rb1",
+          "rb_queen",
+          "te1",
+          "w_pawn",
+          "wr1"
+        ],
+        "white_castled": true,
+        "rook_piece": "ROOK",
+        "king_move_count": 1,
+        "king_player_id_after": "qb_w"
+      }
+    },
+    {
+      "name": "switch_king_after_placed_castle",
+      "kind": "switch_king",
+      "players": [
+        {
+          "id": "w_pawn",
+          "name": "w_pawn",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "b1",
+          "name": "b1",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "te1",
+          "name": "te1",
+          "positions": [
+            "TE"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 4600,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "b2",
+          "name": "b2",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "wr1",
+          "name": "wr1",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "b3",
+          "name": "b3",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "rb_queen",
+          "name": "rb_queen",
+          "positions": [
+            "RB"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 7200,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "b4",
+          "name": "b4",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "qb_w",
+          "name": "qb_w",
+          "positions": [
+            "QB"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 6500,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "qb_b",
+          "name": "qb_b",
+          "positions": [
+            "QB"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 6200,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "rb1",
+          "name": "rb1",
+          "positions": [
+            "RB"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5200,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "qb_new",
+          "name": "qb_new",
+          "positions": [
+            "QB"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5800,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        }
+      ],
+      "white_king_player_id": "qb_w",
+      "black_king_player_id": "qb_b",
+      "rook_player_id": "rb1",
+      "setup": [
+        {
+          "move": "d2d4",
+          "player_id": "w_pawn"
+        },
+        {
+          "move": "a7a6",
+          "player_id": "b1"
+        },
+        {
+          "move": "b1c3",
+          "player_id": "te1"
+        },
+        {
+          "move": "a6a5",
+          "player_id": "b2"
+        },
+        {
+          "move": "c1f4",
+          "player_id": "wr1"
+        },
+        {
+          "move": "a5a4",
+          "player_id": "b3"
+        },
+        {
+          "move": "d1d3",
+          "player_id": "rb_queen"
+        },
+        {
+          "move": "a4a3",
+          "player_id": "b4"
+        }
+      ],
+      "castle_move": "e1c1",
+      "side": "WHITE",
+      "new_king_player_id": "qb_new",
+      "expected": {
+        "success": true,
+        "locked_player_ids": [
+          "b1",
+          "b2",
+          "b3",
+          "b4",
+          "qb_b",
+          "qb_new",
+          "rb1",
+          "rb_queen",
+          "te1",
+          "w_pawn",
+          "wr1"
+        ],
+        "king_player_id_after": "qb_new"
+      }
+    },
+    {
+      "name": "capture_with_history",
+      "kind": "capture",
+      "players": [
+        {
+          "id": "w_pawn1",
+          "name": "w_pawn1",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "b_pawn1",
+          "name": "b_pawn1",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        }
+      ],
+      "setup": [
+        {
+          "move": "e2e4",
+          "player_id": "w_pawn1"
+        },
+        {
+          "move": "d7d5",
+          "player_id": "b_pawn1"
+        }
+      ],
+      "move": "e4d5",
+      "replacement_player_id": null,
+      "expected": {
+        "san": "exd5",
+        "captured_player_id": "b_pawn1",
+        "white_moves_count": 2,
+        "black_moves_count": 0
+      }
+    },
+    {
+      "name": "capture_unmoved_knight",
+      "kind": "capture",
+      "fen": "4k1n1/8/8/8/2B5/8/8/4K3 w - - 0 1",
+      "players": [
+        {
+          "id": "te1",
+          "name": "te1",
+          "positions": [
+            "TE"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 4600,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        }
+      ],
+      "setup": [],
+      "move": "c4g8",
+      "replacement_player_id": "te1",
+      "expected": {
+        "san": "Bxg8",
+        "captured_player_id": "te1",
+        "captured_piece": "KNIGHT",
+        "white_moves_count": 1,
+        "black_moves_count": 0
+      }
+    },
+    {
+      "name": "capture_en_passant",
+      "kind": "capture",
+      "players": [
+        {
+          "id": "w_e4",
+          "name": "w_e4",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "b_h6",
+          "name": "b_h6",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "w_e5",
+          "name": "w_e5",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3100,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "b_d5",
+          "name": "b_d5",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3200,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        }
+      ],
+      "setup": [
+        {
+          "move": "e2e4",
+          "player_id": "w_e4"
+        },
+        {
+          "move": "h7h6",
+          "player_id": "b_h6"
+        },
+        {
+          "move": "e4e5",
+          "player_id": "w_e5"
+        },
+        {
+          "move": "d7d5",
+          "player_id": "b_d5"
+        }
+      ],
+      "move": "e5d6",
+      "replacement_player_id": null,
+      "expected": {
+        "san": "exd6",
+        "captured_player_id": "b_d5",
+        "white_moves_count": 3,
+        "black_moves_count": 1
+      }
+    },
+    {
+      "name": "field_tier_1999",
+      "kind": "field_tier",
+      "field_size": 1999,
+      "sample_player": {
+        "id": "44391896",
+        "name": "Jahmyr Gibbs",
+        "positions": [
+          "RB"
+        ],
+        "team": "DET",
+        "opp": "@ARI",
+        "salary": 9800,
+        "proj": 29.5,
+        "own_small": 0.402,
+        "own_large": 0.342
+      },
+      "expected": {
+        "field_tier": "SMALL",
+        "own_for": 0.402
+      }
+    },
+    {
+      "name": "field_tier_2000",
+      "kind": "field_tier",
+      "field_size": 2000,
+      "sample_player": {
+        "id": "44391896",
+        "name": "Jahmyr Gibbs",
+        "positions": [
+          "RB"
+        ],
+        "team": "DET",
+        "opp": "@ARI",
+        "salary": 9800,
+        "proj": 29.5,
+        "own_small": 0.402,
+        "own_large": 0.342
+      },
+      "expected": {
+        "field_tier": "MID",
+        "own_for": 0.372
+      }
+    },
+    {
+      "name": "field_tier_9999",
+      "kind": "field_tier",
+      "field_size": 9999,
+      "sample_player": {
+        "id": "44391896",
+        "name": "Jahmyr Gibbs",
+        "positions": [
+          "RB"
+        ],
+        "team": "DET",
+        "opp": "@ARI",
+        "salary": 9800,
+        "proj": 29.5,
+        "own_small": 0.402,
+        "own_large": 0.342
+      },
+      "expected": {
+        "field_tier": "MID",
+        "own_for": 0.372
+      }
+    },
+    {
+      "name": "field_tier_10000",
+      "kind": "field_tier",
+      "field_size": 10000,
+      "sample_player": {
+        "id": "44391896",
+        "name": "Jahmyr Gibbs",
+        "positions": [
+          "RB"
+        ],
+        "team": "DET",
+        "opp": "@ARI",
+        "salary": 9800,
+        "proj": 29.5,
+        "own_small": 0.402,
+        "own_large": 0.342
+      },
+      "expected": {
+        "field_tier": "LARGE",
+        "own_for": 0.342
+      }
+    },
+    {
+      "name": "target_rank_2",
+      "kind": "target_rank",
+      "field_size": 2,
+      "last_rank": 104,
+      "expected": {
+        "target_rank": 1
+      }
+    },
+    {
+      "name": "target_rank_100",
+      "kind": "target_rank",
+      "field_size": 100,
+      "last_rank": 104,
+      "expected": {
+        "target_rank": 6
+      }
+    },
+    {
+      "name": "target_rank_1000",
+      "kind": "target_rank",
+      "field_size": 1000,
+      "last_rank": 104,
+      "expected": {
+        "target_rank": 9
+      }
+    },
+    {
+      "name": "target_rank_1001",
+      "kind": "target_rank",
+      "field_size": 1001,
+      "last_rank": 104,
+      "expected": {
+        "target_rank": 10
+      }
+    },
+    {
+      "name": "target_rank_5000",
+      "kind": "target_rank",
+      "field_size": 5000,
+      "last_rank": 104,
+      "expected": {
+        "target_rank": 29
+      }
+    },
+    {
+      "name": "target_rank_10000",
+      "kind": "target_rank",
+      "field_size": 10000,
+      "last_rank": 104,
+      "expected": {
+        "target_rank": 37
+      }
+    },
+    {
+      "name": "target_rank_100000",
+      "kind": "target_rank",
+      "field_size": 100000,
+      "last_rank": 104,
+      "expected": {
+        "target_rank": 60
+      }
+    },
+    {
+      "name": "target_rank_416171",
+      "kind": "target_rank",
+      "field_size": 416171,
+      "last_rank": 104,
+      "expected": {
+        "target_rank": 104
+      }
+    },
+    {
+      "name": "family_ranking_full_list",
+      "kind": "family_ranking",
+      "expected": {
+        "families": [
+          {
+            "name": "Sicilian Defense",
+            "rank": 1,
+            "games": 24356,
+            "eco": "B32",
+            "moves": [
+              "e4",
+              "c5",
+              "Nf3",
+              "Nc6",
+              "d4",
+              "cxd4"
+            ]
+          },
+          {
+            "name": "Scotch Game",
+            "rank": 2,
+            "games": 17553,
+            "eco": "C44",
+            "moves": [
+              "e4",
+              "e5",
+              "Nf3",
+              "Nc6",
+              "d4",
+              "exd4"
+            ]
+          },
+          {
+            "name": "Caro-Kann Defense",
+            "rank": 3,
+            "games": 17500,
+            "eco": "B13",
+            "moves": [
+              "e4",
+              "c6",
+              "d4",
+              "d5",
+              "exd5",
+              "cxd5"
+            ]
+          },
+          {
+            "name": "Scandinavian Defense",
+            "rank": 4,
+            "games": 15279,
+            "eco": "B01",
+            "moves": [
+              "e4",
+              "d5",
+              "exd5",
+              "Qxd5",
+              "Nc3",
+              "Qd8"
+            ]
+          },
+          {
+            "name": "Italian Game",
+            "rank": 5,
+            "games": 15094,
+            "eco": "C50",
+            "moves": [
+              "e4",
+              "e5",
+              "Nf3",
+              "Nc6",
+              "Bc4",
+              "Bc5"
+            ]
+          },
+          {
+            "name": "French Defense",
+            "rank": 6,
+            "games": 11904,
+            "eco": "C02",
+            "moves": [
+              "e4",
+              "e6",
+              "d4",
+              "d5",
+              "e5",
+              "c5"
+            ]
+          },
+          {
+            "name": "Ruy Lopez",
+            "rank": 7,
+            "games": 9731,
+            "eco": "C70",
+            "moves": [
+              "e4",
+              "e5",
+              "Nf3",
+              "Nc6",
+              "Bb5",
+              "a6"
+            ]
+          },
+          {
+            "name": "Queen's Gambit Declined",
+            "rank": 8,
+            "games": 8786,
+            "eco": "D35",
+            "moves": [
+              "d4",
+              "d5",
+              "c4",
+              "e6",
+              "Nc3",
+              "Nf6"
+            ]
+          },
+          {
+            "name": "Nimzo-Indian Defense",
+            "rank": 9,
+            "games": 7259,
+            "eco": "E20",
+            "moves": [
+              "d4",
+              "Nf6",
+              "c4",
+              "e6",
+              "Nc3",
+              "Bb4"
+            ]
+          },
+          {
+            "name": "King's Indian Defense",
+            "rank": 10,
+            "games": 6870,
+            "eco": "E70",
+            "moves": [
+              "d4",
+              "Nf6",
+              "c4",
+              "g6",
+              "Nc3",
+              "Bg7",
+              "e4"
+            ]
+          },
+          {
+            "name": "Pirc Defense",
+            "rank": 11,
+            "games": 5531,
+            "eco": "B07",
+            "moves": [
+              "e4",
+              "d6",
+              "d4",
+              "Nf6",
+              "Nc3",
+              "g6"
+            ]
+          },
+          {
+            "name": "Philidor Defense",
+            "rank": 12,
+            "games": 4445,
+            "eco": "C41",
+            "moves": [
+              "e4",
+              "e5",
+              "Nf3",
+              "d6",
+              "d4",
+              "exd4"
+            ]
+          },
+          {
+            "name": "Four Knights Game",
+            "rank": 13,
+            "games": 4370,
+            "eco": "C47",
+            "moves": [
+              "e4",
+              "e5",
+              "Nf3",
+              "Nc6",
+              "Nc3",
+              "Nf6"
+            ]
+          },
+          {
+            "name": "Alekhine Defense",
+            "rank": 14,
+            "games": 4160,
+            "eco": "B03",
+            "moves": [
+              "e4",
+              "Nf6",
+              "e5",
+              "Nd5",
+              "d4",
+              "d6"
+            ]
+          },
+          {
+            "name": "Gr\u00fcnfeld Defense",
+            "rank": 15,
+            "games": 3764,
+            "eco": "D80",
+            "moves": [
+              "d4",
+              "Nf6",
+              "c4",
+              "g6",
+              "Nc3",
+              "d5"
+            ]
+          },
+          {
+            "name": "Benko Gambit",
+            "rank": 16,
+            "games": 2723,
+            "eco": "A57",
+            "moves": [
+              "d4",
+              "Nf6",
+              "c4",
+              "c5",
+              "d5",
+              "b5"
+            ]
+          },
+          {
+            "name": "Danish Gambit Accepted",
+            "rank": 17,
+            "games": 2717,
+            "eco": "C21",
+            "moves": [
+              "e4",
+              "e5",
+              "d4",
+              "exd4",
+              "c3",
+              "dxc3"
+            ]
+          },
+          {
+            "name": "Petrov's Defense",
+            "rank": 18,
+            "games": 2463,
+            "eco": "C42",
+            "moves": [
+              "e4",
+              "e5",
+              "Nf3",
+              "Nf6",
+              "Nxe5",
+              "d6"
+            ]
+          },
+          {
+            "name": "Modern Defense",
+            "rank": 19,
+            "games": 2457,
+            "eco": "B06",
+            "moves": [
+              "e4",
+              "g6",
+              "d4",
+              "Bg7",
+              "Nc3",
+              "d6"
+            ]
+          },
+          {
+            "name": "Englund Gambit",
+            "rank": 20,
+            "games": 2417,
+            "eco": "A40",
+            "moves": [
+              "d4",
+              "e5",
+              "dxe5",
+              "Nc6",
+              "Nf3",
+              "Qe7"
+            ]
+          },
+          {
+            "name": "Semi-Slav Defense",
+            "rank": 21,
+            "games": 2247,
+            "eco": "D31",
+            "moves": [
+              "d4",
+              "d5",
+              "c4",
+              "e6",
+              "Nc3",
+              "c6"
+            ]
+          },
+          {
+            "name": "Center Game",
+            "rank": 22,
+            "games": 2208,
+            "eco": "C22",
+            "moves": [
+              "e4",
+              "e5",
+              "d4",
+              "exd4",
+              "Qxd4",
+              "Nc6"
+            ]
+          },
+          {
+            "name": "Elephant Gambit",
+            "rank": 23,
+            "games": 2184,
+            "eco": "C40",
+            "moves": [
+              "e4",
+              "e5",
+              "Nf3",
+              "d5",
+              "exd5",
+              "e4"
+            ]
+          },
+          {
+            "name": "French Defense, Classical, 4. Bg5",
+            "rank": 24,
+            "games": 1844,
+            "eco": "C12",
+            "moves": [
+              "e4",
+              "e6",
+              "d4",
+              "d5",
+              "Nc3",
+              "Nf6",
+              "Bg5"
+            ]
+          },
+          {
+            "name": "King's Gambit Accepted",
+            "rank": 25,
+            "games": 1843,
+            "eco": "C34",
+            "moves": [
+              "e4",
+              "e5",
+              "f4",
+              "exf4",
+              "Nf3",
+              "g5"
+            ]
+          },
+          {
+            "name": "Vienna Game",
+            "rank": 26,
+            "games": 1775,
+            "eco": "C28",
+            "moves": [
+              "e4",
+              "e5",
+              "Nc3",
+              "Nc6",
+              "Bc4",
+              "Nf6"
+            ]
+          },
+          {
+            "name": "Benko Gambit Accepted",
+            "rank": 27,
+            "games": 1635,
+            "eco": "A57",
+            "moves": [
+              "d4",
+              "Nf6",
+              "c4",
+              "c5",
+              "d5",
+              "b5",
+              "cxb5",
+              "a6"
+            ]
+          },
+          {
+            "name": "Blackmar-Diemer Gambit",
+            "rank": 28,
+            "games": 1424,
+            "eco": "D00",
+            "moves": [
+              "d4",
+              "d5",
+              "e4",
+              "dxe4",
+              "Nc3",
+              "Nf6"
+            ]
+          },
+          {
+            "name": "Slav Defense",
+            "rank": 29,
+            "games": 1374,
+            "eco": "D15",
+            "moves": [
+              "d4",
+              "d5",
+              "c4",
+              "c6",
+              "Nf3",
+              "Nf6",
+              "Nc3"
+            ]
+          },
+          {
+            "name": "Czech Defense",
+            "rank": 30,
+            "games": 1333,
+            "eco": "B07",
+            "moves": [
+              "e4",
+              "d6",
+              "d4",
+              "Nf6",
+              "Nc3",
+              "c6"
+            ]
+          },
+          {
+            "name": "Lion Defense",
+            "rank": 31,
+            "games": 1291,
+            "eco": "B07",
+            "moves": [
+              "e4",
+              "d6",
+              "d4",
+              "Nf6",
+              "Nc3",
+              "Nbd7"
+            ]
+          },
+          {
+            "name": "Ponziani Opening",
+            "rank": 32,
+            "games": 1289,
+            "eco": "C44",
+            "moves": [
+              "e4",
+              "e5",
+              "Nf3",
+              "Nc6",
+              "c3",
+              "Nf6"
+            ]
+          },
+          {
+            "name": "Queen's Indian Defense",
+            "rank": 33,
+            "games": 1263,
+            "eco": "E12",
+            "moves": [
+              "d4",
+              "Nf6",
+              "c4",
+              "e6",
+              "Nf3",
+              "b6"
+            ]
+          },
+          {
+            "name": "Bogo-Indian Defense",
+            "rank": 34,
+            "games": 1242,
+            "eco": "E11",
+            "moves": [
+              "d4",
+              "Nf6",
+              "c4",
+              "e6",
+              "Nf3",
+              "Bb4+"
+            ]
+          },
+          {
+            "name": "Benoni Defense",
+            "rank": 35,
+            "games": 1238,
+            "eco": "A60",
+            "moves": [
+              "d4",
+              "Nf6",
+              "c4",
+              "c5",
+              "d5",
+              "e6"
+            ]
+          },
+          {
+            "name": "King's Indian Attack",
+            "rank": 36,
+            "games": 1144,
+            "eco": "A08",
+            "moves": [
+              "Nf3",
+              "d5",
+              "g3",
+              "c5",
+              "Bg2",
+              "Nc6"
+            ]
+          },
+          {
+            "name": "London System",
+            "rank": 37,
+            "games": 1036,
+            "eco": "A48",
+            "moves": [
+              "d4",
+              "Nf6",
+              "Nf3",
+              "g6",
+              "Bf4",
+              "Bg7",
+              "e3"
+            ]
+          },
+          {
+            "name": "Tarrasch Defense",
+            "rank": 38,
+            "games": 900,
+            "eco": "D32",
+            "moves": [
+              "d4",
+              "d5",
+              "c4",
+              "e6",
+              "Nc3",
+              "c5"
+            ]
+          },
+          {
+            "name": "King's Gambit Declined",
+            "rank": 39,
+            "games": 853,
+            "eco": "C31",
+            "moves": [
+              "e4",
+              "e5",
+              "f4",
+              "d5",
+              "exd5",
+              "e4"
+            ]
+          },
+          {
+            "name": "Blackmar-Diemer Gambit Accepted",
+            "rank": 40,
+            "games": 820,
+            "eco": "D00",
+            "moves": [
+              "d4",
+              "d5",
+              "e4",
+              "dxe4",
+              "Nc3",
+              "Nf6",
+              "f3",
+              "exf3"
+            ]
+          },
+          {
+            "name": "Rapport-Jobava System",
+            "rank": 41,
+            "games": 803,
+            "eco": "D01",
+            "moves": [
+              "d4",
+              "d5",
+              "Nc3",
+              "Nf6",
+              "Bf4",
+              "e6"
+            ]
+          },
+          {
+            "name": "English Opening",
+            "rank": 42,
+            "games": 723,
+            "eco": "A28",
+            "moves": [
+              "c4",
+              "e5",
+              "Nc3",
+              "Nf6",
+              "Nf3",
+              "Nc6"
+            ]
+          },
+          {
+            "name": "Queen's Gambit Accepted",
+            "rank": 43,
+            "games": 703,
+            "eco": "D23",
+            "moves": [
+              "d4",
+              "d5",
+              "c4",
+              "dxc4",
+              "Nf3",
+              "Nf6"
+            ]
+          },
+          {
+            "name": "Danish Gambit Declined",
+            "rank": 44,
+            "games": 692,
+            "eco": "C21",
+            "moves": [
+              "e4",
+              "e5",
+              "d4",
+              "exd4",
+              "c3",
+              "d5"
+            ]
+          },
+          {
+            "name": "Catalan Opening",
+            "rank": 45,
+            "games": 687,
+            "eco": "E00",
+            "moves": [
+              "d4",
+              "Nf6",
+              "c4",
+              "e6",
+              "g3",
+              "d5"
+            ]
+          },
+          {
+            "name": "Vienna Gambit, with Max Lange Defense",
+            "rank": 46,
+            "games": 676,
+            "eco": "C25",
+            "moves": [
+              "e4",
+              "e5",
+              "Nc3",
+              "Nc6",
+              "f4",
+              "exf4",
+              "Nf3"
+            ]
+          },
+          {
+            "name": "Nimzowitsch Defense",
+            "rank": 47,
+            "games": 665,
+            "eco": "B00",
+            "moves": [
+              "e4",
+              "Nc6",
+              "d4",
+              "d5",
+              "exd5",
+              "Qxd5"
+            ]
+          },
+          {
+            "name": "Mikenas Defense",
+            "rank": 48,
+            "games": 461,
+            "eco": "A40",
+            "moves": [
+              "d4",
+              "Nc6",
+              "c4",
+              "e5",
+              "d5",
+              "Nce7"
+            ]
+          },
+          {
+            "name": "Bishop's Opening",
+            "rank": 49,
+            "games": 420,
+            "eco": "C24",
+            "moves": [
+              "e4",
+              "e5",
+              "Bc4",
+              "Nf6",
+              "d3",
+              "c6"
+            ]
+          },
+          {
+            "name": "Zukertort Opening",
+            "rank": 50,
+            "games": 343,
+            "eco": "A08",
+            "moves": [
+              "Nf3",
+              "d5",
+              "g3",
+              "c5",
+              "Bg2",
+              "Nc6",
+              "d4"
+            ]
+          },
+          {
+            "name": "Three Knights Opening",
+            "rank": 51,
+            "games": 323,
+            "eco": "C46",
+            "moves": [
+              "e4",
+              "e5",
+              "Nf3",
+              "Nc6",
+              "Nc3",
+              "Bb4"
+            ]
+          },
+          {
+            "name": "Van Geet Opening",
+            "rank": 52,
+            "games": 320,
+            "eco": "B01",
+            "moves": [
+              "e4",
+              "d5",
+              "Nc3",
+              "dxe4",
+              "Nxe4",
+              "e5"
+            ]
+          },
+          {
+            "name": "Pterodactyl Defense",
+            "rank": 53,
+            "games": 319,
+            "eco": "B06",
+            "moves": [
+              "e4",
+              "g6",
+              "d4",
+              "Bg7",
+              "Nc3",
+              "c5",
+              "Be3"
+            ]
+          },
+          {
+            "name": "Bird Opening",
+            "rank": 54,
+            "games": 318,
+            "eco": "A02",
+            "moves": [
+              "f4",
+              "e5",
+              "fxe5",
+              "d6",
+              "exd6",
+              "Bxd6",
+              "Nf3",
+              "g5"
+            ]
+          },
+          {
+            "name": "Dutch Defense",
+            "rank": 55,
+            "games": 307,
+            "eco": "A83",
+            "moves": [
+              "d4",
+              "f5",
+              "e4",
+              "fxe4",
+              "Nc3",
+              "Nf6",
+              "Bg5"
+            ]
+          },
+          {
+            "name": "Old Indian Defense",
+            "rank": 56,
+            "games": 291,
+            "eco": "A54",
+            "moves": [
+              "d4",
+              "Nf6",
+              "c4",
+              "d6",
+              "Nc3",
+              "e5"
+            ]
+          },
+          {
+            "name": "Latvian Gambit Accepted",
+            "rank": 57,
+            "games": 224,
+            "eco": "C40",
+            "moves": [
+              "e4",
+              "e5",
+              "Nf3",
+              "f5",
+              "Nxe5",
+              "Qf6",
+              "d4"
+            ]
+          },
+          {
+            "name": "Neo-Gr\u00fcnfeld Defense",
+            "rank": 58,
+            "games": 209,
+            "eco": "D70",
+            "moves": [
+              "d4",
+              "Nf6",
+              "c4",
+              "g6",
+              "Nf3",
+              "d5"
+            ]
+          },
+          {
+            "name": "King's Indian Attack, with e6",
+            "rank": 59,
+            "games": 192,
+            "eco": "A07",
+            "moves": [
+              "Nf3",
+              "Nf6",
+              "g3",
+              "d5",
+              "Bg2",
+              "e6"
+            ]
+          },
+          {
+            "name": "Benko Gambit Declined",
+            "rank": 60,
+            "games": 132,
+            "eco": "A57",
+            "moves": [
+              "d4",
+              "Nf6",
+              "c4",
+              "c5",
+              "d5",
+              "b5",
+              "Nf3"
+            ]
+          },
+          {
+            "name": "Latvian Gambit",
+            "rank": 61,
+            "games": 132,
+            "eco": "C40",
+            "moves": [
+              "e4",
+              "e5",
+              "Nf3",
+              "f5",
+              "Nxe5",
+              "Nc6"
+            ]
+          },
+          {
+            "name": "R\u00e9ti Opening",
+            "rank": 62,
+            "games": 115,
+            "eco": "A11",
+            "moves": [
+              "c4",
+              "c6",
+              "Nf3",
+              "d5",
+              "g3",
+              "Nf6",
+              "Bg2"
+            ]
+          },
+          {
+            "name": "Torre Attack",
+            "rank": 63,
+            "games": 112,
+            "eco": "A46",
+            "moves": [
+              "d4",
+              "Nf6",
+              "Nf3",
+              "e6",
+              "Bg5",
+              "h6"
+            ]
+          },
+          {
+            "name": "Nimzo-Larsen Attack",
+            "rank": 64,
+            "games": 104,
+            "eco": "A01",
+            "moves": [
+              "b3",
+              "e5",
+              "Bb2",
+              "Nc6",
+              "c4",
+              "Nf6"
+            ]
+          },
+          {
+            "name": "Blackmar-Diemer Gambit Declined",
+            "rank": 65,
+            "games": 93,
+            "eco": "D00",
+            "moves": [
+              "d4",
+              "d5",
+              "e4",
+              "dxe4",
+              "Nc3",
+              "Nf6",
+              "f3",
+              "Bf5"
+            ]
+          },
+          {
+            "name": "Rat Defense",
+            "rank": 66,
+            "games": 88,
+            "eco": "A41",
+            "moves": [
+              "d4",
+              "d6",
+              "c4",
+              "e5",
+              "dxe5",
+              "Nc6"
+            ]
+          },
+          {
+            "name": "King's Indian Attack, with Bf5",
+            "rank": 67,
+            "games": 86,
+            "eco": "A07",
+            "moves": [
+              "Nf3",
+              "Nf6",
+              "g3",
+              "d5",
+              "Bg2",
+              "c6",
+              "O-O",
+              "Bf5"
+            ]
+          },
+          {
+            "name": "Richter-Veresov Attack",
+            "rank": 68,
+            "games": 85,
+            "eco": "D01",
+            "moves": [
+              "d4",
+              "Nf6",
+              "Nc3",
+              "d5",
+              "Bg5",
+              "Bf5"
+            ]
+          },
+          {
+            "name": "London System, with Be2",
+            "rank": 69,
+            "games": 75,
+            "eco": "A48",
+            "moves": [
+              "d4",
+              "Nf6",
+              "Nf3",
+              "g6",
+              "Bf4",
+              "Bg7",
+              "e3",
+              "d6",
+              "Be2"
+            ]
+          },
+          {
+            "name": "Trompowsky Attack",
+            "rank": 70,
+            "games": 65,
+            "eco": "A45",
+            "moves": [
+              "d4",
+              "Nf6",
+              "Bg5",
+              "Ne4",
+              "Bf4",
+              "g5"
+            ]
+          },
+          {
+            "name": "St. George Defense",
+            "rank": 71,
+            "games": 61,
+            "eco": "B00",
+            "moves": [
+              "e4",
+              "a6",
+              "d4",
+              "b5",
+              "Nf3",
+              "Bb7",
+              "Bd3",
+              "e6"
+            ]
+          },
+          {
+            "name": "Polish Opening",
+            "rank": 72,
+            "games": 53,
+            "eco": "A00",
+            "moves": [
+              "b4",
+              "e6",
+              "Bb2",
+              "Nf6",
+              "b5",
+              "a6"
+            ]
+          },
+          {
+            "name": "London System, with Bd3",
+            "rank": 73,
+            "games": 46,
+            "eco": "A48",
+            "moves": [
+              "d4",
+              "Nf6",
+              "Nf3",
+              "g6",
+              "Bf4",
+              "Bg7",
+              "e3",
+              "d6",
+              "Bd3"
+            ]
+          },
+          {
+            "name": "Blumenfeld Countergambit",
+            "rank": 74,
+            "games": 38,
+            "eco": "E10",
+            "moves": [
+              "d4",
+              "Nf6",
+              "c4",
+              "e6",
+              "Nf3",
+              "c5",
+              "d5",
+              "b5"
+            ]
+          },
+          {
+            "name": "Semi-Slav Defense Accepted",
+            "rank": 75,
+            "games": 37,
+            "eco": "D44",
+            "moves": [
+              "d4",
+              "d5",
+              "c4",
+              "c6",
+              "Nf3",
+              "Nf6",
+              "Nc3",
+              "e6",
+              "Bg5",
+              "dxc4"
+            ]
+          },
+          {
+            "name": "Vulture Defense",
+            "rank": 76,
+            "games": 25,
+            "eco": "A56",
+            "moves": [
+              "d4",
+              "Nf6",
+              "c4",
+              "c5",
+              "d5",
+              "Ne4"
+            ]
+          },
+          {
+            "name": "English Defense",
+            "rank": 77,
+            "games": 24,
+            "eco": "A40",
+            "moves": [
+              "d4",
+              "b6",
+              "c4",
+              "Bb7",
+              "Nc3",
+              "e5"
+            ]
+          },
+          {
+            "name": "Blumenfeld Countergambit Accepted",
+            "rank": 78,
+            "games": 15,
+            "eco": "E10",
+            "moves": [
+              "d4",
+              "Nf6",
+              "c4",
+              "e6",
+              "Nf3",
+              "c5",
+              "d5",
+              "b5",
+              "dxe6",
+              "fxe6",
+              "cxb5",
+              "d5"
+            ]
+          },
+          {
+            "name": "Rubinstein Opening",
+            "rank": 79,
+            "games": 14,
+            "eco": "D05",
+            "moves": [
+              "d4",
+              "Nf6",
+              "Nf3",
+              "e6",
+              "e3",
+              "c5",
+              "Bd3",
+              "d5",
+              "b3"
+            ]
+          },
+          {
+            "name": "Owen Defense",
+            "rank": 80,
+            "games": 11,
+            "eco": "B00",
+            "moves": [
+              "e4",
+              "b6",
+              "d4",
+              "Bb7",
+              "Bd3",
+              "f5",
+              "exf5",
+              "Bxg2",
+              "Qh5+",
+              "g6"
+            ]
+          },
+          {
+            "name": "Grob Opening",
+            "rank": 81,
+            "games": 8,
+            "eco": "A00",
+            "moves": [
+              "g4",
+              "d5",
+              "Bg2",
+              "Bxg4",
+              "c4",
+              "d4"
+            ]
+          },
+          {
+            "name": "Queen's Indian Defense, with e3",
+            "rank": 82,
+            "games": 8,
+            "eco": "E14",
+            "moves": [
+              "d4",
+              "Nf6",
+              "c4",
+              "e6",
+              "Nf3",
+              "Bb4+",
+              "Nbd2",
+              "b6",
+              "a3",
+              "Bxd2+",
+              "Qxd2",
+              "Bb7",
+              "e3"
+            ]
+          },
+          {
+            "name": "Englund Gambit Declined",
+            "rank": 83,
+            "games": 7,
+            "eco": "A40",
+            "moves": [
+              "d4",
+              "e5",
+              "d5",
+              "Bc5",
+              "e4",
+              "Qh4"
+            ]
+          },
+          {
+            "name": "Marienbad System",
+            "rank": 84,
+            "games": 7,
+            "eco": "A47",
+            "moves": [
+              "d4",
+              "Nf6",
+              "Nf3",
+              "b6",
+              "g3",
+              "Bb7",
+              "Bg2",
+              "c5"
+            ]
+          },
+          {
+            "name": "Borg Defense",
+            "rank": 85,
+            "games": 6,
+            "eco": "B00",
+            "moves": [
+              "e4",
+              "g5",
+              "d4",
+              "h6",
+              "h4",
+              "g4"
+            ]
+          },
+          {
+            "name": "Mexican Defense",
+            "rank": 86,
+            "games": 6,
+            "eco": "A50",
+            "moves": [
+              "d4",
+              "Nf6",
+              "c4",
+              "Nc6",
+              "d5",
+              "Ne5",
+              "f4"
+            ]
+          },
+          {
+            "name": "Queen's Indian Defense, with e3, Bb4+ Line",
+            "rank": 87,
+            "games": 6,
+            "eco": "E14",
+            "moves": [
+              "d4",
+              "Nf6",
+              "c4",
+              "e6",
+              "Nf3",
+              "Bb4+",
+              "Nbd2",
+              "b6",
+              "e3",
+              "Bb7"
+            ]
+          },
+          {
+            "name": "Colle System",
+            "rank": 88,
+            "games": 4,
+            "eco": "A40",
+            "moves": [
+              "d4",
+              "g6",
+              "Nf3",
+              "Bg7",
+              "e3",
+              "c5",
+              "Bd3",
+              "Qa5+"
+            ]
+          },
+          {
+            "name": "Zaire Defense",
+            "rank": 89,
+            "games": 3,
+            "eco": "A40",
+            "moves": [
+              "d4",
+              "Nc6",
+              "d5",
+              "Nb8",
+              "e4",
+              "Nf6",
+              "e5",
+              "Ng8"
+            ]
+          },
+          {
+            "name": "Robatsch Defense",
+            "rank": 90,
+            "games": 1,
+            "eco": "A41",
+            "moves": [
+              "d4",
+              "d6",
+              "Nf3",
+              "g6",
+              "c4",
+              "Bg7",
+              "e4",
+              "Bg4"
+            ]
+          },
+          {
+            "name": "Amar Opening",
+            "rank": 91,
+            "games": 0,
+            "eco": "A00",
+            "moves": [
+              "Nh3",
+              "d5",
+              "g3",
+              "e5",
+              "f4",
+              "Bxh3",
+              "Bxh3",
+              "exf4",
+              "O-O",
+              "fxg3",
+              "hxg3"
+            ]
+          },
+          {
+            "name": "Amsterdam Attack",
+            "rank": 92,
+            "games": 0,
+            "eco": "A00",
+            "moves": [
+              "e3",
+              "e5",
+              "c4",
+              "d6",
+              "Nc3",
+              "Nc6",
+              "b3",
+              "Nf6"
+            ]
+          },
+          {
+            "name": "Barnes Opening",
+            "rank": 93,
+            "games": 0,
+            "eco": "A00",
+            "moves": [
+              "f3",
+              "d5",
+              "e4",
+              "g6",
+              "d4",
+              "dxe4",
+              "c3"
+            ]
+          },
+          {
+            "name": "Dresden Opening",
+            "rank": 94,
+            "games": 0,
+            "eco": "C44",
+            "moves": [
+              "e4",
+              "e5",
+              "Nf3",
+              "Nc6",
+              "c4",
+              "Nf6",
+              "Nxe5"
+            ]
+          },
+          {
+            "name": "Formation",
+            "rank": 95,
+            "games": 0,
+            "eco": "A00",
+            "moves": [
+              "a3",
+              "e5",
+              "b3",
+              "d5",
+              "c3",
+              "Nf6",
+              "d3",
+              "Nc6",
+              "e3",
+              "Bd6",
+              "f3",
+              "O-O",
+              "g3"
+            ]
+          },
+          {
+            "name": "Hippopotamus Defense",
+            "rank": 96,
+            "games": 0,
+            "eco": "B00",
+            "moves": [
+              "e4",
+              "Nh6",
+              "d4",
+              "g6",
+              "c4",
+              "f6"
+            ]
+          },
+          {
+            "name": "Hungarian Opening",
+            "rank": 97,
+            "games": 0,
+            "eco": "A00",
+            "moves": [
+              "g3",
+              "f5",
+              "e4",
+              "fxe4",
+              "Qh5+",
+              "g6"
+            ]
+          },
+          {
+            "name": "King's Pawn Opening",
+            "rank": 98,
+            "games": 0,
+            "eco": "C20",
+            "moves": [
+              "e4",
+              "e5",
+              "Qe2",
+              "Nc6",
+              "c3",
+              "Nf6",
+              "Nf3",
+              "Bc5",
+              "d4",
+              "exd4",
+              "cxd4",
+              "Nxd4"
+            ]
+          },
+          {
+            "name": "K\u00e1das Opening",
+            "rank": 99,
+            "games": 0,
+            "eco": "A00",
+            "moves": [
+              "h4",
+              "d5",
+              "d4",
+              "c5",
+              "Nf3",
+              "cxd4",
+              "c3"
+            ]
+          },
+          {
+            "name": "Pseudo Queen's Indian Defense",
+            "rank": 100,
+            "games": 0,
+            "eco": "A47",
+            "moves": [
+              "d4",
+              "Nf6",
+              "Nf3",
+              "b6",
+              "e3",
+              "Bb7",
+              "Bd3",
+              "e6",
+              "Nbd2",
+              "c5",
+              "b3",
+              "Be7"
+            ]
+          },
+          {
+            "name": "Slav Indian",
+            "rank": 101,
+            "games": 0,
+            "eco": "A40",
+            "moves": [
+              "d4",
+              "c6",
+              "Nf3",
+              "Nf6",
+              "c4",
+              "b5"
+            ]
+          },
+          {
+            "name": "Sodium Attack",
+            "rank": 102,
+            "games": 0,
+            "eco": "A00",
+            "moves": [
+              "Na3",
+              "e5",
+              "Nc4",
+              "Nc6",
+              "e4",
+              "f5"
+            ]
+          },
+          {
+            "name": "Van't Kruijs Opening",
+            "rank": 103,
+            "games": 0,
+            "eco": "A00",
+            "moves": [
+              "e3",
+              "e5",
+              "Nc3",
+              "Nf6",
+              "f4",
+              "exf4",
+              "Nf3"
+            ]
+          },
+          {
+            "name": "Ware Opening",
+            "rank": 104,
+            "games": 0,
+            "eco": "A00",
+            "moves": [
+              "a4",
+              "b6",
+              "d4",
+              "d5",
+              "Nc3",
+              "Nd7"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "opening_lookup_after_e4",
+      "kind": "opening_lookup",
+      "moves": [
+        "e4"
+      ],
+      "expected": {
+        "opening_name": "King's Pawn Game",
+        "continuations": [
+          "Na6",
+          "Nc6",
+          "Nf6",
+          "Nh6",
+          "a5",
+          "a6",
+          "b6",
+          "c5",
+          "c6",
+          "d5",
+          "d6",
+          "e5",
+          "e6",
+          "f5",
+          "f6",
+          "g5",
+          "g6",
+          "h5",
+          "h6"
+        ]
+      }
+    },
+    {
+      "name": "opening_lookup_ruy_lopez",
+      "kind": "opening_lookup",
+      "moves": [
+        "e4",
+        "e5",
+        "Nf3",
+        "Nc6",
+        "Bb5"
+      ],
+      "expected": {
+        "opening_name": "Ruy Lopez",
+        "continuations": [
+          "Bb4",
+          "Bc5",
+          "Be7",
+          "Na5",
+          "Nb8",
+          "Nd4",
+          "Nf6",
+          "Nge7",
+          "Qe7",
+          "a5",
+          "a6",
+          "b6",
+          "d5",
+          "d6",
+          "f5",
+          "f6",
+          "g5",
+          "g6"
+        ]
+      }
+    },
+    {
+      "name": "opening_lookup_sicilian",
+      "kind": "opening_lookup",
+      "moves": [
+        "e4",
+        "c5"
+      ],
+      "expected": {
+        "opening_name": "Sicilian Defense",
+        "continuations": [
+          "Bc4",
+          "Ke2",
+          "Na3",
+          "Nc3",
+          "Ne2",
+          "Nf3",
+          "Nh3",
+          "Qg4",
+          "a3",
+          "a4",
+          "b3",
+          "b4",
+          "c3",
+          "c4",
+          "d3",
+          "d4",
+          "f4",
+          "g3",
+          "g4",
+          "h4"
+        ]
+      }
+    },
+    {
+      "name": "opening_lookup_no_match",
+      "kind": "opening_lookup",
+      "moves": [
+        "Qzz9"
+      ],
+      "expected": {
+        "opening_name": null,
+        "continuations": []
+      }
+    },
+    {
+      "name": "template_build_ruy_lopez_morphy_defense",
+      "kind": "template_build",
+      "template_moves": [
+        "e4",
+        "e5",
+        "Nf3",
+        "Nc6",
+        "Bb5",
+        "a6"
+      ],
+      "expected": {
+        "picks": [
+          {
+            "ply": 1,
+            "side": "WHITE",
+            "san": "e4",
+            "piece": "PAWN",
+            "player_id": "44392242",
+            "player_name": "Tre' Harris"
+          },
+          {
+            "ply": 2,
+            "side": "BLACK",
+            "san": "e5",
+            "piece": "PAWN",
+            "player_id": "44392222",
+            "player_name": "Luther Burden III"
+          },
+          {
+            "ply": 3,
+            "side": "WHITE",
+            "san": "Nf3",
+            "piece": "KNIGHT",
+            "player_id": "44392590",
+            "player_name": "Trey McBride"
+          },
+          {
+            "ply": 4,
+            "side": "BLACK",
+            "san": "Nc6",
+            "piece": "KNIGHT",
+            "player_id": "44392592",
+            "player_name": "George Kittle"
+          },
+          {
+            "ply": 5,
+            "side": "WHITE",
+            "san": "Bb5",
+            "piece": "BISHOP",
+            "player_id": "44392188",
+            "player_name": "Michael Wilson"
+          },
+          {
+            "ply": 6,
+            "side": "BLACK",
+            "san": "a6",
+            "piece": "PAWN",
+            "player_id": "44392228",
+            "player_name": "Malik Washington"
+          }
+        ],
+        "white_moves": [
+          {
+            "ply": 1,
+            "side": "WHITE",
+            "san": "e4",
+            "piece": "PAWN",
+            "player_id": "44392242",
+            "player_name": "Tre' Harris"
+          },
+          {
+            "ply": 3,
+            "side": "WHITE",
+            "san": "Nf3",
+            "piece": "KNIGHT",
+            "player_id": "44392590",
+            "player_name": "Trey McBride"
+          },
+          {
+            "ply": 5,
+            "side": "WHITE",
+            "san": "Bb5",
+            "piece": "BISHOP",
+            "player_id": "44392188",
+            "player_name": "Michael Wilson"
+          }
+        ],
+        "black_moves": [
+          {
+            "ply": 2,
+            "side": "BLACK",
+            "san": "e5",
+            "piece": "PAWN",
+            "player_id": "44392222",
+            "player_name": "Luther Burden III"
+          },
+          {
+            "ply": 4,
+            "side": "BLACK",
+            "san": "Nc6",
+            "piece": "KNIGHT",
+            "player_id": "44392592",
+            "player_name": "George Kittle"
+          },
+          {
+            "ply": 6,
+            "side": "BLACK",
+            "san": "a6",
+            "piece": "PAWN",
+            "player_id": "44392228",
+            "player_name": "Malik Washington"
+          }
+        ],
+        "opening_name_at_end": "Ruy Lopez: Morphy Defense"
+      }
+    }
+  ]
+}

@@ -441,6 +441,39 @@ describe("captures", () => {
     expect(blackIds.has("te_k1")).toBe(false);
   });
 
+  it("en passant capture transfers the captured pawn's player (Task 30b)", () => {
+    // chess.js keeps "ordinary capture" and "en passant" as separate move
+    // flags -- isCapture() alone is false here, unlike python-chess's
+    // board.is_capture() (True for both). Before Task 30b's fix, every
+    // "is this a capture" check in this module relied on isCapture()
+    // alone, so this move was silently treated as an ordinary move
+    // needing a brand-new player instead of a capture transfer -- caught
+    // by Task 30's parity check against the Python original.
+    const wE4 = makePlayer("w_e4", "WR", 3000);
+    const bH6 = makePlayer("b_h6", "WR", 3000);
+    const wE5 = makePlayer("w_e5", "WR", 3100);
+    const bD5 = makePlayer("b_d5", "WR", 3200);
+    let state = applyMove(new BuildState(), uci("e2e4"), wE4, NFL, CONTEST);
+    state = applyMove(state, uci("h7h6"), bH6, NFL, CONTEST);
+    state = applyMove(state, uci("e4e5"), wE5, NFL, CONTEST);
+    state = applyMove(state, uci("d7d5"), bD5, NFL, CONTEST); // sets up en passant on d6
+
+    const captureMove = uci("e5d6");
+    const matched = state.board.moves({ verbose: true }).find((m) => m.from === "e5" && m.to === "d6");
+    expect(matched?.isEnPassant()).toBe(true);
+    expect(matched?.isCapture()).toBe(false);
+
+    expect(isLegalMove(state, captureMove, makePlayer("anyone", "WR", 3000), NFL, CONTEST)).toBe(false);
+    expect(isLegalCapture(state, captureMove, NFL, CONTEST)).toBe(true);
+
+    const newState = applyCaptureMove(state, captureMove, NFL, CONTEST);
+
+    expect(newState.whiteMoves).toHaveLength(3); // w_e4, w_e5, + the transferred b_d5
+    const transferred = newState.whiteMoves.find((m) => m.player.id === "b_d5");
+    expect(transferred?.san).toBe("exd6");
+    expect(newState.blackMoves.some((m) => m.player.id === "b_d5")).toBe(false); // gone from Black's side
+  });
+
   it("capturing an unmoved pawn requires and locks a Pawn pick", () => {
     // Task 19: a captured piece with no lock history has nothing to
     // transfer -- the capturing side picks a player of its own instead,

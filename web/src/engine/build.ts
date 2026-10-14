@@ -46,6 +46,7 @@ import {
   capturedSquare,
   castle,
   findLegalMove,
+  isCaptureMove,
   isLegalCapture,
   isLegalMove,
   isLineupComplete,
@@ -198,7 +199,7 @@ function resolvePlayers(
   if (matched.isKingsideCastle() || matched.isQueensideCastle()) {
     return bestLegalCastlePlayers(state, sport, contest, playersPool, kingMode);
   }
-  if (matched.isCapture()) {
+  if (isCaptureMove(matched)) {
     const square = capturedSquare(matched);
     const capturedHistory = state.pieceLocks.get(square) ?? [];
     if (capturedHistory.length > 0) {
@@ -239,7 +240,7 @@ function applyResolvedPlayers(
     const [king, rook] = players;
     return castle(state, chessMove, king, rook, sport, contest, kingMode);
   }
-  if (matched.isCapture()) {
+  if (isCaptureMove(matched)) {
     const [player] = players;
     return applyCaptureMove(state, chessMove, sport, contest, player);
   }
@@ -312,7 +313,7 @@ function isMovePlayableForBlack(
   if (blackIsFull) {
     const matched = findLegalMove(state.board, chessMove);
     if (!matched) return false;
-    return !(matched.isCapture() || matched.isKingsideCastle() || matched.isQueensideCastle());
+    return !(isCaptureMove(matched) || matched.isKingsideCastle() || matched.isQueensideCastle());
   }
   return moveIsCompletable(state, chessMove, sport, contest, playersPool, kingMode);
 }
@@ -428,7 +429,7 @@ export function playWhiteMove(
     }
     const king = kingMode === KingMode.EMERGE ? whitePlayer : null;
     newState = castle(state, whiteMove, king, whiteRook, sport, contest, kingMode);
-  } else if (matched.isCapture()) {
+  } else if (isCaptureMove(matched)) {
     newState = applyCaptureMove(state, whiteMove, sport, contest, whitePlayer);
   } else {
     if (whitePlayer === null) {
@@ -518,7 +519,7 @@ export function playBlackMove(
     const legalMoves = state.board.moves({ verbose: true });
     let candidates: ChessJsMove[];
     if (blackIsFull) {
-      candidates = legalMoves.filter((m) => !m.isCapture() && !m.isKingsideCastle() && !m.isQueensideCastle());
+      candidates = legalMoves.filter((m) => !isCaptureMove(m) && !m.isKingsideCastle() && !m.isQueensideCastle());
     } else {
       candidates = legalMoves.filter((m) => {
         const cm: ChessMove = { from: m.from, to: m.to, promotion: m.promotion };
@@ -580,7 +581,7 @@ export function playBlackTemplateMove(
   let newState: BuildState;
   if (blackIsFull) {
     const matched = findLegalMove(state.board, chessMove);
-    if (matched && (matched.isCapture() || matched.isKingsideCastle() || matched.isQueensideCastle())) {
+    if (matched && (isCaptureMove(matched) || matched.isKingsideCastle() || matched.isQueensideCastle())) {
       return null;
     }
     newState = pushSilentMove(state, chessMove);

@@ -191,6 +191,19 @@ function cloneBoard(board: Chess): Chess {
   return clone;
 }
 
+// chess.js keeps "ordinary capture" and "en passant" as separate, non-
+// overlapping move flags (`isCapture()` / `isEnPassant()`), unlike python-
+// chess's `board.is_capture()`, which returns True for both (RULES.md draws
+// no distinction either -- a capture is a capture). Every "is this move a
+// capture" check in this module and in build.ts goes through this instead
+// of calling `isCapture()` alone (Task 30b) -- `isCapture()` on its own
+// silently mis-routed an en passant move down the ordinary-move path,
+// which locks a brand-new player instead of transferring the captured
+// pawn's, caught by Task 30's parity check against the Python original.
+export function isCaptureMove(move: ChessJsMove): boolean {
+  return move.isCapture() || move.isEnPassant();
+}
+
 export function isLegalMove(
   state: BuildState,
   chessMove: ChessMove,
@@ -201,7 +214,7 @@ export function isLegalMove(
   const matched = findLegalMove(state.board, chessMove);
   if (!matched) return false;
   if (matched.isKingsideCastle() || matched.isQueensideCastle()) return false; // castling locks King + Rook together; use castle()
-  if (matched.isCapture()) return false; // the captured player is the pick; use applyCaptureMove()
+  if (isCaptureMove(matched)) return false; // the captured player is the pick; use applyCaptureMove()
 
   const side = sideToMove(state.board);
   const piece = pieceForChessType(matched.piece);
@@ -475,7 +488,7 @@ export function isLegalCapture(
 ): boolean {
   const matched = findLegalMove(state.board, chessMove);
   if (!matched) return false;
-  if (!matched.isCapture() || matched.isKingsideCastle() || matched.isQueensideCastle()) return false;
+  if (!isCaptureMove(matched) || matched.isKingsideCastle() || matched.isQueensideCastle()) return false;
 
   const side = sideToMove(state.board);
   const current = movesFor(state, side).map((m) => m.player);
@@ -518,7 +531,7 @@ export function applyCaptureMove(
   if (matched.isKingsideCastle() || matched.isQueensideCastle()) {
     throw new Error(`${JSON.stringify(chessMove)} is castling, not a plain capture; use castle()`);
   }
-  if (!matched.isCapture()) {
+  if (!isCaptureMove(matched)) {
     throw new Error(`${JSON.stringify(chessMove)} is not a capture; use applyMove()`);
   }
 
@@ -591,7 +604,7 @@ export function pushSilentMove(state: BuildState, chessMove: ChessMove): BuildSt
   if (!matched) {
     throw new Error(`illegal move: ${JSON.stringify(chessMove)}`);
   }
-  if (matched.isCapture()) {
+  if (isCaptureMove(matched)) {
     throw new Error(`${JSON.stringify(chessMove)} is a capture; a silent move cannot be`);
   }
   if (matched.isKingsideCastle() || matched.isQueensideCastle()) {
