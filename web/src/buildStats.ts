@@ -10,22 +10,30 @@ import type { ContestConfig } from "./engine/config";
 import type { Player } from "./engine/models";
 import { classify } from "./engine/pieces";
 import { maxAssignable, openRosterSlots } from "./engine/rules";
-import type { SportConfig } from "./engine/sport";
+import type { PieceBand, SportConfig } from "./engine/sport";
 
 // Task 38b: a piece band's own position(s)/salary range, read off `sport`
-// (e.g. "WR · $5,000–6,999", "$7,000+" for Queen, which has no position
-// restriction) -- the pick modal's subtitle and the build screen's "Book
-// continues" entries both describe the same band, so the formatting lives
-// here once. `maxSalary` is exclusive (PieceBand.matches: `salary <
-// maxSalary`), hence the -1 on the displayed upper bound. Null if `sport`
-// has no band at all for `piece` (shouldn't happen for a real sport config
-// -- see pieces.classify's own comment -- but this stays a plain lookup,
-// not an assumption).
+// (e.g. "TE · $5,000+") -- the pick modal's subtitle and the build screen's
+// "Book continues" entries both describe the same band, so the formatting
+// lives here once. `maxSalary` is exclusive (PieceBand.matches: `salary <
+// maxSalary`), hence the -1 on the displayed upper bound.
+//
+// Task "piece pools": a piece can now be spread across more than one band
+// (PAWN is "RB/TE/WR under $5,000" AND, separately, "DST, any salary") --
+// every band for `piece` is described and joined, not just the first one
+// found, so the label never silently omits half of what the pick list
+// actually offers. Null if `sport` has no band at all for `piece`
+// (shouldn't happen for a real sport config -- see pieces.classify's own
+// comment -- but this stays a plain lookup, not an assumption).
 export function pieceBandLabel(piece: Piece, sport: SportConfig): string | null {
-  const band = sport.pieceBands.find((b) => b.piece === piece);
-  if (band === undefined) return null;
+  const bands = sport.pieceBands.filter((b) => b.piece === piece);
+  const labels = bands.map(singleBandLabel).filter((label): label is string => label !== null);
+  return labels.length > 0 ? labels.join(", or ") : null;
+}
+
+function singleBandLabel(band: PieceBand): string | null {
   const parts: string[] = [];
-  if (band.positions !== null) parts.push([...band.positions].join("/"));
+  if (band.positions !== null) parts.push([...band.positions].sort().join("/"));
   if (band.minSalary !== null && band.maxSalary !== null) {
     parts.push(`$${band.minSalary.toLocaleString()}–${(band.maxSalary - 1).toLocaleString()}`);
   } else if (band.minSalary !== null) {
@@ -91,6 +99,6 @@ export function eligiblePlayers(
   sport: SportConfig,
 ): Player[] {
   return playersPool
-    .filter((p) => !lockedPlayerIds.has(p.id) && classify(p, sport) === piece)
+    .filter((p) => !lockedPlayerIds.has(p.id) && classify(p, sport).has(piece))
     .sort((a, b) => b.proj - a.proj);
 }

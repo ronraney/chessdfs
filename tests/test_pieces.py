@@ -26,62 +26,72 @@ def make_player(pos: str, salary: int) -> Player:
 
 
 @pytest.mark.parametrize("salary", [100, 3000, 4999, 5000, 6900, 7000, 9000])
-def test_qb_is_always_king(salary):
-    assert classify(make_player("QB", salary), NFL) is Piece.KING
+def test_qb_is_always_king_only(salary):
+    # QUEEN explicitly excludes QB -- a QB never pools into anything else,
+    # at any salary.
+    assert classify(make_player("QB", salary), NFL) == {Piece.KING}
 
 
 @pytest.mark.parametrize("pos", ["RB", "WR", "TE", "DST", "FB"])
-def test_non_qb_at_7000_plus_is_queen(pos):
-    assert classify(make_player(pos, 7000), NFL) is Piece.QUEEN
-    assert classify(make_player(pos, 9500), NFL) is Piece.QUEEN
+def test_non_qb_at_7000_plus_is_queen_eligible(pos):
+    assert Piece.QUEEN in classify(make_player(pos, 7000), NFL)
+    assert Piece.QUEEN in classify(make_player(pos, 9500), NFL)
 
 
-def test_rb_rook_boundary_4900_5000():
-    assert classify(make_player("RB", 4900), NFL) is Piece.PAWN
-    assert classify(make_player("RB", 5000), NFL) is Piece.ROOK
+def test_rb_rook_boundary_4999_5000():
+    assert classify(make_player("RB", 4999), NFL) == {Piece.PAWN}
+    assert classify(make_player("RB", 5000), NFL) == {Piece.ROOK}
 
 
-def test_wr_bishop_boundary_4900_5000():
-    assert classify(make_player("WR", 4900), NFL) is Piece.PAWN
-    assert classify(make_player("WR", 5000), NFL) is Piece.BISHOP
+def test_wr_bishop_boundary_4999_5000():
+    assert classify(make_player("WR", 4999), NFL) == {Piece.PAWN}
+    assert classify(make_player("WR", 5000), NFL) == {Piece.BISHOP}
 
 
-def test_rook_bishop_knight_vs_queen_boundary_6900_7000():
-    assert classify(make_player("RB", 6900), NFL) is Piece.ROOK
-    assert classify(make_player("RB", 7000), NFL) is Piece.QUEEN
-    assert classify(make_player("WR", 6900), NFL) is Piece.BISHOP
-    assert classify(make_player("WR", 7000), NFL) is Piece.QUEEN
-    assert classify(make_player("TE", 6900), NFL) is Piece.KNIGHT
-    assert classify(make_player("TE", 7000), NFL) is Piece.QUEEN
+def test_te_knight_boundary_4999_5000():
+    assert classify(make_player("TE", 4999), NFL) == {Piece.PAWN}
+    assert classify(make_player("TE", 5000), NFL) == {Piece.KNIGHT}
 
 
-def test_te_knight_boundary_4400_4500():
-    assert classify(make_player("TE", 4400), NFL) is Piece.PAWN
-    assert classify(make_player("TE", 4500), NFL) is Piece.KNIGHT
+def test_rook_bishop_knight_overlap_queen_at_6999_vs_7000():
+    """Piece pools: Rook/Bishop/Knight no longer have a $7,000 ceiling, so
+    an RB/WR/TE at $7,000+ is in BOTH its position band and Queen -- the
+    $6,900 case stays single-pool (below Queen's own $7,000 floor).
+    """
+    assert classify(make_player("RB", 6900), NFL) == {Piece.ROOK}
+    assert classify(make_player("RB", 7000), NFL) == {Piece.ROOK, Piece.QUEEN}
+    assert classify(make_player("WR", 6900), NFL) == {Piece.BISHOP}
+    assert classify(make_player("WR", 7000), NFL) == {Piece.BISHOP, Piece.QUEEN}
+    assert classify(make_player("TE", 6900), NFL) == {Piece.KNIGHT}
+    assert classify(make_player("TE", 7000), NFL) == {Piece.KNIGHT, Piece.QUEEN}
 
 
-def test_dst_at_5200_is_pawn():
-    assert classify(make_player("DST", 5200), NFL) is Piece.PAWN
+def test_dst_is_pawn_eligible_at_every_salary():
+    assert Piece.PAWN in classify(make_player("DST", 5200), NFL)
+    assert Piece.PAWN in classify(make_player("DST", 1000), NFL)
+    assert Piece.PAWN in classify(make_player("DST", 50000), NFL)
 
 
-def test_any_player_under_3000_is_pawn():
-    assert classify(make_player("RB", 2500), NFL) is Piece.PAWN
-    assert classify(make_player("DST", 1000), NFL) is Piece.PAWN
-    assert classify(make_player("WR", 0), NFL) is Piece.PAWN
+def test_dst_at_7000_plus_is_pawn_and_queen():
+    # DST is Pawn-eligible regardless of salary ("plus all DST") AND, once
+    # >= $7,000, also Queen-eligible -- these two Pawn rules (position-
+    # agnostic under $5,000, DST at any salary) aren't mutually exclusive.
+    assert classify(make_player("DST", 7000), NFL) == {Piece.PAWN, Piece.QUEEN}
 
 
-def test_dst_in_pawn_range():
-    assert classify(make_player("DST", 3000), NFL) is Piece.PAWN
-    assert classify(make_player("DST", 4900), NFL) is Piece.PAWN
+def test_any_non_qb_under_3000_is_pawn_only():
+    assert classify(make_player("RB", 2500), NFL) == {Piece.PAWN}
+    assert classify(make_player("DST", 1000), NFL) == {Piece.PAWN}
+    assert classify(make_player("WR", 0), NFL) == {Piece.PAWN}
 
 
-def test_pawn_range_is_position_agnostic():
-    assert classify(make_player("RB", 3000), NFL) is Piece.PAWN
-    assert classify(make_player("WR", 4900), NFL) is Piece.PAWN
-    assert classify(make_player("FB", 3500), NFL) is Piece.PAWN
+def test_pawn_under_5000_is_position_agnostic_for_non_qb():
+    assert classify(make_player("RB", 3000), NFL) == {Piece.PAWN}
+    assert classify(make_player("WR", 4900), NFL) == {Piece.PAWN}
+    assert classify(make_player("FB", 3500), NFL) == {Piece.PAWN}
 
 
-def test_multi_position_player_classifies_by_either_position():
+def test_multi_position_player_pools_from_every_position_it_holds():
     hybrid = Player(
         id="h1",
         name="Hybrid",
@@ -93,4 +103,5 @@ def test_multi_position_player_classifies_by_either_position():
         own_small=0.1,
         own_large=0.1,
     )
-    assert classify(hybrid, NFL) is Piece.ROOK  # matches via RB; WR would also match Bishop
+    # Piece pools: both positions' bands contribute, not just the first.
+    assert classify(hybrid, NFL) == {Piece.ROOK, Piece.BISHOP}

@@ -1,5 +1,5 @@
 {
-  "scenario_count": 41,
+  "scenario_count": 43,
   "scenarios": [
     {
       "name": "classify_all_sample_players",
@@ -3923,1207 +3923,1821 @@
       "expected": [
         {
           "id": "44391896",
-          "piece": "QUEEN"
+          "pieces": [
+            "QUEEN",
+            "ROOK"
+          ]
         },
         {
           "id": "44392166",
-          "piece": "QUEEN"
+          "pieces": [
+            "BISHOP",
+            "QUEEN"
+          ]
         },
         {
           "id": "44391898",
-          "piece": "QUEEN"
+          "pieces": [
+            "QUEEN",
+            "ROOK"
+          ]
         },
         {
           "id": "44392168",
-          "piece": "QUEEN"
+          "pieces": [
+            "BISHOP",
+            "QUEEN"
+          ]
         },
         {
           "id": "44392170",
-          "piece": "QUEEN"
+          "pieces": [
+            "BISHOP",
+            "QUEEN"
+          ]
         },
         {
           "id": "44391900",
-          "piece": "QUEEN"
+          "pieces": [
+            "QUEEN",
+            "ROOK"
+          ]
         },
         {
           "id": "44392172",
-          "piece": "QUEEN"
+          "pieces": [
+            "BISHOP",
+            "QUEEN"
+          ]
         },
         {
           "id": "44392174",
-          "piece": "QUEEN"
+          "pieces": [
+            "BISHOP",
+            "QUEEN"
+          ]
         },
         {
           "id": "44392176",
-          "piece": "QUEEN"
+          "pieces": [
+            "BISHOP",
+            "QUEEN"
+          ]
         },
         {
           "id": "44391902",
-          "piece": "QUEEN"
+          "pieces": [
+            "QUEEN",
+            "ROOK"
+          ]
         },
         {
           "id": "44392178",
-          "piece": "QUEEN"
+          "pieces": [
+            "BISHOP",
+            "QUEEN"
+          ]
         },
         {
           "id": "44392588",
-          "piece": "QUEEN"
+          "pieces": [
+            "KNIGHT",
+            "QUEEN"
+          ]
         },
         {
           "id": "44391824",
-          "piece": "KING"
+          "pieces": [
+            "KING"
+          ]
         },
         {
           "id": "44391904",
-          "piece": "ROOK"
+          "pieces": [
+            "ROOK"
+          ]
         },
         {
           "id": "44392590",
-          "piece": "KNIGHT"
+          "pieces": [
+            "KNIGHT"
+          ]
         },
         {
           "id": "44391906",
-          "piece": "ROOK"
+          "pieces": [
+            "ROOK"
+          ]
         },
         {
           "id": "44391825",
-          "piece": "KING"
+          "pieces": [
+            "KING"
+          ]
         },
         {
           "id": "44392180",
-          "piece": "BISHOP"
+          "pieces": [
+            "BISHOP"
+          ]
         },
         {
           "id": "44391908",
-          "piece": "ROOK"
+          "pieces": [
+            "ROOK"
+          ]
         },
         {
           "id": "44391826",
-          "piece": "KING"
+          "pieces": [
+            "KING"
+          ]
         },
         {
           "id": "44392182",
-          "piece": "BISHOP"
+          "pieces": [
+            "BISHOP"
+          ]
         },
         {
           "id": "44392184",
-          "piece": "BISHOP"
+          "pieces": [
+            "BISHOP"
+          ]
         },
         {
           "id": "44391827",
-          "piece": "KING"
+          "pieces": [
+            "KING"
+          ]
         },
         {
           "id": "44392186",
-          "piece": "BISHOP"
+          "pieces": [
+            "BISHOP"
+          ]
         },
         {
           "id": "44392188",
-          "piece": "BISHOP"
+          "pieces": [
+            "BISHOP"
+          ]
         },
         {
           "id": "44391912",
-          "piece": "ROOK"
+          "pieces": [
+            "ROOK"
+          ]
         },
         {
           "id": "44391914",
-          "piece": "ROOK"
+          "pieces": [
+            "ROOK"
+          ]
         },
         {
           "id": "44392190",
-          "piece": "BISHOP"
+          "pieces": [
+            "BISHOP"
+          ]
         },
         {
           "id": "44391829",
-          "piece": "KING"
+          "pieces": [
+            "KING"
+          ]
         },
         {
           "id": "44392192",
-          "piece": "BISHOP"
+          "pieces": [
+            "BISHOP"
+          ]
         },
         {
           "id": "44391916",
-          "piece": "ROOK"
+          "pieces": [
+            "ROOK"
+          ]
         },
         {
           "id": "44391918",
-          "piece": "ROOK"
+          "pieces": [
+            "ROOK"
+          ]
         },
         {
           "id": "44391830",
-          "piece": "KING"
+          "pieces": [
+            "KING"
+          ]
         },
         {
           "id": "44392194",
-          "piece": "BISHOP"
+          "pieces": [
+            "BISHOP"
+          ]
         },
         {
           "id": "44391831",
-          "piece": "KING"
+          "pieces": [
+            "KING"
+          ]
         },
         {
           "id": "44391922",
-          "piece": "ROOK"
+          "pieces": [
+            "ROOK"
+          ]
         },
         {
           "id": "44391832",
-          "piece": "KING"
+          "pieces": [
+            "KING"
+          ]
         },
         {
           "id": "44391924",
-          "piece": "ROOK"
+          "pieces": [
+            "ROOK"
+          ]
         },
         {
           "id": "44391833",
-          "piece": "KING"
+          "pieces": [
+            "KING"
+          ]
         },
         {
           "id": "44392198",
-          "piece": "BISHOP"
+          "pieces": [
+            "BISHOP"
+          ]
         },
         {
           "id": "44391834",
-          "piece": "KING"
+          "pieces": [
+            "KING"
+          ]
         },
         {
           "id": "44391926",
-          "piece": "ROOK"
+          "pieces": [
+            "ROOK"
+          ]
         },
         {
           "id": "44391835",
-          "piece": "KING"
+          "pieces": [
+            "KING"
+          ]
         },
         {
           "id": "44391930",
-          "piece": "ROOK"
+          "pieces": [
+            "ROOK"
+          ]
         },
         {
           "id": "44392202",
-          "piece": "BISHOP"
+          "pieces": [
+            "BISHOP"
+          ]
         },
         {
           "id": "44391836",
-          "piece": "KING"
+          "pieces": [
+            "KING"
+          ]
         },
         {
           "id": "44391934",
-          "piece": "ROOK"
+          "pieces": [
+            "ROOK"
+          ]
         },
         {
           "id": "44391932",
-          "piece": "ROOK"
+          "pieces": [
+            "ROOK"
+          ]
         },
         {
           "id": "44392208",
-          "piece": "BISHOP"
+          "pieces": [
+            "BISHOP"
+          ]
         },
         {
           "id": "44391936",
-          "piece": "ROOK"
+          "pieces": [
+            "ROOK"
+          ]
         },
         {
           "id": "44391837",
-          "piece": "KING"
+          "pieces": [
+            "KING"
+          ]
         },
         {
           "id": "44391938",
-          "piece": "ROOK"
+          "pieces": [
+            "ROOK"
+          ]
         },
         {
           "id": "44392210",
-          "piece": "BISHOP"
+          "pieces": [
+            "BISHOP"
+          ]
         },
         {
           "id": "44392212",
-          "piece": "BISHOP"
+          "pieces": [
+            "BISHOP"
+          ]
         },
         {
           "id": "44392214",
-          "piece": "BISHOP"
+          "pieces": [
+            "BISHOP"
+          ]
         },
         {
           "id": "44391942",
-          "piece": "ROOK"
+          "pieces": [
+            "ROOK"
+          ]
         },
         {
           "id": "44391838",
-          "piece": "KING"
+          "pieces": [
+            "KING"
+          ]
         },
         {
           "id": "44392216",
-          "piece": "BISHOP"
+          "pieces": [
+            "BISHOP"
+          ]
         },
         {
           "id": "44392592",
-          "piece": "KNIGHT"
+          "pieces": [
+            "KNIGHT"
+          ]
         },
         {
           "id": "44391946",
-          "piece": "ROOK"
+          "pieces": [
+            "ROOK"
+          ]
         },
         {
           "id": "44391839",
-          "piece": "KING"
+          "pieces": [
+            "KING"
+          ]
         },
         {
           "id": "44391840",
-          "piece": "KING"
+          "pieces": [
+            "KING"
+          ]
         },
         {
           "id": "44391944",
-          "piece": "ROOK"
+          "pieces": [
+            "ROOK"
+          ]
         },
         {
           "id": "44391948",
-          "piece": "ROOK"
+          "pieces": [
+            "ROOK"
+          ]
         },
         {
           "id": "44391841",
-          "piece": "KING"
+          "pieces": [
+            "KING"
+          ]
         },
         {
           "id": "44392594",
-          "piece": "KNIGHT"
+          "pieces": [
+            "KNIGHT"
+          ]
         },
         {
           "id": "44391950",
-          "piece": "ROOK"
+          "pieces": [
+            "ROOK"
+          ]
         },
         {
           "id": "44392220",
-          "piece": "BISHOP"
+          "pieces": [
+            "BISHOP"
+          ]
         },
         {
           "id": "44391842",
-          "piece": "KING"
+          "pieces": [
+            "KING"
+          ]
         },
         {
           "id": "44392222",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392596",
-          "piece": "KNIGHT"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391952",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391843",
-          "piece": "KING"
+          "pieces": [
+            "KING"
+          ]
         },
         {
           "id": "44391954",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391956",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391958",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392224",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391960",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392598",
-          "piece": "KNIGHT"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391844",
-          "piece": "KING"
+          "pieces": [
+            "KING"
+          ]
         },
         {
           "id": "44391845",
-          "piece": "KING"
+          "pieces": [
+            "KING"
+          ]
         },
         {
           "id": "44392226",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391964",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392600",
-          "piece": "KNIGHT"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391966",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392602",
-          "piece": "KNIGHT"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392230",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391968",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391846",
-          "piece": "KING"
+          "pieces": [
+            "KING"
+          ]
         },
         {
           "id": "44392228",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391970",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391974",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392604",
-          "piece": "KNIGHT"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391978",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391976",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392234",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391984",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392606",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391980",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391982",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391986",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391988",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392240",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391990",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392250",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392608",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391998",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392244",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391994",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391992",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44391996",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392610",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392000",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392242",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392248",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392038",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392034",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392156",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392112",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392062",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392044",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392030",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392086",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392254",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392612",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392140",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392146",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392144",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392052",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392150",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392154",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392122",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392164",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392130",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392132",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392162",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392072",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392102",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392106",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392092",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392094",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392096",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392016",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392068",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392014",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392256",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392078",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392262",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392258",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392614",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392266",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392616",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392264",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392268",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392274",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392618",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392272",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392270",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392282",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392278",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392620",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392276",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392288",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392622",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392290",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392284",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392286",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392852",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392300",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392296",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392294",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392298",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392853",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392310",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392302",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392308",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392624",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392854",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392316",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392320",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392314",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392312",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392626",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392318",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392855",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392322",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392324",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392628",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392328",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392330",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392856",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392394",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392390",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392388",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392382",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392338",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392508",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392512",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392420",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392400",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392398",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392370",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392372",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392458",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392486",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392484",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392560",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392556",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392554",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392416",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392566",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392568",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392570",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392534",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392536",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392538",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392518",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392522",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392528",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392630",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392438",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392446",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392500",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392494",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392470",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392480",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392336",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392586",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392340",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392450",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392448",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392428",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392434",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392857",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392858",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392632",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392859",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392860",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392636",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392634",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392861",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392862",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392642",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392640",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392638",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392863",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392864",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392644",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392648",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392646",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392865",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392866",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392698",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392680",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392844",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392846",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392848",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392788",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392718",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392720",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392700",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392702",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392670",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392672",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392756",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392652",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392758",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392768",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392770",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392826",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392710",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392650",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392834",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392836",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392808",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392810",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392820",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392818",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392796",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392740",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392780",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392782",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392784",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392764",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392666",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392660",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392662",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392656",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392654",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392746",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392748",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392730",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392732",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392734",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392867",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392868",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392869",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392870",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392871",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392872",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         },
         {
           "id": "44392873",
-          "piece": "PAWN"
+          "pieces": [
+            "PAWN"
+          ]
         }
       ]
     },
@@ -5495,6 +6109,144 @@
       }
     },
     {
+      "name": "overlap_rb_7000_plus_picked_by_rook_move",
+      "kind": "legal_move",
+      "players": [
+        {
+          "id": "filler_w",
+          "name": "filler_w",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "filler_b",
+          "name": "filler_b",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "rb_overlap_rook",
+          "name": "rb_overlap_rook",
+          "positions": [
+            "RB"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 7200,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        }
+      ],
+      "setup": [
+        {
+          "move": "a2a4",
+          "player_id": "filler_w"
+        },
+        {
+          "move": "h7h6",
+          "player_id": "filler_b"
+        }
+      ],
+      "move": "a1a3",
+      "player_id": "rb_overlap_rook",
+      "cap": 50000,
+      "field_size": 1000,
+      "expected": {
+        "legal": true,
+        "san": "Ra3",
+        "piece": "ROOK",
+        "locked_player_ids": [
+          "filler_b",
+          "filler_w",
+          "rb_overlap_rook"
+        ]
+      }
+    },
+    {
+      "name": "overlap_rb_7000_plus_picked_by_queen_move",
+      "kind": "legal_move",
+      "players": [
+        {
+          "id": "filler_w",
+          "name": "filler_w",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "filler_b",
+          "name": "filler_b",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        },
+        {
+          "id": "rb_overlap_queen",
+          "name": "rb_overlap_queen",
+          "positions": [
+            "RB"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 7200,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1
+        }
+      ],
+      "setup": [
+        {
+          "move": "d2d4",
+          "player_id": "filler_w"
+        },
+        {
+          "move": "h7h6",
+          "player_id": "filler_b"
+        }
+      ],
+      "move": "d1d3",
+      "player_id": "rb_overlap_queen",
+      "cap": 50000,
+      "field_size": 1000,
+      "expected": {
+        "legal": true,
+        "san": "Qd3",
+        "piece": "QUEEN",
+        "locked_player_ids": [
+          "filler_b",
+          "filler_w",
+          "rb_overlap_queen"
+        ]
+      }
+    },
+    {
       "name": "castle_emerge_queenside",
       "kind": "castle",
       "players": [
@@ -5532,7 +6284,7 @@
           ],
           "team": "AAA",
           "opp": "BBB",
-          "salary": 4600,
+          "salary": 5200,
           "proj": 10.0,
           "own_small": 0.1,
           "own_large": 0.1
@@ -5724,7 +6476,7 @@
           ],
           "team": "AAA",
           "opp": "BBB",
-          "salary": 4600,
+          "salary": 5200,
           "proj": 10.0,
           "own_small": 0.1,
           "own_large": 0.1
@@ -5932,7 +6684,7 @@
           ],
           "team": "AAA",
           "opp": "BBB",
-          "salary": 4600,
+          "salary": 5200,
           "proj": 10.0,
           "own_small": 0.1,
           "own_large": 0.1
@@ -6176,7 +6928,7 @@
           ],
           "team": "AAA",
           "opp": "BBB",
-          "salary": 4600,
+          "salary": 5200,
           "proj": 10.0,
           "own_small": 0.1,
           "own_large": 0.1
@@ -8282,16 +9034,16 @@
             "side": "WHITE",
             "san": "e4",
             "piece": "PAWN",
-            "player_id": "44392242",
-            "player_name": "Tre' Harris"
+            "player_id": "44392596",
+            "player_name": "Sam LaPorta"
           },
           {
             "ply": 2,
             "side": "BLACK",
             "san": "e5",
             "piece": "PAWN",
-            "player_id": "44392222",
-            "player_name": "Luther Burden III"
+            "player_id": "44392242",
+            "player_name": "Tre' Harris"
           },
           {
             "ply": 3,
@@ -8306,24 +9058,24 @@
             "side": "BLACK",
             "san": "Nc6",
             "piece": "KNIGHT",
-            "player_id": "44392592",
-            "player_name": "George Kittle"
+            "player_id": "44392588",
+            "player_name": "Brock Bowers"
           },
           {
             "ply": 5,
             "side": "WHITE",
             "san": "Bb5",
             "piece": "BISHOP",
-            "player_id": "44392188",
-            "player_name": "Michael Wilson"
+            "player_id": "44392166",
+            "player_name": "Jaxon Smith-Njigba"
           },
           {
             "ply": 6,
             "side": "BLACK",
             "san": "a6",
             "piece": "PAWN",
-            "player_id": "44392228",
-            "player_name": "Malik Washington"
+            "player_id": "44392222",
+            "player_name": "Luther Burden III"
           }
         ],
         "white_moves": [
@@ -8332,8 +9084,8 @@
             "side": "WHITE",
             "san": "e4",
             "piece": "PAWN",
-            "player_id": "44392242",
-            "player_name": "Tre' Harris"
+            "player_id": "44392596",
+            "player_name": "Sam LaPorta"
           },
           {
             "ply": 3,
@@ -8348,8 +9100,8 @@
             "side": "WHITE",
             "san": "Bb5",
             "piece": "BISHOP",
-            "player_id": "44392188",
-            "player_name": "Michael Wilson"
+            "player_id": "44392166",
+            "player_name": "Jaxon Smith-Njigba"
           }
         ],
         "black_moves": [
@@ -8358,24 +9110,24 @@
             "side": "BLACK",
             "san": "e5",
             "piece": "PAWN",
-            "player_id": "44392222",
-            "player_name": "Luther Burden III"
+            "player_id": "44392242",
+            "player_name": "Tre' Harris"
           },
           {
             "ply": 4,
             "side": "BLACK",
             "san": "Nc6",
             "piece": "KNIGHT",
-            "player_id": "44392592",
-            "player_name": "George Kittle"
+            "player_id": "44392588",
+            "player_name": "Brock Bowers"
           },
           {
             "ply": 6,
             "side": "BLACK",
             "san": "a6",
             "piece": "PAWN",
-            "player_id": "44392228",
-            "player_name": "Malik Washington"
+            "player_id": "44392222",
+            "player_name": "Luther Burden III"
           }
         ],
         "opening_name_at_end": "Ruy Lopez: Morphy Defense"

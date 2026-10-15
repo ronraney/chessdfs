@@ -118,7 +118,7 @@ function eligibleUnlocked(
   sport: SportConfig,
   playersPool: readonly Player[],
 ): Player[] {
-  return playersPool.filter((p) => !state.lockedPlayerIds.has(p.id) && classify(p, sport) === piece);
+  return playersPool.filter((p) => !state.lockedPlayerIds.has(p.id) && classify(p, sport).has(piece));
 }
 
 // Highest-projection eligible player for which `chessMove` is actually

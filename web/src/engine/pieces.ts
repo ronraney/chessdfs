@@ -1,10 +1,17 @@
 // Piece classification -- see CLAUDE.md "Piece rules" (source of truth).
 // Ported from dfs_chess/pieces.py.
 //
-// Bands come from a SportConfig (checked in order; first match wins) rather
-// than hardcoded constants here, per CLAUDE.md "Multi-sport ready".
-// loadSportConfig rejects any config with no catch-all band, so every player
-// classifies here -- no thrown errors in practice.
+// A player belongs to the pool of every piece band they qualify for (not
+// just the first match) -- a move's pick list is the available players in
+// the moved piece's pool. Bands come from a SportConfig, not hardcoded
+// constants here, per CLAUDE.md "Multi-sport ready". loadSportConfig
+// rejects any config that leaves a real position with a salary gap no band
+// covers, so every real player classifies into at least one pool.
+//
+// Once a player is locked, their piece for display/captures/"Player |
+// Field" is whichever one the locking move actually recorded (Move.piece),
+// not a fresh call to classify -- a multi-pool player's *locked* identity
+// doesn't change just because classify would also return other pools today.
 
 import type { PieceSymbol } from "chess.js";
 import type { Player } from "./models";
@@ -28,12 +35,16 @@ export function pieceForChessType(pieceType: PieceSymbol): Piece {
   return CHESS_PIECE_TYPES[pieceType];
 }
 
-export function classify(player: Player, sport: SportConfig): Piece {
+// Every piece band `player` qualifies for, by position + salary -- empty
+// only if `sport`'s config is broken (loadSportConfig should have rejected
+// it before this ever runs).
+export function classify(player: Player, sport: SportConfig): ReadonlySet<Piece> {
   const positions = new Set(player.positions.map((p) => p.toUpperCase()));
+  const pieces = new Set<Piece>();
   for (const band of sport.pieceBands) {
     if (band.matches(positions, player.salary)) {
-      return band.piece;
+      pieces.add(band.piece);
     }
   }
-  throw new Error("no piece band matched -- loadSportConfig should have rejected this config");
+  return pieces;
 }

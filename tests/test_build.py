@@ -33,7 +33,7 @@ CONTEST = ContestConfig(field_size=1000, payouts=[])
 TOY_SPORT = SportConfig(
     sport="TOY",
     salary_cap=50000,
-    piece_bands=[PieceBand(piece=Piece.PAWN, positions=None, min_salary=None, max_salary=None)],
+    piece_bands=[PieceBand(piece=Piece.PAWN, positions=None, exclude_positions=None, min_salary=None, max_salary=None)],
     roster_slots=[RosterSlot(name="ANY", positions=frozenset({"ANY"}), count=1)],
 )
 
@@ -57,7 +57,7 @@ def _nfl_pool() -> list[Player]:
     # other piece is blocked on move 1) -- these two bands cover every
     # book continuation after "e4".
     pawns = [make_player(f"pawn{i}", "WR", 3000 + i) for i in range(8)]
-    knights = [make_player(f"knight{i}", "TE", 4600 + i) for i in range(4)]
+    knights = [make_player(f"knight{i}", "TE", 5200 + i) for i in range(4)]
     return pawns + knights
 
 
@@ -122,7 +122,7 @@ def test_play_black_template_move_plays_exactly_with_highest_projection():
 
     assert result is not None
     assert result.state.black_moves[-1].san == "e5"
-    expected = next(p for p in black_pool if classify(p, NFL) is Piece.PAWN)  # highest proj, tie-break stable
+    expected = next(p for p in black_pool if Piece.PAWN in classify(p, NFL))  # highest proj, tie-break stable
     assert result.state.black_moves[-1].player.id == expected.id
     assert result.opening is not None
 
@@ -147,9 +147,9 @@ _SYNTH_BOOK = [_LINE_A, _LINE_B]
 
 def test_black_commits_to_a_book_line_and_keeps_it_while_white_stays_in_it():
     white_pawn = make_player("w_pawn", "WR", 3000)
-    white_knight = make_player("w_knight", "TE", 4600)
+    white_knight = make_player("w_knight", "TE", 5200)
     black_pool = [make_player(f"b_pawn{i}", "WR", 3000 + i) for i in range(2)] + [
-        make_player(f"b_knight{i}", "TE", 4600 + i) for i in range(2)
+        make_player(f"b_knight{i}", "TE", 5200 + i) for i in range(2)
     ]
 
     state = play_white_move(BuildState(), uci("e2e4"), white_pawn, NFL, CONTEST, _SYNTH_BOOK).state
@@ -177,7 +177,7 @@ def test_black_picks_the_closest_rank_line():
     # than Line B's (90) -- Black must pick A regardless of seed.
     white_pawn = make_player("w_pawn", "WR", 3000)
     black_pool = [make_player(f"b_pawn{i}", "WR", 3000 + i) for i in range(2)] + [
-        make_player(f"b_knight{i}", "TE", 4600 + i) for i in range(2)
+        make_player(f"b_knight{i}", "TE", 5200 + i) for i in range(2)
     ]
     family_ranks = {"Line A": 1, "Line B": 90}
     target_rank = 1
@@ -198,7 +198,7 @@ def test_black_prefers_a_ranked_line_over_an_unranked_one():
     # beats any real, finite distance.
     white_pawn = make_player("w_pawn", "WR", 3000)
     black_pool = [make_player(f"b_pawn{i}", "WR", 3000 + i) for i in range(2)] + [
-        make_player(f"b_knight{i}", "TE", 4600 + i) for i in range(2)
+        make_player(f"b_knight{i}", "TE", 5200 + i) for i in range(2)
     ]
     family_ranks = {"Line A": 50}  # "Line B" is absent -- unranked
     target_rank = 1
@@ -217,7 +217,7 @@ def test_black_ties_between_lines_are_broken_by_the_seed():
     # as farthest -> tied -> the seed decides.
     white_pawn = make_player("w_pawn", "WR", 3000)
     black_pool = [make_player(f"b_pawn{i}", "WR", 3000 + i) for i in range(2)] + [
-        make_player(f"b_knight{i}", "TE", 4600 + i) for i in range(2)
+        make_player(f"b_knight{i}", "TE", 5200 + i) for i in range(2)
     ]
     state = play_white_move(BuildState(), uci("e2e4"), white_pawn, NFL, CONTEST, _SYNTH_BOOK).state
 
@@ -231,9 +231,9 @@ def test_black_ties_between_lines_are_broken_by_the_seed():
 
 def test_black_re_chooses_when_white_deviates_from_the_line():
     white_pawn = make_player("w_pawn", "WR", 3000)
-    white_knight = make_player("w_knight", "TE", 4600)
+    white_knight = make_player("w_knight", "TE", 5200)
     black_pool = [make_player(f"b_pawn{i}", "WR", 3000 + i) for i in range(4)] + [
-        make_player(f"b_knight{i}", "TE", 4600 + i) for i in range(4)
+        make_player(f"b_knight{i}", "TE", 5200 + i) for i in range(4)
     ]
 
     state = play_white_move(BuildState(), uci("e2e4"), white_pawn, NFL, CONTEST, _SYNTH_BOOK).state
@@ -251,9 +251,9 @@ _WHITE_LINE = ("e2e4", "g1f3")  # real book moves, always legal here regardless 
 
 
 def _drive_multi_ply(seed: int) -> tuple[list[str], tuple[str, ...] | None]:
-    white_pool = [make_player("w_pawn", "WR", 3000), make_player("w_knight", "TE", 4600)]
+    white_pool = [make_player("w_pawn", "WR", 3000), make_player("w_knight", "TE", 5200)]
     black_pool = [make_player(f"b_pawn{i}", "WR", 3000 + i) for i in range(8)] + [
-        make_player(f"b_knight{i}", "TE", 4600 + i) for i in range(8)
+        make_player(f"b_knight{i}", "TE", 5200 + i) for i in range(8)
     ]
     state = BuildState()
     rng = random.Random(seed)
@@ -261,7 +261,7 @@ def _drive_multi_ply(seed: int) -> tuple[list[str], tuple[str, ...] | None]:
     for white_uci in _WHITE_LINE:
         move = uci(white_uci)
         piece = piece_for_chess_type(state.board.piece_type_at(move.from_square))
-        player = next(p for p in white_pool if p.id not in state.locked_player_ids and classify(p, NFL) is piece)
+        player = next(p for p in white_pool if p.id not in state.locked_player_ids and piece in classify(p, NFL))
         state = play_white_move(state, move, player, NFL, CONTEST, BOOK).state
         black_result = play_black_move(state, BOOK, {}, 0, NFL, CONTEST, black_pool, rng)
         state = black_result.state
@@ -440,7 +440,7 @@ def test_no_valueerror_escapes_play_black_move_for_an_infeasible_capture():
     assert state.board.is_capture(capture_move)
 
     pool = [make_player(f"filler_wr{i}", "WR", 3000 + i) for i in range(8)] + [
-        make_player(f"filler_te{i}", "TE", 4600 + i) for i in range(4)
+        make_player(f"filler_te{i}", "TE", 5200 + i) for i in range(4)
     ]
 
     for seed in range(50):
@@ -496,7 +496,7 @@ def test_white_with_a_legal_move_is_not_a_dead_end():
     # A fresh build: White has 20 legal first moves and a normal player
     # pool, so this must NOT be reported as a dead end.
     pool = [make_player(f"pawn{i}", "WR", 3000 + i) for i in range(4)] + [
-        make_player(f"knight{i}", "TE", 4600 + i) for i in range(2)
+        make_player(f"knight{i}", "TE", 5200 + i) for i in range(2)
     ]
     assert check_white_dead_end(BuildState(), NFL, CONTEST, pool) is None
 

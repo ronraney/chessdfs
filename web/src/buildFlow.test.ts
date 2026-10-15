@@ -25,16 +25,17 @@ function makePlayer(id: string, pos: string, salary: number, proj = 10.0): Playe
   return new Player({ id, name: id, positions: [pos], team: "AAA", opp: "BBB", salary, proj, ownSmall: 0.1, ownLarge: 0.1 });
 }
 
-// Enough of each piece band (NFL's bands: QB->King, RB 5000-7000->Rook,
-// WR 5000-7000->Bishop, TE 4500-7000->Knight, everything else->Pawn) to
-// develop a short Italian Game and reach a real castling position. Pawn-
-// tier players are a cheap WR (under Bishop's $5,000 floor), not DST --
-// DST has only one roster slot, and a capture-transfer test needs to hold
-// two pawn-tier players on one side at once without colliding on it.
+// Enough of each piece band (NFL's pools: QB->King, RB >=5000->Rook, WR
+// >=5000->Bishop, TE >=5000->Knight (also Queen at >=7000, unused here),
+// everything else->Pawn) to develop a short Italian Game and reach a real
+// castling position. Pawn-tier players are a cheap WR (under Bishop's
+// $5,000 floor), not DST -- DST has only one roster slot, and a capture-
+// transfer test needs to hold two pawn-tier players on one side at once
+// without colliding on it.
 function fullPool(): Player[] {
   return [
     ...Array.from({ length: 8 }, (_, i) => makePlayer(`pawn${i}`, "WR", 3000 + i)),
-    ...Array.from({ length: 4 }, (_, i) => makePlayer(`knight${i}`, "TE", 4600 + i)),
+    ...Array.from({ length: 4 }, (_, i) => makePlayer(`knight${i}`, "TE", 5200 + i)),
     ...Array.from({ length: 4 }, (_, i) => makePlayer(`bishop${i}`, "WR", 5500 + i)),
     ...Array.from({ length: 2 }, (_, i) => makePlayer(`king${i}`, "QB", 6000 + i)),
     ...Array.from({ length: 2 }, (_, i) => makePlayer(`rook${i}`, "RB", 5000 + i)),

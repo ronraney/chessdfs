@@ -51,7 +51,9 @@ const CONTEST = new ContestConfig({ fieldSize: 1000, payouts: [] });
 const TOY_SPORT = new SportConfig({
   sport: "TOY",
   salaryCap: 50000,
-  pieceBands: [new PieceBand({ piece: Piece.PAWN, positions: null, minSalary: null, maxSalary: null })],
+  pieceBands: [
+    new PieceBand({ piece: Piece.PAWN, positions: null, excludePositions: null, minSalary: null, maxSalary: null }),
+  ],
   rosterSlots: [new RosterSlot({ name: "ANY", positions: new Set(["ANY"]), count: 1 })],
 });
 
@@ -74,7 +76,7 @@ function makePlayer(id: string, pos: string, salary: number, proj = 10.0): Playe
 // continuation after "e4".
 function nflPool(): Player[] {
   const pawns = Array.from({ length: 8 }, (_, i) => makePlayer(`pawn${i}`, "WR", 3000 + i));
-  const knights = Array.from({ length: 4 }, (_, i) => makePlayer(`knight${i}`, "TE", 4600 + i));
+  const knights = Array.from({ length: 4 }, (_, i) => makePlayer(`knight${i}`, "TE", 5200 + i));
   return [...pawns, ...knights];
 }
 
@@ -146,7 +148,7 @@ describe("template mode (Task 13)", () => {
 
     expect(result).not.toBeNull();
     expect(lastOf(result!.state.blackMoves).san).toBe("e5");
-    const expectedPlayer = blackPool.find((p) => classify(p, NFL) === Piece.PAWN)!; // highest proj, tie-break stable
+    const expectedPlayer = blackPool.find((p) => classify(p, NFL).has(Piece.PAWN))!; // highest proj, tie-break stable
     expect(lastOf(result!.state.blackMoves).player.id).toBe(expectedPlayer.id);
     expect(result!.opening).not.toBeNull();
   });
@@ -172,10 +174,10 @@ const SYNTH_BOOK = [LINE_A, LINE_B];
 describe("Black's book-line commitment outside a template (Task 13)", () => {
   it("commits to a book line and keeps it while White stays in it", () => {
     const whitePawn = makePlayer("w_pawn", "WR", 3000);
-    const whiteKnight = makePlayer("w_knight", "TE", 4600);
+    const whiteKnight = makePlayer("w_knight", "TE", 5200);
     const blackPool = [
       ...Array.from({ length: 2 }, (_, i) => makePlayer(`b_pawn${i}`, "WR", 3000 + i)),
-      ...Array.from({ length: 2 }, (_, i) => makePlayer(`b_knight${i}`, "TE", 4600 + i)),
+      ...Array.from({ length: 2 }, (_, i) => makePlayer(`b_knight${i}`, "TE", 5200 + i)),
     ];
 
     const state = playWhiteMove(new BuildState(), uci("e2e4"), whitePawn, NFL, CONTEST, SYNTH_BOOK).state;
@@ -203,7 +205,7 @@ describe("Black's book-line commitment outside a template (Task 13)", () => {
     const whitePawn = makePlayer("w_pawn", "WR", 3000);
     const blackPool = [
       ...Array.from({ length: 2 }, (_, i) => makePlayer(`b_pawn${i}`, "WR", 3000 + i)),
-      ...Array.from({ length: 2 }, (_, i) => makePlayer(`b_knight${i}`, "TE", 4600 + i)),
+      ...Array.from({ length: 2 }, (_, i) => makePlayer(`b_knight${i}`, "TE", 5200 + i)),
     ];
     const familyRanks = { "Line A": 1, "Line B": 90 };
     const targetRank = 1;
@@ -224,7 +226,7 @@ describe("Black's book-line commitment outside a template (Task 13)", () => {
     const whitePawn = makePlayer("w_pawn", "WR", 3000);
     const blackPool = [
       ...Array.from({ length: 2 }, (_, i) => makePlayer(`b_pawn${i}`, "WR", 3000 + i)),
-      ...Array.from({ length: 2 }, (_, i) => makePlayer(`b_knight${i}`, "TE", 4600 + i)),
+      ...Array.from({ length: 2 }, (_, i) => makePlayer(`b_knight${i}`, "TE", 5200 + i)),
     ];
     const familyRanks = { "Line A": 50 }; // "Line B" is absent -- unranked
     const targetRank = 1;
@@ -243,7 +245,7 @@ describe("Black's book-line commitment outside a template (Task 13)", () => {
     const whitePawn = makePlayer("w_pawn", "WR", 3000);
     const blackPool = [
       ...Array.from({ length: 2 }, (_, i) => makePlayer(`b_pawn${i}`, "WR", 3000 + i)),
-      ...Array.from({ length: 2 }, (_, i) => makePlayer(`b_knight${i}`, "TE", 4600 + i)),
+      ...Array.from({ length: 2 }, (_, i) => makePlayer(`b_knight${i}`, "TE", 5200 + i)),
     ];
     const state = playWhiteMove(new BuildState(), uci("e2e4"), whitePawn, NFL, CONTEST, SYNTH_BOOK).state;
 
@@ -257,10 +259,10 @@ describe("Black's book-line commitment outside a template (Task 13)", () => {
 
   it("re-chooses when White deviates from the line", () => {
     const whitePawn = makePlayer("w_pawn", "WR", 3000);
-    const whiteKnight = makePlayer("w_knight", "TE", 4600);
+    const whiteKnight = makePlayer("w_knight", "TE", 5200);
     const blackPool = [
       ...Array.from({ length: 4 }, (_, i) => makePlayer(`b_pawn${i}`, "WR", 3000 + i)),
-      ...Array.from({ length: 4 }, (_, i) => makePlayer(`b_knight${i}`, "TE", 4600 + i)),
+      ...Array.from({ length: 4 }, (_, i) => makePlayer(`b_knight${i}`, "TE", 5200 + i)),
     ];
 
     const state = playWhiteMove(new BuildState(), uci("e2e4"), whitePawn, NFL, CONTEST, SYNTH_BOOK).state;
@@ -278,17 +280,17 @@ describe("Black's book-line commitment outside a template (Task 13)", () => {
 const WHITE_LINE: readonly ChessMove[] = [uci("e2e4"), uci("g1f3")]; // real book moves, always legal here regardless of Black's own replies
 
 function driveMultiPly(seed: number): { blackSans: string[]; committedLine: readonly string[] | null } {
-  const whitePool = [makePlayer("w_pawn", "WR", 3000), makePlayer("w_knight", "TE", 4600)];
+  const whitePool = [makePlayer("w_pawn", "WR", 3000), makePlayer("w_knight", "TE", 5200)];
   const blackPool = [
     ...Array.from({ length: 8 }, (_, i) => makePlayer(`b_pawn${i}`, "WR", 3000 + i)),
-    ...Array.from({ length: 8 }, (_, i) => makePlayer(`b_knight${i}`, "TE", 4600 + i)),
+    ...Array.from({ length: 8 }, (_, i) => makePlayer(`b_knight${i}`, "TE", 5200 + i)),
   ];
   let state = new BuildState();
   const rng = new SeededRandom(seed);
   const blackSans: string[] = [];
   for (const move of WHITE_LINE) {
     const piece = pieceForChessType(state.board.get(move.from)!.type);
-    const player = whitePool.find((p) => !state.lockedPlayerIds.has(p.id) && classify(p, NFL) === piece)!;
+    const player = whitePool.find((p) => !state.lockedPlayerIds.has(p.id) && classify(p, NFL).has(piece))!;
     state = playWhiteMove(state, move, player, NFL, CONTEST, BOOK).state;
     const blackResult = playBlackMove(state, BOOK, {}, 0, NFL, CONTEST, blackPool, rng);
     state = blackResult.state;
@@ -482,7 +484,7 @@ describe("capture transfer pre-check (Task 11c)", () => {
 
     const pool = [
       ...Array.from({ length: 8 }, (_, i) => makePlayer(`filler_wr${i}`, "WR", 3000 + i)),
-      ...Array.from({ length: 4 }, (_, i) => makePlayer(`filler_te${i}`, "TE", 4600 + i)),
+      ...Array.from({ length: 4 }, (_, i) => makePlayer(`filler_te${i}`, "TE", 5200 + i)),
     ];
 
     for (let seed = 0; seed < 50; seed++) {
@@ -539,7 +541,7 @@ describe("dead-end endings (Task 11e)", () => {
     // pool, so this must NOT be reported as a dead end.
     const pool = [
       ...Array.from({ length: 4 }, (_, i) => makePlayer(`pawn${i}`, "WR", 3000 + i)),
-      ...Array.from({ length: 2 }, (_, i) => makePlayer(`knight${i}`, "TE", 4600 + i)),
+      ...Array.from({ length: 2 }, (_, i) => makePlayer(`knight${i}`, "TE", 5200 + i)),
     ];
     expect(checkWhiteDeadEnd(new BuildState(), NFL, CONTEST, pool)).toBeNull();
   });

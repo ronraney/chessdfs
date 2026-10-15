@@ -95,7 +95,7 @@ def _eligible_unlocked(
     return [
         p
         for p in players_pool
-        if p.id not in state.locked_player_ids and classify(p, sport) is piece
+        if p.id not in state.locked_player_ids and piece in classify(p, sport)
     ]
 
 

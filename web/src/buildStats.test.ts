@@ -6,7 +6,7 @@
 // bands the Morphy Defense line happens to touch.
 import { describe, expect, it } from "vitest";
 import nflConfig from "./data/config/sports/nfl.json";
-import { eligiblePlayers, pickReason, sideStats } from "./buildStats";
+import { eligiblePlayers, pickReason, pieceBandLabel, sideStats } from "./buildStats";
 import { ContestConfig } from "./engine/config";
 import { Piece, Player } from "./engine/models";
 import { loadSportConfig } from "./engine/sport";
@@ -17,6 +17,30 @@ const CONTEST = new ContestConfig({ fieldSize: 1000, payouts: [] }); // Mid tier
 function player(id: string, pos: string, salary: number, proj: number, ownSmall = 0.1, ownLarge = 0.3): Player {
   return new Player({ id, name: id, positions: [pos], team: "AAA", opp: "BBB", salary, proj, ownSmall, ownLarge });
 }
+
+// Task "piece pools": PAWN is now two bands (RB/TE/WR under $5,000, and
+// DST at any salary) -- pieceBandLabel joins every band for a piece, not
+// just the first one found, so the label never silently omits half of
+// what the pick list actually offers.
+describe("pieceBandLabel", () => {
+  it("King has no salary bound shown -- just the position", () => {
+    expect(pieceBandLabel(Piece.KING, NFL)).toBe("QB");
+  });
+
+  it("Queen still reads as having no position restriction (excludes QB, not an allow-list)", () => {
+    expect(pieceBandLabel(Piece.QUEEN, NFL)).toBe("$7,000+");
+  });
+
+  it("Rook/Bishop/Knight have no ceiling -- just a floor", () => {
+    expect(pieceBandLabel(Piece.ROOK, NFL)).toBe("RB · $5,000+");
+    expect(pieceBandLabel(Piece.BISHOP, NFL)).toBe("WR · $5,000+");
+    expect(pieceBandLabel(Piece.KNIGHT, NFL)).toBe("TE · $5,000+");
+  });
+
+  it("Pawn joins both its bands", () => {
+    expect(pieceBandLabel(Piece.PAWN, NFL)).toBe("up to $4,999, or DST");
+  });
+});
 
 describe("sideStats", () => {
   it("no players: full cap, no projection/ownership, every slot open", () => {

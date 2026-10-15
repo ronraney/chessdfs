@@ -141,8 +141,15 @@ function chosenContinueButton(): HTMLElement {
 // a row first. Rows are sorted by projection descending, so the first one
 // is always "the top candidate" every pre-existing test's own name/intent
 // already assumed.
+// Piece pools: with far more candidates sharing a piece's pool now (e.g.
+// every sub-$5,000 RB/WR/TE is Pawn-eligible, not just a narrow catch-all),
+// the single top-projection candidate is more often one Black's own
+// replies already spoken for a roster slot for -- greyed out, a real
+// disabled button (infeasible rows always have been). "Top row" means the
+// top SELECTABLE one.
 async function selectTopRow(user: UserEvent, dialog: HTMLElement): Promise<void> {
-  const firstRow = dialog.querySelector(".pick-row") as HTMLElement;
+  const rows = [...dialog.querySelectorAll<HTMLButtonElement>(".pick-row")];
+  const firstRow = rows.find((row) => !row.disabled) ?? rows[0];
   await user.click(firstRow);
 }
 
@@ -815,7 +822,7 @@ describe("BuildScreen -- Black's reply never crashes the build (bug fix)", () =>
   const LONDON_SYSTEM = BOOK.find((line) => line.eco === "A48" && line.name === "London System")!;
 
   it("Black still moves with no Knight-band TE available (London System line)", async () => {
-    const noTE = PLAYERS.filter((p) => classify(p, NFL) !== Piece.KNIGHT);
+    const noTE = PLAYERS.filter((p) => !classify(p, NFL).has(Piece.KNIGHT));
     render(
       <BuildScreen
         preset={H2H}

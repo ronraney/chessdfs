@@ -54,8 +54,8 @@ def test_illegal_chess_move_rejected():
 
 
 def test_move_piece_must_match_classification():
-    rb = make_player("rb1", "RB", 5200)  # classifies as Rook, not Knight
-    assert classify(rb, NFL) is Piece.ROOK
+    rb = make_player("rb1", "RB", 5200)  # pools as Rook only, not Knight
+    assert classify(rb, NFL) == {Piece.ROOK}
     assert is_legal_move(BuildState(), uci("b1c3"), rb, NFL, CONTEST) is False
 
 
@@ -73,7 +73,7 @@ def test_turn_alternates():
 
 
 def test_san_comes_from_board():
-    knight = make_player("te1", "TE", 4600)
+    knight = make_player("te1", "TE", 5200)
     state = apply_move(BuildState(), uci("b1c3"), knight, NFL, CONTEST)
     assert state.white_moves[0].san == "Nc3"
     assert state.white_moves[0].piece is Piece.KNIGHT
@@ -102,7 +102,7 @@ def test_exclusivity_blocks_the_same_side_repicking():
 
 def test_unknown_position_illegal_for_white():
     fb = make_player("fb1", "FB", 3000)
-    assert classify(fb, NFL) is Piece.PAWN  # classifies fine...
+    assert classify(fb, NFL) == {Piece.PAWN}  # classifies fine...
     assert is_legal_move(BuildState(), uci("e2e4"), fb, NFL, CONTEST) is False  # ...but DK has no FB slot
 
 
@@ -248,7 +248,7 @@ def _state_ready_to_castle_queenside() -> BuildState:
     """
     state = apply_move(BuildState(), uci("d2d4"), make_player("w_pawn", "WR", 3000), NFL, CONTEST)
     state = apply_move(state, uci("a7a6"), make_player("b1", "WR", 3000), NFL, CONTEST)
-    state = apply_move(state, uci("b1c3"), make_player("te1", "TE", 4600), NFL, CONTEST)
+    state = apply_move(state, uci("b1c3"), make_player("te1", "TE", 5200), NFL, CONTEST)
     state = apply_move(state, uci("a6a5"), make_player("b2", "WR", 3000), NFL, CONTEST)
     state = apply_move(state, uci("c1f4"), make_player("wr1", "WR", 5000), NFL, CONTEST)
     state = apply_move(state, uci("a5a4"), make_player("b3", "WR", 3000), NFL, CONTEST)
@@ -362,7 +362,7 @@ def _state_ready_to_castle_queenside_placed() -> BuildState:
     state = place_kings(make_player("qb_w", "QB", 6500), make_player("qb_b", "QB", 6200), NFL, CONTEST)
     state = apply_move(state, uci("d2d4"), make_player("w_pawn", "WR", 3000), NFL, CONTEST)
     state = apply_move(state, uci("a7a6"), make_player("b1", "WR", 3000), NFL, CONTEST)
-    state = apply_move(state, uci("b1c3"), make_player("te1", "TE", 4600), NFL, CONTEST)
+    state = apply_move(state, uci("b1c3"), make_player("te1", "TE", 5200), NFL, CONTEST)
     state = apply_move(state, uci("a6a5"), make_player("b2", "WR", 3000), NFL, CONTEST)
     state = apply_move(state, uci("c1f4"), make_player("wr1", "WR", 5000), NFL, CONTEST)
     state = apply_move(state, uci("a5a4"), make_player("b3", "WR", 3000), NFL, CONTEST)
@@ -469,8 +469,8 @@ def test_capture_adds_exactly_one_player_the_captured_one():
 
 
 def test_most_recently_locked_player_transfers_on_capture():
-    k1 = make_player("te_k1", "TE", 4600)
-    k2 = make_player("te_k2", "TE", 4700)
+    k1 = make_player("te_k1", "TE", 5200)
+    k2 = make_player("te_k2", "TE", 5300)
     state = apply_move(BuildState(), uci("b1c3"), k1, NFL, CONTEST)  # Nc3 locks K1
     state = apply_move(state, uci("d7d5"), make_player("b_pawn1", "WR", 3000), NFL, CONTEST)
     state = apply_move(state, uci("c3e4"), k2, NFL, CONTEST)  # Ne4 locks K2 (same knight, moved again)
@@ -492,7 +492,7 @@ def _state_with_an_unmoved_pawn_capture_available() -> BuildState:
     state = apply_move(BuildState(), uci("e2e4"), make_player("w_pawn1", "WR", 3000), NFL, CONTEST)
     state = apply_move(state, uci("e7e5"), make_player("b_pawn1", "WR", 3000), NFL, CONTEST)
     state = apply_move(state, uci("f1c4"), make_player("w_bishop1", "WR", 5000), NFL, CONTEST)
-    state = apply_move(state, uci("b8c6"), make_player("b_knight1", "TE", 4600), NFL, CONTEST)
+    state = apply_move(state, uci("b8c6"), make_player("b_knight1", "TE", 5200), NFL, CONTEST)
     return state
 
 
@@ -505,7 +505,7 @@ def test_capturing_an_unmoved_pawn_requires_and_locks_a_pawn_pick():
     assert state.board.is_capture(capture_move)
 
     pawn_pick = make_player("wr_new", "WR", 3200)
-    assert classify(pawn_pick, NFL) is Piece.PAWN
+    assert classify(pawn_pick, NFL) == {Piece.PAWN}
 
     assert is_legal_capture(state, capture_move, NFL, CONTEST) is False  # no player supplied
     assert is_legal_capture(state, capture_move, NFL, CONTEST, pawn_pick) is True
@@ -533,8 +533,8 @@ def test_capturing_an_unmoved_knight_gives_a_knight_pick():
     capture_move = uci("c4g8")
     assert state.board.is_capture(capture_move)
 
-    knight_pick = make_player("te1", "TE", 4600)
-    assert classify(knight_pick, NFL) is Piece.KNIGHT
+    knight_pick = make_player("te1", "TE", 5200)
+    assert classify(knight_pick, NFL) == {Piece.KNIGHT}
 
     assert is_legal_capture(state, capture_move, NFL, CONTEST) is False
     assert is_legal_capture(state, capture_move, NFL, CONTEST, knight_pick) is True
@@ -556,13 +556,13 @@ def test_capturing_an_unmoved_piece_is_illegal_when_no_eligible_player_fits():
     state = apply_move(BuildState(), uci("e2e4"), w_dst1, NFL, CONTEST)
     state = apply_move(state, uci("e7e5"), make_player("b_pawn1", "WR", 3000), NFL, CONTEST)
     state = apply_move(state, uci("f1c4"), make_player("w_bishop1", "WR", 5000), NFL, CONTEST)
-    state = apply_move(state, uci("b8c6"), make_player("b_knight1", "TE", 4600), NFL, CONTEST)
+    state = apply_move(state, uci("b8c6"), make_player("b_knight1", "TE", 5200), NFL, CONTEST)
 
     capture_move = uci("c4f7")
     assert state.board.is_capture(capture_move)
 
     second_dst = make_player("b_dst2", "DST", 2600)
-    assert classify(second_dst, NFL) is Piece.PAWN  # the right type...
+    assert classify(second_dst, NFL) == {Piece.PAWN}  # the right type...
 
     assert is_legal_capture(state, capture_move, NFL, CONTEST, second_dst) is False  # ...but doesn't fit
     with pytest.raises(ValueError):

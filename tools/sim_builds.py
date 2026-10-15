@@ -104,7 +104,7 @@ class BuildOutcome:
 
 def _eligible_unlocked(piece, state, sport, players_pool):
     return [
-        p for p in players_pool if p.id not in state.locked_player_ids and classify(p, sport) is piece
+        p for p in players_pool if p.id not in state.locked_player_ids and piece in classify(p, sport)
     ]
 
 
@@ -169,7 +169,7 @@ def _why_stuck(
         slot_candidates = [
             p for p in players_pool if slot.positions & {x.upper() for x in p.positions}
         ]
-        movable_candidates = [p for p in slot_candidates if classify(p, sport) in movable_pieces]
+        movable_candidates = [p for p in slot_candidates if classify(p, sport) & movable_pieces]
         if not movable_candidates:
             reasons.add("board")
             continue

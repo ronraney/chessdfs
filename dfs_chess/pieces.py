@@ -1,9 +1,16 @@
 """Piece classification — see CLAUDE.md "Piece rules" (source of truth).
 
-Bands come from a `SportConfig` (checked in order; first match wins) rather
-than hardcoded constants here, per CLAUDE.md "Multi-sport ready".
-`load_sport_config` rejects any config with no catch-all band, so every
-player classifies here — no raised exceptions.
+A player belongs to the pool of every piece band they qualify for (not just
+the first match) — a move's pick list is the available players in the
+moved piece's pool. Bands come from a `SportConfig`, not hardcoded
+constants here, per CLAUDE.md "Multi-sport ready". `load_sport_config`
+rejects any config that leaves a real position with a salary gap no band
+covers, so every real player classifies into at least one pool.
+
+Once a player is locked, their piece for display/captures/`Player | Field`
+is whichever one the locking move actually recorded (`Move.piece`), not a
+fresh call to `classify` — a multi-pool player's *locked* identity doesn't
+change just because `classify` would also return other pools today.
 """
 from __future__ import annotations
 
@@ -31,8 +38,10 @@ def piece_for_chess_type(piece_type: chess.PieceType) -> Piece:
     return _CHESS_PIECE_TYPES[piece_type]
 
 
-def classify(player: Player, sport: SportConfig) -> Piece:
+def classify(player: Player, sport: SportConfig) -> frozenset[Piece]:
+    """Every piece band `player` qualifies for, by position + salary --
+    empty only if `sport`'s config is broken (load_sport_config should have
+    rejected it before this ever runs).
+    """
     positions = {p.upper() for p in player.positions}
-    for band in sport.piece_bands:
-        if band.matches(positions, player.salary):
-            return band.piece
+    return frozenset(band.piece for band in sport.piece_bands if band.matches(positions, player.salary))

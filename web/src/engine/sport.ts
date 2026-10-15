@@ -16,6 +16,7 @@ import { Piece } from "./models";
 export interface PieceBandFields {
   piece: Piece;
   positions: ReadonlySet<string> | null; // null = any position
+  excludePositions: ReadonlySet<string> | null; // null = no exclusions
   minSalary: number | null; // null = no floor
   maxSalary: number | null; // null = no ceiling (exclusive)
 }
@@ -23,25 +24,24 @@ export interface PieceBandFields {
 export class PieceBand {
   readonly piece: Piece;
   readonly positions: ReadonlySet<string> | null;
+  readonly excludePositions: ReadonlySet<string> | null;
   readonly minSalary: number | null;
   readonly maxSalary: number | null;
 
   constructor(fields: PieceBandFields) {
     this.piece = fields.piece;
     this.positions = fields.positions;
+    this.excludePositions = fields.excludePositions;
     this.minSalary = fields.minSalary;
     this.maxSalary = fields.maxSalary;
   }
 
   matches(positions: ReadonlySet<string>, salary: number): boolean {
     if (this.positions !== null && !intersects(this.positions, positions)) return false;
+    if (this.excludePositions !== null && intersects(this.excludePositions, positions)) return false;
     if (this.minSalary !== null && salary < this.minSalary) return false;
     if (this.maxSalary !== null && salary >= this.maxSalary) return false;
     return true;
-  }
-
-  get isCatchAll(): boolean {
-    return this.positions === null && this.minSalary === null && this.maxSalary === null;
   }
 }
 
@@ -98,6 +98,7 @@ export class SportConfig {
 interface RawPieceBand {
   piece: string;
   positions: string[] | null;
+  exclude_positions?: string[] | null;
   min_salary: number | null;
   max_salary: number | null;
 }
@@ -122,23 +123,39 @@ function pieceFromName(name: string): Piece {
   return Piece[name as keyof typeof Piece];
 }
 
+// Whether every possible salary for `position` matches at least one band --
+// i.e. the bands relevant to `position` (by positions/excludePositions),
+// merged by salary range, cover [0, infinity) with no gap. Rejects pools
+// "the piece that locked him" could ever fail to find.
+function positionFullyCovered(position: string, pieceBands: readonly PieceBand[]): boolean {
+  const relevant = pieceBands.filter(
+    (band) =>
+      (band.positions === null || band.positions.has(position)) &&
+      (band.excludePositions === null || !band.excludePositions.has(position)),
+  );
+  const intervals = relevant
+    .map((band): [number, number] => [band.minSalary ?? 0, band.maxSalary ?? Infinity])
+    .sort((a, b) => a[0] - b[0]);
+
+  let coveredTo = 0;
+  for (const [lo, hi] of intervals) {
+    if (lo > coveredTo) return false;
+    coveredTo = Math.max(coveredTo, hi);
+  }
+  return coveredTo === Infinity;
+}
+
 export function loadSportConfig(data: RawSportConfig): SportConfig {
   const pieceBands = data.piece_bands.map(
     (band) =>
       new PieceBand({
         piece: pieceFromName(band.piece),
         positions: band.positions != null ? new Set(band.positions) : null,
+        excludePositions: band.exclude_positions != null ? new Set(band.exclude_positions) : null,
         minSalary: band.min_salary,
         maxSalary: band.max_salary,
       }),
   );
-
-  if (!pieceBands.some((band) => band.isCatchAll)) {
-    throw new Error(
-      "piece_bands has no catch-all band (positions, min_salary, and max_salary all null) -- " +
-        "every player must be classifiable",
-    );
-  }
 
   const rosterSlots = data.roster_slots.map(
     (slot) =>
@@ -148,6 +165,15 @@ export function loadSportConfig(data: RawSportConfig): SportConfig {
         count: slot.count,
       }),
   );
+
+  const allPositions = new Set(rosterSlots.flatMap((slot) => [...slot.positions]));
+  const uncovered = [...allPositions].filter((p) => !positionFullyCovered(p, pieceBands)).sort();
+  if (uncovered.length > 0) {
+    throw new Error(
+      `piece_bands leave a salary gap for position(s) ${uncovered.join(", ")} -- ` +
+        "some player at that position would classify as no piece at all",
+    );
+  }
 
   return new SportConfig({
     sport: data.sport,

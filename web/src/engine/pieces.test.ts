@@ -22,68 +22,79 @@ function makePlayer(pos: string, salary: number): Player {
   });
 }
 
+function pool(player: Player, nfl = NFL): Set<string> {
+  return new Set(classify(player, nfl));
+}
+
 describe("classify", () => {
   it.each([100, 3000, 4999, 5000, 6900, 7000, 9000])(
-    "QB is always King (salary %i)",
+    "QB is always King only (salary %i)",
     (salary) => {
-      expect(classify(makePlayer("QB", salary), NFL)).toBe(Piece.KING);
+      expect(pool(makePlayer("QB", salary))).toEqual(new Set([Piece.KING]));
     },
   );
 
   it.each(["RB", "WR", "TE", "DST", "FB"])(
-    "non-QB at 7000+ is Queen (%s)",
+    "non-QB at 7000+ is Queen-eligible (%s)",
     (pos) => {
-      expect(classify(makePlayer(pos, 7000), NFL)).toBe(Piece.QUEEN);
-      expect(classify(makePlayer(pos, 9500), NFL)).toBe(Piece.QUEEN);
+      expect(classify(makePlayer(pos, 7000), NFL).has(Piece.QUEEN)).toBe(true);
+      expect(classify(makePlayer(pos, 9500), NFL).has(Piece.QUEEN)).toBe(true);
     },
   );
 
-  it("RB Rook boundary 4900/5000", () => {
-    expect(classify(makePlayer("RB", 4900), NFL)).toBe(Piece.PAWN);
-    expect(classify(makePlayer("RB", 5000), NFL)).toBe(Piece.ROOK);
+  it("RB Rook boundary 4999/5000", () => {
+    expect(pool(makePlayer("RB", 4999))).toEqual(new Set([Piece.PAWN]));
+    expect(pool(makePlayer("RB", 5000))).toEqual(new Set([Piece.ROOK]));
   });
 
-  it("WR Bishop boundary 4900/5000", () => {
-    expect(classify(makePlayer("WR", 4900), NFL)).toBe(Piece.PAWN);
-    expect(classify(makePlayer("WR", 5000), NFL)).toBe(Piece.BISHOP);
+  it("WR Bishop boundary 4999/5000", () => {
+    expect(pool(makePlayer("WR", 4999))).toEqual(new Set([Piece.PAWN]));
+    expect(pool(makePlayer("WR", 5000))).toEqual(new Set([Piece.BISHOP]));
   });
 
-  it("Rook/Bishop/Knight vs Queen boundary 6900/7000", () => {
-    expect(classify(makePlayer("RB", 6900), NFL)).toBe(Piece.ROOK);
-    expect(classify(makePlayer("RB", 7000), NFL)).toBe(Piece.QUEEN);
-    expect(classify(makePlayer("WR", 6900), NFL)).toBe(Piece.BISHOP);
-    expect(classify(makePlayer("WR", 7000), NFL)).toBe(Piece.QUEEN);
-    expect(classify(makePlayer("TE", 6900), NFL)).toBe(Piece.KNIGHT);
-    expect(classify(makePlayer("TE", 7000), NFL)).toBe(Piece.QUEEN);
+  it("TE Knight boundary 4999/5000", () => {
+    expect(pool(makePlayer("TE", 4999))).toEqual(new Set([Piece.PAWN]));
+    expect(pool(makePlayer("TE", 5000))).toEqual(new Set([Piece.KNIGHT]));
   });
 
-  it("TE Knight boundary 4400/4500", () => {
-    expect(classify(makePlayer("TE", 4400), NFL)).toBe(Piece.PAWN);
-    expect(classify(makePlayer("TE", 4500), NFL)).toBe(Piece.KNIGHT);
+  it("Rook/Bishop/Knight overlap Queen at 6999 vs 7000", () => {
+    // Piece pools: Rook/Bishop/Knight no longer have a $7,000 ceiling, so
+    // an RB/WR/TE at $7,000+ is in BOTH its position band and Queen -- the
+    // $6,900 case stays single-pool (below Queen's own $7,000 floor).
+    expect(pool(makePlayer("RB", 6900))).toEqual(new Set([Piece.ROOK]));
+    expect(pool(makePlayer("RB", 7000))).toEqual(new Set([Piece.ROOK, Piece.QUEEN]));
+    expect(pool(makePlayer("WR", 6900))).toEqual(new Set([Piece.BISHOP]));
+    expect(pool(makePlayer("WR", 7000))).toEqual(new Set([Piece.BISHOP, Piece.QUEEN]));
+    expect(pool(makePlayer("TE", 6900))).toEqual(new Set([Piece.KNIGHT]));
+    expect(pool(makePlayer("TE", 7000))).toEqual(new Set([Piece.KNIGHT, Piece.QUEEN]));
   });
 
-  it("DST at 5200 is Pawn", () => {
-    expect(classify(makePlayer("DST", 5200), NFL)).toBe(Piece.PAWN);
+  it("DST is Pawn-eligible at every salary", () => {
+    expect(classify(makePlayer("DST", 5200), NFL).has(Piece.PAWN)).toBe(true);
+    expect(classify(makePlayer("DST", 1000), NFL).has(Piece.PAWN)).toBe(true);
+    expect(classify(makePlayer("DST", 50000), NFL).has(Piece.PAWN)).toBe(true);
   });
 
-  it("any player under 3000 is Pawn", () => {
-    expect(classify(makePlayer("RB", 2500), NFL)).toBe(Piece.PAWN);
-    expect(classify(makePlayer("DST", 1000), NFL)).toBe(Piece.PAWN);
-    expect(classify(makePlayer("WR", 0), NFL)).toBe(Piece.PAWN);
+  it("DST at 7000+ is Pawn and Queen", () => {
+    // DST is Pawn-eligible regardless of salary ("plus all DST") AND, once
+    // >= $7,000, also Queen-eligible -- these two Pawn rules (position-
+    // agnostic under $5,000, DST at any salary) aren't mutually exclusive.
+    expect(pool(makePlayer("DST", 7000))).toEqual(new Set([Piece.PAWN, Piece.QUEEN]));
   });
 
-  it("DST in Pawn range", () => {
-    expect(classify(makePlayer("DST", 3000), NFL)).toBe(Piece.PAWN);
-    expect(classify(makePlayer("DST", 4900), NFL)).toBe(Piece.PAWN);
+  it("any non-QB under 3000 is Pawn only", () => {
+    expect(pool(makePlayer("RB", 2500))).toEqual(new Set([Piece.PAWN]));
+    expect(pool(makePlayer("DST", 1000))).toEqual(new Set([Piece.PAWN]));
+    expect(pool(makePlayer("WR", 0))).toEqual(new Set([Piece.PAWN]));
   });
 
-  it("Pawn range is position-agnostic", () => {
-    expect(classify(makePlayer("RB", 3000), NFL)).toBe(Piece.PAWN);
-    expect(classify(makePlayer("WR", 4900), NFL)).toBe(Piece.PAWN);
-    expect(classify(makePlayer("FB", 3500), NFL)).toBe(Piece.PAWN);
+  it("Pawn under 5000 is position-agnostic for non-QB", () => {
+    expect(pool(makePlayer("RB", 3000))).toEqual(new Set([Piece.PAWN]));
+    expect(pool(makePlayer("WR", 4900))).toEqual(new Set([Piece.PAWN]));
+    expect(pool(makePlayer("FB", 3500))).toEqual(new Set([Piece.PAWN]));
   });
 
-  it("multi-position player classifies by either position", () => {
+  it("multi-position player pools from every position it holds", () => {
     const hybrid = new Player({
       id: "h1",
       name: "Hybrid",
@@ -95,7 +106,7 @@ describe("classify", () => {
       ownSmall: 0.1,
       ownLarge: 0.1,
     });
-    // matches via RB; WR would also match Bishop
-    expect(classify(hybrid, NFL)).toBe(Piece.ROOK);
+    // Piece pools: both positions' bands contribute, not just the first.
+    expect(pool(hybrid)).toEqual(new Set([Piece.ROOK, Piece.BISHOP]));
   });
 });

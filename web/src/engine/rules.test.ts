@@ -58,7 +58,7 @@ function uci(move: string): ChessMove {
 function stateReadyToCastleQueenside(): BuildState {
   let state = applyMove(new BuildState(), uci("d2d4"), makePlayer("w_pawn", "WR", 3000), NFL, CONTEST);
   state = applyMove(state, uci("a7a6"), makePlayer("b1", "WR", 3000), NFL, CONTEST);
-  state = applyMove(state, uci("b1c3"), makePlayer("te1", "TE", 4600), NFL, CONTEST);
+  state = applyMove(state, uci("b1c3"), makePlayer("te1", "TE", 5200), NFL, CONTEST);
   state = applyMove(state, uci("a6a5"), makePlayer("b2", "WR", 3000), NFL, CONTEST);
   state = applyMove(state, uci("c1f4"), makePlayer("wr1", "WR", 5000), NFL, CONTEST);
   state = applyMove(state, uci("a5a4"), makePlayer("b3", "WR", 3000), NFL, CONTEST);
@@ -73,7 +73,7 @@ function stateReadyToCastleQueensidePlaced(): BuildState {
   let state = placeKings(makePlayer("qb_w", "QB", 6500), makePlayer("qb_b", "QB", 6200), NFL, CONTEST);
   state = applyMove(state, uci("d2d4"), makePlayer("w_pawn", "WR", 3000), NFL, CONTEST);
   state = applyMove(state, uci("a7a6"), makePlayer("b1", "WR", 3000), NFL, CONTEST);
-  state = applyMove(state, uci("b1c3"), makePlayer("te1", "TE", 4600), NFL, CONTEST);
+  state = applyMove(state, uci("b1c3"), makePlayer("te1", "TE", 5200), NFL, CONTEST);
   state = applyMove(state, uci("a6a5"), makePlayer("b2", "WR", 3000), NFL, CONTEST);
   state = applyMove(state, uci("c1f4"), makePlayer("wr1", "WR", 5000), NFL, CONTEST);
   state = applyMove(state, uci("a5a4"), makePlayer("b3", "WR", 3000), NFL, CONTEST);
@@ -93,7 +93,7 @@ function stateWithAnUnmovedPawnCaptureAvailable(): BuildState {
   let state = applyMove(new BuildState(), uci("e2e4"), makePlayer("w_pawn1", "WR", 3000), NFL, CONTEST);
   state = applyMove(state, uci("e7e5"), makePlayer("b_pawn1", "WR", 3000), NFL, CONTEST);
   state = applyMove(state, uci("f1c4"), makePlayer("w_bishop1", "WR", 5000), NFL, CONTEST);
-  state = applyMove(state, uci("b8c6"), makePlayer("b_knight1", "TE", 4600), NFL, CONTEST);
+  state = applyMove(state, uci("b8c6"), makePlayer("b_knight1", "TE", 5200), NFL, CONTEST);
   return state;
 }
 
@@ -108,8 +108,8 @@ describe("isLegalMove / applyMove", () => {
   });
 
   it("rejects a move whose piece doesn't match the player's classification", () => {
-    const rb = makePlayer("rb1", "RB", 5200); // classifies as Rook, not Knight
-    expect(classify(rb, NFL)).toBe(Piece.ROOK);
+    const rb = makePlayer("rb1", "RB", 5200); // pools as Rook only, not Knight
+    expect(classify(rb, NFL)).toEqual(new Set([Piece.ROOK]));
     expect(isLegalMove(new BuildState(), uci("b1c3"), rb, NFL, CONTEST)).toBe(false);
   });
 
@@ -127,7 +127,7 @@ describe("isLegalMove / applyMove", () => {
   });
 
   it("SAN comes from the board", () => {
-    const knight = makePlayer("te1", "TE", 4600);
+    const knight = makePlayer("te1", "TE", 5200);
     const state = applyMove(new BuildState(), uci("b1c3"), knight, NFL, CONTEST);
     expect(state.whiteMoves[0].san).toBe("Nc3");
     expect(state.whiteMoves[0].piece).toBe(Piece.KNIGHT);
@@ -156,7 +156,7 @@ describe("isLegalMove / applyMove", () => {
 
   it("unknown position is illegal for White", () => {
     const fb = makePlayer("fb1", "FB", 3000);
-    expect(classify(fb, NFL)).toBe(Piece.PAWN); // classifies fine...
+    expect(classify(fb, NFL)).toEqual(new Set([Piece.PAWN])); // classifies fine...
     expect(isLegalMove(new BuildState(), uci("e2e4"), fb, NFL, CONTEST)).toBe(false); // ...but DK has no FB slot
   });
 
@@ -274,7 +274,7 @@ describe("castling", () => {
     const fen = "rnbqkbnr/1ppppppp/8/8/3P1B2/p1NQ4/PPP1PPPP/R3KBNR w KQkq - 0 5";
     const board = new Chess(fen);
 
-    const knight = makePlayer("te1", "TE", 4600);
+    const knight = makePlayer("te1", "TE", 5200);
     const bishop = makePlayer("wr1", "WR", 5000);
     const rook = makePlayer("rb1", "RB", 5200); // the Rook White wants to castle with
     const state = new BuildState({
@@ -422,8 +422,8 @@ describe("captures", () => {
   });
 
   it("most recently locked player transfers on capture", () => {
-    const k1 = makePlayer("te_k1", "TE", 4600);
-    const k2 = makePlayer("te_k2", "TE", 4700);
+    const k1 = makePlayer("te_k1", "TE", 5200);
+    const k2 = makePlayer("te_k2", "TE", 5300);
     let state = applyMove(new BuildState(), uci("b1c3"), k1, NFL, CONTEST); // Nc3 locks K1
     state = applyMove(state, uci("d7d5"), makePlayer("b_pawn1", "WR", 3000), NFL, CONTEST);
     state = applyMove(state, uci("c3e4"), k2, NFL, CONTEST); // Ne4 locks K2 (same knight, moved again)
@@ -484,7 +484,7 @@ describe("captures", () => {
     expect(matched?.isCapture()).toBe(true);
 
     const pawnPick = makePlayer("wr_new", "WR", 3200);
-    expect(classify(pawnPick, NFL)).toBe(Piece.PAWN);
+    expect(classify(pawnPick, NFL)).toEqual(new Set([Piece.PAWN]));
 
     expect(isLegalCapture(state, captureMove, NFL, CONTEST)).toBe(false); // no player supplied
     expect(isLegalCapture(state, captureMove, NFL, CONTEST, pawnPick)).toBe(true);
@@ -513,8 +513,8 @@ describe("captures", () => {
     const matched = state.board.moves({ verbose: true }).find((m) => m.from === "c4" && m.to === "g8");
     expect(matched?.isCapture()).toBe(true);
 
-    const knightPick = makePlayer("te1", "TE", 4600);
-    expect(classify(knightPick, NFL)).toBe(Piece.KNIGHT);
+    const knightPick = makePlayer("te1", "TE", 5200);
+    expect(classify(knightPick, NFL)).toEqual(new Set([Piece.KNIGHT]));
 
     expect(isLegalCapture(state, captureMove, NFL, CONTEST)).toBe(false);
     expect(isLegalCapture(state, captureMove, NFL, CONTEST, knightPick)).toBe(true);
@@ -536,14 +536,14 @@ describe("captures", () => {
     let state = applyMove(new BuildState(), uci("e2e4"), wDst1, NFL, CONTEST);
     state = applyMove(state, uci("e7e5"), makePlayer("b_pawn1", "WR", 3000), NFL, CONTEST);
     state = applyMove(state, uci("f1c4"), makePlayer("w_bishop1", "WR", 5000), NFL, CONTEST);
-    state = applyMove(state, uci("b8c6"), makePlayer("b_knight1", "TE", 4600), NFL, CONTEST);
+    state = applyMove(state, uci("b8c6"), makePlayer("b_knight1", "TE", 5200), NFL, CONTEST);
 
     const captureMove = uci("c4f7");
     const matched = state.board.moves({ verbose: true }).find((m) => m.from === "c4" && m.to === "f7");
     expect(matched?.isCapture()).toBe(true);
 
     const secondDst = makePlayer("b_dst2", "DST", 2600);
-    expect(classify(secondDst, NFL)).toBe(Piece.PAWN); // the right type...
+    expect(classify(secondDst, NFL)).toEqual(new Set([Piece.PAWN])); // the right type...
 
     expect(isLegalCapture(state, captureMove, NFL, CONTEST, secondDst)).toBe(false); // ...but doesn't fit
     expect(() => applyCaptureMove(state, captureMove, NFL, CONTEST, secondDst)).toThrow();
@@ -593,7 +593,7 @@ describe("lineupStillCompletable", () => {
   it("mirrors castle()'s cap overflow check", () => {
     // Knight+Bishop already locked (9600), King+Rook (12000) pushes the
     // total to 21600 > a 15000 cap.
-    const alreadyLocked = [makePlayer("te1", "TE", 4600), makePlayer("wr1", "WR", 5000)];
+    const alreadyLocked = [makePlayer("te1", "TE", 5200), makePlayer("wr1", "WR", 5000)];
     const king = makePlayer("qb1", "QB", 6000);
     const rook = makePlayer("rb1", "RB", 6000);
     expect(lineupStillCompletable([...alreadyLocked, king, rook], NFL, 15000)).toBe(false);

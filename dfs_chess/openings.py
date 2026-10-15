@@ -156,7 +156,9 @@ def _piece_eligible_positions(sport: SportConfig) -> dict[Piece, frozenset[str]]
     """Which DK positions each `Piece` is eligible for, per `sport`'s own
     piece bands (the inverse of `classify`) — a band with `positions=None`
     (Queen, Pawn in NFL) is eligible for every position any roster slot
-    accepts, not just one.
+    accepts minus its own `exclude_positions` (Queen/Pawn both exclude QB),
+    not just one. Piece pools: a piece can have more than one band (Pawn
+    does) — each contributes its own positions, unioned together.
     """
     all_positions: frozenset[str] = frozenset().union(
         *(slot.positions for slot in sport.roster_slots)
@@ -164,6 +166,7 @@ def _piece_eligible_positions(sport: SportConfig) -> dict[Piece, frozenset[str]]
     eligible: dict[Piece, frozenset[str]] = {}
     for band in sport.piece_bands:
         band_positions = band.positions if band.positions is not None else all_positions
+        band_positions -= band.exclude_positions or frozenset()
         eligible[band.piece] = eligible.get(band.piece, frozenset()) | band_positions
     return eligible
 

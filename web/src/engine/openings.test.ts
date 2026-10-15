@@ -112,7 +112,9 @@ describe("legalDepth", () => {
     const toySport = new SportConfig({
       sport: "TOY",
       salaryCap: 50000,
-      pieceBands: [new PieceBand({ piece: Piece.PAWN, positions: null, minSalary: null, maxSalary: null })],
+      pieceBands: [
+        new PieceBand({ piece: Piece.PAWN, positions: null, excludePositions: null, minSalary: null, maxSalary: null }),
+      ],
       rosterSlots: [new RosterSlot({ name: "ANY", positions: new Set(["ANY"]), count: 9 })],
     });
     expect(legalDepth(["e4", "e5", "Nf3"], toySport)).toBe(3); // Nf3 at ply 3: no Knight band exists

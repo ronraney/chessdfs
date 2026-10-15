@@ -68,7 +68,7 @@ def test_legal_depth_handles_a_sport_missing_a_piece_band():
     toy_sport = SportConfig(
         sport="TOY",
         salary_cap=50000,
-        piece_bands=[PieceBand(piece=Piece.PAWN, positions=None, min_salary=None, max_salary=None)],
+        piece_bands=[PieceBand(piece=Piece.PAWN, positions=None, exclude_positions=None, min_salary=None, max_salary=None)],
         roster_slots=[RosterSlot(name="ANY", positions=frozenset({"ANY"}), count=9)],
     )
     assert legal_depth(("e4", "e5", "Nf3"), toy_sport) == 3  # Nf3 at ply 3: no Knight band exists

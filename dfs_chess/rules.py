@@ -177,7 +177,7 @@ def is_legal_move(
 
     if player.id in state.locked_player_ids:
         return False
-    if classify(player, sport) is not piece:
+    if piece not in classify(player, sport):
         return False
 
     cap = contest.effective_cap(sport)
@@ -262,12 +262,12 @@ def castle(
     if king_mode is KingMode.EMERGE:
         if king is None:
             raise ValueError("king_mode is EMERGE; a King player is required")
-        if classify(king, sport) is not Piece.KING:
+        if Piece.KING not in classify(king, sport):
             raise ValueError(f"{king.name!r} does not classify as King")
         if king.id in state.locked_player_ids:
             raise ValueError(f"{king.name!r} is already locked")
 
-    if classify(rook, sport) is not Piece.ROOK:
+    if Piece.ROOK not in classify(rook, sport):
         raise ValueError(f"{rook.name!r} does not classify as Rook")
     if rook.id in state.locked_player_ids:
         raise ValueError(f"{rook.name!r} is already locked")
@@ -323,7 +323,7 @@ def switch_king(
     caller should treat that as "switch rejected," leaving the original
     QB in place.
     """
-    if classify(new_king, sport) is not Piece.KING:
+    if Piece.KING not in classify(new_king, sport):
         return None
     if new_king.id in state.locked_player_ids:
         return None
@@ -359,9 +359,9 @@ def place_kings(white_king: Player, black_king: Player, sport: SportConfig, cont
     unaffordable alone (mirrors the same completability check every
     other lock goes through).
     """
-    if classify(white_king, sport) is not Piece.KING:
+    if Piece.KING not in classify(white_king, sport):
         raise ValueError(f"{white_king.name!r} does not classify as King")
-    if classify(black_king, sport) is not Piece.KING:
+    if Piece.KING not in classify(black_king, sport):
         raise ValueError(f"{black_king.name!r} does not classify as King")
     if white_king.id == black_king.id:
         raise ValueError("White and Black cannot place the same QB")
@@ -419,7 +419,7 @@ def is_legal_capture(
     if player is None or player.id in state.locked_player_ids:
         return False
     captured_type = piece_for_chess_type(state.board.piece_type_at(square))
-    if classify(player, sport) is not captured_type:
+    if captured_type not in classify(player, sport):
         return False
     return lineup_still_completable(current + [player], sport, cap)
 
@@ -456,18 +456,26 @@ def apply_capture_move(
     square = captured_square(state.board, chess_move)
     captured_history = state.piece_locks.get(square, [])
     if captured_history:
+        # A transfer keeps the captured player's own prior identity -- the
+        # piece whichever earlier move actually locked them with, not a
+        # fresh classify() (which, now that pools overlap, could name a
+        # DIFFERENT piece than the one they were really picked as).
         captured = captured_history[-1]
+        locked_piece = next(
+            m.piece for m in (state.white_moves + state.black_moves) if m.player.id == captured.id
+        )
     else:
         captured_type = piece_for_chess_type(state.board.piece_type_at(square))
         if player is None:
             raise ValueError(
                 f"{san!r} captures an unmoved {captured_type.value.title()} -- a player pick is required"
             )
-        if classify(player, sport) is not captured_type:
+        if captured_type not in classify(player, sport):
             raise ValueError(f"{player.name!r} does not classify as {captured_type.value.title()}")
         if player.id in state.locked_player_ids:
             raise ValueError(f"{player.name!r} is already locked")
         captured = player
+        locked_piece = captured_type
 
     cap = contest.effective_cap(sport)
     current = [m.player for m in _moves_for(state, side)]
@@ -483,7 +491,7 @@ def apply_capture_move(
         new_piece_locks.pop(square, None)
     new_piece_locks[chess_move.to_square] = mover_history + [captured]
 
-    move_record = Move(side=side, piece=classify(captured, sport), san=san, player=captured)
+    move_record = Move(side=side, piece=locked_piece, san=san, player=captured)
     moves = _moves_for(state, side) + [move_record]
 
     opposing_side = _other_side(side)

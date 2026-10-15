@@ -148,10 +148,10 @@ function runScenario(scenario: Scenario): void {
 
 function checkClassifyAllPlayers(scenario: Scenario): void {
   const players = scenario.players as RawPlayer[];
-  const expected = scenario.expected as { id: string; piece: string }[];
+  const expected = scenario.expected as { id: string; pieces: string[] }[];
   expect(players).toHaveLength(expected.length);
-  const actual = players.map((raw) => ({ id: raw.id, piece: classify(toPlayer(raw), NFL) }));
-  const expectedTyped = expected.map((e) => ({ id: e.id, piece: e.piece as Piece }));
+  const actual = players.map((raw) => ({ id: raw.id, pieces: [...classify(toPlayer(raw), NFL)].sort() }));
+  const expectedTyped = expected.map((e) => ({ id: e.id, pieces: [...e.pieces].sort() }));
   expect(actual).toEqual(expectedTyped);
 }
 
@@ -338,7 +338,7 @@ function checkOpeningLookup(scenario: Scenario): void {
 }
 
 function bestPlayerForMove(state: BuildState, move: ChessMove, piece: Piece, contest: ContestConfig): Player {
-  const candidates = ETR_POOL.filter((p) => !state.lockedPlayerIds.has(p.id) && classify(p, NFL) === piece).sort(
+  const candidates = ETR_POOL.filter((p) => !state.lockedPlayerIds.has(p.id) && classify(p, NFL).has(piece)).sort(
     (a, b) => b.proj - a.proj,
   );
   for (const player of candidates) {

@@ -137,8 +137,10 @@ export function splitFamily(name: string): [string, string] {
 
 // Which DK positions each Piece is eligible for, per `sport`'s own piece
 // bands (the inverse of classify) -- a band with positions=null (Queen,
-// Pawn in NFL) is eligible for every position any roster slot accepts,
-// not just one.
+// Pawn in NFL) is eligible for every position any roster slot accepts
+// minus its own excludePositions (Queen/Pawn both exclude QB), not just
+// one. Piece pools: a piece can have more than one band (Pawn does) --
+// each contributes its own positions, unioned together.
 function pieceEligiblePositions(sport: SportConfig): Map<Piece, Set<string>> {
   const allPositions = new Set<string>();
   for (const slot of sport.rosterSlots) {
@@ -146,7 +148,10 @@ function pieceEligiblePositions(sport: SportConfig): Map<Piece, Set<string>> {
   }
   const eligible = new Map<Piece, Set<string>>();
   for (const band of sport.pieceBands) {
-    const bandPositions = band.positions ?? allPositions;
+    const bandPositions = new Set(band.positions ?? allPositions);
+    if (band.excludePositions !== null) {
+      for (const p of band.excludePositions) bandPositions.delete(p);
+    }
     const existing = eligible.get(band.piece) ?? new Set<string>();
     for (const p of bandPositions) existing.add(p);
     eligible.set(band.piece, existing);

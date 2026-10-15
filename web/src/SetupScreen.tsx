@@ -145,7 +145,7 @@ export default function SetupScreen({ players, onChoose, initialPresetIndex, ini
   const [selection, setSelection] = useState<Selection>(() => selectionFor(suggestOpening(preset.contest, RANKED_FAMILIES).line));
 
   const qbs = useMemo(
-    () => players.filter((p) => classify(p, NFL) === Piece.KING).sort((a, b) => b.proj - a.proj),
+    () => players.filter((p) => classify(p, NFL).has(Piece.KING)).sort((a, b) => b.proj - a.proj),
     [players],
   );
   const whiteKing = qbs.find((p) => p.id === whiteKingId) ?? null;

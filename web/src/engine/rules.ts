@@ -251,7 +251,7 @@ export function isLegalMove(
   const piece = pieceForChessType(matched.piece);
 
   if (state.lockedPlayerIds.has(player.id)) return false;
-  if (classify(player, sport) !== piece) return false;
+  if (!classify(player, sport).has(piece)) return false;
 
   const cap = contest.effectiveCap(sport);
   const current = movesFor(state, side).map((m) => m.player);
@@ -348,7 +348,7 @@ export function castle(
     if (king === null) {
       throw new Error("kingMode is EMERGE; a King player is required");
     }
-    if (classify(king, sport) !== Piece.KING) {
+    if (!classify(king, sport).has(Piece.KING)) {
       throw new Error(`${king.name} does not classify as King`);
     }
     if (state.lockedPlayerIds.has(king.id)) {
@@ -356,7 +356,7 @@ export function castle(
     }
   }
 
-  if (classify(rook, sport) !== Piece.ROOK) {
+  if (!classify(rook, sport).has(Piece.ROOK)) {
     throw new Error(`${rook.name} does not classify as Rook`);
   }
   if (state.lockedPlayerIds.has(rook.id)) {
@@ -419,7 +419,7 @@ export function switchKing(
   sport: SportConfig,
   contest: ContestConfig,
 ): BuildState | null {
-  if (classify(newKing, sport) !== Piece.KING) return null;
+  if (!classify(newKing, sport).has(Piece.KING)) return null;
   if (state.lockedPlayerIds.has(newKing.id)) return null;
 
   const moves = movesFor(state, side);
@@ -460,10 +460,10 @@ export function placeKings(
   sport: SportConfig,
   contest: ContestConfig,
 ): BuildState {
-  if (classify(whiteKing, sport) !== Piece.KING) {
+  if (!classify(whiteKing, sport).has(Piece.KING)) {
     throw new Error(`${whiteKing.name} does not classify as King`);
   }
-  if (classify(blackKing, sport) !== Piece.KING) {
+  if (!classify(blackKing, sport).has(Piece.KING)) {
     throw new Error(`${blackKing.name} does not classify as King`);
   }
   if (whiteKing.id === blackKing.id) {
@@ -533,7 +533,7 @@ export function isLegalCapture(
 
   if (player === null || state.lockedPlayerIds.has(player.id)) return false;
   const capturedType = pieceForChessType(matched.captured!);
-  if (classify(player, sport) !== capturedType) return false;
+  if (!classify(player, sport).has(capturedType)) return false;
   return lineupStillCompletable([...current, player], sport, cap);
 }
 
@@ -571,20 +571,27 @@ export function applyCaptureMove(
   const square = capturedSquare(matched);
   const capturedHistory = state.pieceLocks.get(square) ?? [];
   let captured: Player;
+  let lockedPiece: Piece;
   if (capturedHistory.length > 0) {
+    // A transfer keeps the captured player's own prior identity -- the
+    // piece whichever earlier move actually locked them with, not a
+    // fresh classify() (which, now that pools overlap, could name a
+    // DIFFERENT piece than the one they were really picked as).
     captured = capturedHistory[capturedHistory.length - 1];
+    lockedPiece = [...state.whiteMoves, ...state.blackMoves].find((m) => m.player.id === captured.id)!.piece;
   } else {
     const capturedType = pieceForChessType(matched.captured!);
     if (player === null) {
       throw new Error(`${san} captures an unmoved ${capturedType} -- a player pick is required`);
     }
-    if (classify(player, sport) !== capturedType) {
+    if (!classify(player, sport).has(capturedType)) {
       throw new Error(`${player.name} does not classify as ${capturedType}`);
     }
     if (state.lockedPlayerIds.has(player.id)) {
       throw new Error(`${player.name} is already locked`);
     }
     captured = player;
+    lockedPiece = capturedType;
   }
 
   const cap = contest.effectiveCap(sport);
@@ -604,7 +611,7 @@ export function applyCaptureMove(
   }
   newPieceLocks.set(chessMove.to, [...moverHistory, captured]);
 
-  const moveRecord = new Move({ side, piece: classify(captured, sport), san, player: captured });
+  const moveRecord = new Move({ side, piece: lockedPiece, san, player: captured });
   const moves = [...movesFor(state, side), moveRecord];
 
   const opposingSide = otherSide(side);

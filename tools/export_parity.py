@@ -77,13 +77,17 @@ def player_dict(p: Player) -> dict:
 # --- classification of every sample player ----------------------------------
 
 def scenario_classify_all_players() -> dict:
+    """Task "piece pools": classify() now returns every piece band a player
+    qualifies for, not one first-match winner -- `expected` carries each
+    player's full pool, sorted for a stable comparison.
+    """
     players = load_etr_csv(ETR_PATH)
     return {
         "name": "classify_all_sample_players",
         "kind": "classify_all_players",
         "num_players": len(players),
         "players": [player_dict(p) for p in players],
-        "expected": [{"id": p.id, "piece": classify(p, NFL).value} for p in players],
+        "expected": [{"id": p.id, "pieces": sorted(piece.value for piece in classify(p, NFL))} for p in players],
     }
 
 
@@ -200,6 +204,37 @@ def scenario_roster_completable_flex_absorbs_third_rb() -> dict:
     }
 
 
+def _overlap_setup_players() -> list[Player]:
+    return [make_player("filler_w", "WR", 3000), make_player("filler_b", "WR", 3000)]
+
+
+def scenario_overlap_rb_7000_plus_picked_by_rook_move() -> dict:
+    """Task "piece pools": a $7,000+ RB is Rook-pool AND Queen-pool
+    eligible now (no more mutual-exclusivity ceiling) -- this scenario
+    picks one via a real Rook move; the sibling scenario below picks the
+    same kind of player via a real Queen move.
+    """
+    rb = make_player("rb_overlap_rook", "RB", 7200)
+    return _legal_move_scenario(
+        "overlap_rb_7000_plus_picked_by_rook_move",
+        [*_overlap_setup_players(), rb],
+        [("a2a4", "filler_w"), ("h7h6", "filler_b")],  # clears the a-file for the a1 rook
+        "a1a3",
+        "rb_overlap_rook",
+    )
+
+
+def scenario_overlap_rb_7000_plus_picked_by_queen_move() -> dict:
+    rb = make_player("rb_overlap_queen", "RB", 7200)
+    return _legal_move_scenario(
+        "overlap_rb_7000_plus_picked_by_queen_move",
+        [*_overlap_setup_players(), rb],
+        [("d2d4", "filler_w"), ("h7h6", "filler_b")],  # clears the d-file for the d1 queen
+        "d1d3",
+        "rb_overlap_queen",
+    )
+
+
 def scenario_roster_completable_second_dst_illegal() -> dict:
     roster = [make_player("dst1", "DST", 2500), make_player("dst2", "DST", 2600)]
     return {
@@ -221,8 +256,11 @@ def _ready_to_castle_queenside_moves() -> list[tuple[str, str]]:
 
 
 def _ready_to_castle_players() -> list[Player]:
+    # te1 is 5200, not the old 4600 -- Knight's salary floor moved to
+    # $5,000 ("piece pools"), and this player locks via a real Knight move
+    # (b1c3) further down.
     return [
-        make_player("w_pawn", "WR", 3000), make_player("b1", "WR", 3000), make_player("te1", "TE", 4600),
+        make_player("w_pawn", "WR", 3000), make_player("b1", "WR", 3000), make_player("te1", "TE", 5200),
         make_player("b2", "WR", 3000), make_player("wr1", "WR", 5000), make_player("b3", "WR", 3000),
         make_player("rb_queen", "RB", 7200), make_player("b4", "WR", 3000),
     ]
@@ -356,7 +394,7 @@ def scenario_capture_unmoved_knight() -> dict:
     board = chess.Board("4k1n1/8/8/8/2B5/8/8/4K3 w - - 0 1")
     state = BuildState(board=board)
     capture_move = uci("c4g8")
-    knight_pick = make_player("te1", "TE", 4600)
+    knight_pick = make_player("te1", "TE", 5200)  # was 4600 -- Knight's floor is now $5,000
     assert is_legal_capture(state, capture_move, NFL, CONTEST) is False
     assert is_legal_capture(state, capture_move, NFL, CONTEST, knight_pick) is True
     new_state = apply_capture_move(state, capture_move, NFL, CONTEST, knight_pick)
@@ -506,7 +544,7 @@ MORPHY_DEFENSE = ["e4", "e5", "Nf3", "Nc6", "Bb5", "a6"]
 
 def _best_player_for_move(state: BuildState, move: chess.Move, piece: Piece, pool: list[Player]) -> Player:
     candidates = sorted(
-        (p for p in pool if p.id not in state.locked_player_ids and classify(p, NFL) is piece),
+        (p for p in pool if p.id not in state.locked_player_ids and piece in classify(p, NFL)),
         key=lambda p: p.proj, reverse=True,
     )
     for player in candidates:
@@ -567,6 +605,8 @@ def main() -> None:
         scenario_illegal_cap_overflow_white(),
         scenario_roster_completable_flex_absorbs_third_rb(),
         scenario_roster_completable_second_dst_illegal(),
+        scenario_overlap_rb_7000_plus_picked_by_rook_move(),
+        scenario_overlap_rb_7000_plus_picked_by_queen_move(),
         scenario_castle_emerge_queenside(),
         scenario_castle_placed_queenside(),
         scenario_switch_king_after_placed_castle(),

@@ -143,7 +143,7 @@ def _eligible_sorted(
     piece: Piece, state: BuildState, sport: SportConfig, players_pool: list[Player]
 ) -> list[Player]:
     candidates = [
-        p for p in players_pool if p.id not in state.locked_player_ids and classify(p, sport) is piece
+        p for p in players_pool if p.id not in state.locked_player_ids and piece in classify(p, sport)
     ]
     return sorted(candidates, key=lambda p: p.proj, reverse=True)
 
@@ -481,7 +481,7 @@ def _prompt_and_place_kings(
     """
     print("\nPlace your King now -- pick White's QB:")
     qbs = sorted(
-        (p for p in players_pool if classify(p, sport) is Piece.KING), key=lambda p: p.proj, reverse=True
+        (p for p in players_pool if Piece.KING in classify(p, sport)), key=lambda p: p.proj, reverse=True
     )
     white_king = _prompt_player_choice(qbs, contest, 0.0, "QB", input_func, allow_cancel=False)
     black_king = next(p for p in qbs if p.id != white_king.id)
@@ -497,7 +497,7 @@ def _offer_king_switch(
     """
     current_king = next(m.player for m in state.white_moves if m.piece is Piece.KING)
     candidates = sorted(
-        (p for p in players_pool if p.id not in state.locked_player_ids and classify(p, sport) is Piece.KING),
+        (p for p in players_pool if p.id not in state.locked_player_ids and Piece.KING in classify(p, sport)),
         key=lambda p: p.proj,
         reverse=True,
     )

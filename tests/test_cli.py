@@ -756,7 +756,7 @@ def test_capture_of_an_unmoved_knight_prompts_a_knight_pick(capsys):
     assert board.is_capture(capture_move)
     expected_san = board.san(capture_move)
 
-    knight_pool = [_player(f"te{i}", "TE", 4600 + i, proj=float(10 - i)) for i in range(3)]
+    knight_pool = [_player(f"te{i}", "TE", 5200 + i, proj=float(10 - i)) for i in range(3)]
     fake_input = _scripted_input(["1"])
 
     result = cli._play_capture_move(state, capture_move, NFL, CONTEST, knight_pool, [], fake_input, allow_cancel=True)

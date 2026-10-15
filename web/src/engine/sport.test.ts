@@ -30,4 +30,42 @@ describe("loadSportConfig", () => {
     const sport = loadSportConfig(config);
     expect(sport.sport).toBe("TEST");
   });
+
+  it("rejects a config with a salary gap", () => {
+    // Piece pools: bands below $5,000 and above $5,000 that don't
+    // actually meet at the boundary leave a real gap (nothing matches
+    // exactly $5,000) -- rejected the same as a missing catch-all.
+    const config = makeConfig([
+      { piece: "KING", positions: ["QB"], min_salary: null, max_salary: null },
+      { piece: "PAWN", positions: null, min_salary: null, max_salary: 4999 },
+      { piece: "QUEEN", positions: null, min_salary: 5001, max_salary: null },
+    ]);
+    expect(() => loadSportConfig(config)).toThrow();
+  });
+
+  it("accepts bands that meet exactly at the boundary", () => {
+    const config = makeConfig([
+      { piece: "KING", positions: ["QB"], min_salary: null, max_salary: null },
+      { piece: "PAWN", positions: null, min_salary: null, max_salary: 5000 },
+      { piece: "QUEEN", positions: null, min_salary: 5000, max_salary: null },
+    ]);
+    const sport = loadSportConfig(config);
+    expect(sport.sport).toBe("TEST");
+  });
+
+  it("honors exclude_positions for coverage -- excluding X needs X's own fallback", () => {
+    const config = makeConfig([
+      { piece: "QUEEN", positions: null, exclude_positions: ["X"], min_salary: null, max_salary: null },
+    ]);
+    expect(() => loadSportConfig(config)).toThrow();
+  });
+
+  it("accepts exclude_positions with a fallback band", () => {
+    const config = makeConfig([
+      { piece: "QUEEN", positions: null, exclude_positions: ["X"], min_salary: null, max_salary: null },
+      { piece: "PAWN", positions: ["X"], min_salary: null, max_salary: null },
+    ]);
+    const sport = loadSportConfig(config);
+    expect(sport.sport).toBe("TEST");
+  });
 });
