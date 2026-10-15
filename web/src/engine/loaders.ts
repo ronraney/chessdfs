@@ -48,12 +48,30 @@ function parsePercent(raw: string): number {
   return parseFloat(raw.replace(/%+$/, "")) / 100;
 }
 
+// Bug fix: some DK exports carry only a plain "id" column, not "DK_ID" --
+// `row[columnMap.id]` would then be `undefined` for every row, silently
+// giving every Player the SAME id. That's not just a cosmetic gap: once
+// any one player locks, `BuildState.lockedPlayerIds` holds that shared
+// `undefined` id, and `!lockedPlayerIds.has(p.id)` is false for every
+// OTHER player too (same id) -- the whole pool reads as "already locked"
+// from that point on, and the very next pick (White's or Black's) finds
+// zero eligible candidates for any piece band at all. Falling back to
+// "id" when "DK_ID" is genuinely absent from the file's own header row
+// (not just empty for one row) keeps every player's identity distinct.
+function resolveIdColumn(columnMap: EtrColumnMap, fields: readonly string[]): string {
+  if (fields.includes(columnMap.id)) return columnMap.id;
+  if (fields.includes("id")) return "id";
+  return columnMap.id;
+}
+
 export function loadEtrCsv(data: string, columnMap: EtrColumnMap = ETR_COLUMN_MAP): Player[] {
-  const rows = parse<Record<string, string>>(data, { header: true, skipEmptyLines: true }).data;
+  const parsed = parse<Record<string, string>>(data, { header: true, skipEmptyLines: true });
+  const rows = parsed.data;
+  const idColumn = resolveIdColumn(columnMap, parsed.meta.fields ?? []);
   return rows.map(
     (row) =>
       new Player({
-        id: row[columnMap.id],
+        id: row[idColumn],
         name: row[columnMap.name].trim(),
         positions: [row[columnMap.pos]],
         team: row[columnMap.team],

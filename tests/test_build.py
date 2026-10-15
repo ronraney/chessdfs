@@ -13,7 +13,7 @@ from dfs_chess.build import (
     play_white_move,
 )
 from dfs_chess.config import ContestConfig
-from dfs_chess.loaders import load_opening_book
+from dfs_chess.loaders import load_etr_csv, load_opening_book
 from dfs_chess.models import BuildState, KingMode, Move, Piece, Player, Side
 from dfs_chess.openings import BookLine, book_continuations
 from dfs_chess.pieces import classify, piece_for_chess_type
@@ -499,3 +499,34 @@ def test_white_with_a_legal_move_is_not_a_dead_end():
         make_player(f"knight{i}", "TE", 4600 + i) for i in range(2)
     ]
     assert check_white_dead_end(BuildState(), NFL, CONTEST, pool) is None
+
+
+def test_black_can_still_reply_once_white_locks_a_player_loaded_from_an_id_only_csv(tmp_path):
+    """Bug fix: a real DK export (data/samples/repro-slate.csv, not
+    committed here -- this fixture is a minimal stand-in with the same
+    header shape: a plain "id" column, no "DK_ID") made load_etr_csv
+    raise KeyError for every row (the TS port's equivalent silently gave
+    every Player the SAME id instead -- see loaders.ts's own fix/test).
+    This is the full downstream repro mirrored from build.test.ts: load,
+    lock one player via White's first move, confirm Black still finds a
+    legal reply -- loaders.py's own fix (fall back to "id") is what
+    actually resolves this.
+    """
+    csv_path = tmp_path / "id_only.csv"
+    csv_path.write_text(
+        "Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field,id\n"
+        'Test Player A,DST,AAA,BBB,"$2,000",5.0,10.00%,10.00%,1001\n'
+        'Test Player B,DST,AAA,BBB,"$2,100",5.1,10.00%,10.00%,1002\n'
+        'Test Player C,DST,AAA,BBB,"$2,200",5.2,10.00%,10.00%,1003\n'
+        'Test Player D,DST,AAA,BBB,"$2,300",5.3,10.00%,10.00%,1004\n'
+        'Test Player E,DST,AAA,BBB,"$2,400",5.4,10.00%,10.00%,1005\n'
+        'Test Player F,DST,AAA,BBB,"$2,500",5.5,10.00%,10.00%,1006\n'
+    )
+    pool = load_etr_csv(csv_path)
+    assert len({p.id for p in pool}) == len(pool)  # distinct ids -- the fix itself
+
+    white_player, *black_pool = pool
+    result = play_white_move(BuildState(), uci("d2d4"), white_player, NFL, CONTEST, BOOK)
+    assert result.state.locked_player_ids == {white_player.id}
+
+    play_black_move(result.state, BOOK, {}, 0, NFL, CONTEST, black_pool, random.Random(1))  # must not raise

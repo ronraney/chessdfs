@@ -26,7 +26,7 @@ import { ContestConfig } from "./config";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadOpeningBook } from "./loaders";
+import { loadEtrCsv, loadOpeningBook } from "./loaders";
 import { BuildState, KingMode, Move, Piece, Player, Side } from "./models";
 import { BookLine, bookContinuations } from "./openings";
 import { classify, pieceForChessType } from "./pieces";
@@ -542,5 +542,39 @@ describe("dead-end endings (Task 11e)", () => {
       ...Array.from({ length: 2 }, (_, i) => makePlayer(`knight${i}`, "TE", 4600 + i)),
     ];
     expect(checkWhiteDeadEnd(new BuildState(), NFL, CONTEST, pool)).toBeNull();
+  });
+});
+
+// Bug fix: a real DK export (data/samples/repro-slate.csv, not committed
+// here -- this fixture is a minimal stand-in with the same header shape:
+// a plain "id" column, no "DK_ID") made loadEtrCsv give every Player the
+// SAME (undefined) id. White's first lock then poisoned the ENTIRE pool:
+// BuildState.lockedPlayerIds held that one shared id, so every other
+// player -- despite being genuinely unlocked -- read as "already locked"
+// too (same id), leaving Black with zero eligible candidates for any
+// piece band and throwing NoLegalBlackMoveError with an empty lineup and
+// a full cap. loaders.ts's own fix (fall back to "id" when "DK_ID" is
+// absent) is what actually resolves this; this test is the full
+// downstream repro, through a real load -> lock -> reply sequence.
+describe("id-collision regression (bug fix)", () => {
+  const ID_ONLY_CSV = [
+    "Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field,id",
+    'Test Player A,DST,AAA,BBB,"$2,000",5.0,10.00%,10.00%,1001',
+    'Test Player B,DST,AAA,BBB,"$2,100",5.1,10.00%,10.00%,1002',
+    'Test Player C,DST,AAA,BBB,"$2,200",5.2,10.00%,10.00%,1003',
+    'Test Player D,DST,AAA,BBB,"$2,300",5.3,10.00%,10.00%,1004',
+    'Test Player E,DST,AAA,BBB,"$2,400",5.4,10.00%,10.00%,1005',
+    'Test Player F,DST,AAA,BBB,"$2,500",5.5,10.00%,10.00%,1006',
+  ].join("\n");
+
+  it("Black can still reply once White locks a player loaded from an \"id\"-only CSV", () => {
+    const pool = loadEtrCsv(ID_ONLY_CSV);
+    expect(new Set(pool.map((p) => p.id)).size).toBe(pool.length); // distinct ids -- the fix itself
+
+    const [whitePlayer, ...blackPool] = pool;
+    const result = playWhiteMove(new BuildState(), uci("d2d4"), whitePlayer, NFL, CONTEST, BOOK);
+    expect(result.state.lockedPlayerIds).toEqual(new Set([whitePlayer.id]));
+
+    expect(() => playBlackMove(result.state, BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(1))).not.toThrow();
   });
 });

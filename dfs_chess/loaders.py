@@ -42,16 +42,35 @@ def _parse_percent(raw: str) -> float:
     return float(raw.rstrip("%")) / 100
 
 
+def _resolve_id_column(column_map: dict[str, str], fieldnames: list[str] | None) -> str:
+    """Bug fix: some DK exports carry only a plain "id" column, not
+    "DK_ID" — row[column_map["id"]] would then raise KeyError for every
+    row (the TS port's equivalent silently gave every Player the SAME
+    `undefined` id instead, which is worse: the whole player pool reads
+    as "already locked" the moment any one player locks — see loaders.ts's
+    own fix, which this mirrors). Falls back to "id" when "DK_ID" is
+    genuinely absent from the file's own header row.
+    """
+    fields = fieldnames or []
+    if column_map["id"] in fields:
+        return column_map["id"]
+    if "id" in fields:
+        return "id"
+    return column_map["id"]
+
+
 def load_etr_csv(
     path: str | Path,
     column_map: dict[str, str] = ETR_COLUMN_MAP,
 ) -> list[Player]:
     players: list[Player] = []
     with open(path, "r", encoding="utf-8", newline="") as f:
-        for row in csv.DictReader(f):
+        reader = csv.DictReader(f)
+        id_column = _resolve_id_column(column_map, reader.fieldnames)
+        for row in reader:
             players.append(
                 Player(
-                    id=row[column_map["id"]],
+                    id=row[id_column],
                     name=row[column_map["name"]].strip(),
                     positions=(row[column_map["pos"]],),
                     team=row[column_map["team"]],

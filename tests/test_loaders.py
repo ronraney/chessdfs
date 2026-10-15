@@ -46,6 +46,25 @@ def test_names_are_trimmed():
     assert all(p.name == p.name.strip() for p in players)
 
 
+def test_load_etr_csv_falls_back_to_plain_id_column(tmp_path):
+    """Bug fix: a real DK export (data/samples/repro-slate.csv, not
+    committed here -- this fixture is a minimal stand-in with the same
+    header shape) carried a plain "id" column instead of "DK_ID", which
+    raised KeyError for every row. Mirrors loaders.ts's own fix (fall
+    back to "id" when "DK_ID" is genuinely absent from the header) and
+    test; see test_build.py for the full load -> lock -> reply repro.
+    """
+    csv_path = tmp_path / "id_only.csv"
+    csv_path.write_text(
+        "Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field,id\n"
+        'Test Player A,DST,AAA,BBB,"$2,000",5.0,10.00%,10.00%,1001\n'
+        'Test Player B,DST,AAA,BBB,"$2,100",5.1,10.00%,10.00%,1002\n'
+        'Test Player C,DST,AAA,BBB,"$2,200",5.2,10.00%,10.00%,1003\n'
+    )
+    players = load_etr_csv(csv_path)
+    assert [p.id for p in players] == ["1001", "1002", "1003"]
+
+
 # --- opening book ------------------------------------------------------------
 
 def test_load_opening_book_parses_all_five_files():

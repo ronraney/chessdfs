@@ -54,6 +54,26 @@ describe("loadEtrCsv", () => {
     expect(dstPlayers.length).toBeGreaterThan(0); // sanity: sample actually has DST rows to check
     expect(players.every((p) => p.name === p.name.trim())).toBe(true);
   });
+
+  // Bug fix: a real DK export (data/samples/repro-slate.csv, not committed
+  // here -- this fixture is a minimal stand-in with the same header shape)
+  // carried a plain "id" column instead of "DK_ID". row["DK_ID"] was then
+  // `undefined` for every row, so every Player got the SAME id -- not just
+  // a cosmetic gap: BuildState.lockedPlayerIds then treats the whole pool
+  // as "already locked" the moment any one player locks (see build.test.ts
+  // for the full downstream repro). This fixture has no "DK_ID" column at
+  // all, only "id" -- loadEtrCsv should fall back to it.
+  const ID_ONLY_CSV = [
+    "Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field,id",
+    'Test Player A,DST,AAA,BBB,"$2,000",5.0,10.00%,10.00%,1001',
+    'Test Player B,DST,AAA,BBB,"$2,100",5.1,10.00%,10.00%,1002',
+    'Test Player C,DST,AAA,BBB,"$2,200",5.2,10.00%,10.00%,1003',
+  ].join("\n");
+
+  it('falls back to a plain "id" column when "DK_ID" is absent, keeping every player distinct', () => {
+    const players = loadEtrCsv(ID_ONLY_CSV);
+    expect(players.map((p) => p.id)).toEqual(["1001", "1002", "1003"]);
+  });
 });
 
 // --- opening book ---------------------------------------------------------
