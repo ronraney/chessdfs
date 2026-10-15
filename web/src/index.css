@@ -17,6 +17,13 @@
   --accent-border: rgba(138, 45, 42, 0.5);
   --board-light: #ead9b8;
   --board-dark: #a97b54;
+  /* --accent (#8a2d2a) only reaches ~2.3:1 against --board-dark
+     (#a97b54) -- below the 3:1 floor move dots/selection need, since
+     Club's board-dark sits mid-luminance rather than genuinely dark.
+     --board-marker is a darker, still red-accent-family color chosen
+     for ~3.5:1+ against both --board-light and --board-dark; see the
+     move-dest/selected overrides further down this file. */
+  --board-marker: #5a1d1b;
   --danger: #b3261e;
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
@@ -53,6 +60,10 @@
     --accent-border: rgba(198, 241, 53, 0.5);
     --board-light: #3c4452;
     --board-dark: #262c36;
+    /* Slate's own --accent already clears >7:1 against both board
+       colors, so the marker can just be --accent -- unlike Club's
+       override above. */
+    --board-marker: var(--accent);
     --danger: #ff6b6b;
     --shadow:
       rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
@@ -77,6 +88,7 @@
   --accent-border: rgba(198, 241, 53, 0.5);
   --board-light: #3c4452;
   --board-dark: #262c36;
+  --board-marker: var(--accent);
   --shadow:
     rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
 
@@ -183,4 +195,25 @@ input[type='checkbox'] {
 .board-preview cg-board,
 .build-board cg-board {
   background: none;
+}
+
+/* brown.css's move-dest/selected colors are a fixed, alpha-blended green
+   tuned for its own tan/brown board -- not --board-light/--board-dark in
+   either theme. These make the move dots, capture rings, and the selected-
+   square outline solid and theme-accent-colored (--board-marker, defined
+   per theme above) instead, so they read clearly on both square colors in
+   both themes. */
+.build-board cg-board square.move-dest {
+  background: radial-gradient(var(--board-marker) 0% 24%, transparent 25% 100%);
+}
+.build-board cg-board square.oc.move-dest {
+  background: radial-gradient(transparent 0% 76%, var(--board-marker) 80% 92%, transparent 96% 100%);
+}
+.build-board cg-board square.move-dest:hover,
+.build-board cg-board square.move-dest.hover {
+  background: radial-gradient(color-mix(in srgb, var(--board-marker) 55%, transparent) 0% 30%, transparent 31% 100%);
+}
+.build-board cg-board square.selected {
+  background-color: transparent;
+  box-shadow: inset 0 0 0 3px var(--board-marker);
 }

@@ -49,12 +49,20 @@ interface FakeApi {
   config: Config;
   set(partial: Partial<Config>): void;
   destroy(): void;
+  // Bug fix: models chessground's own click-to-move state machine (board.
+  // selectSquare -> board.userMove) well enough to drive BuildScreen the
+  // same way two real clicks do -- a first call selects, a second call on
+  // one of the first square's own `dests` fires `movable.events.after`
+  // exactly like a completed drag's drop does. See BuildBoard.test.tsx for
+  // the same two clicks exercised against the REAL chessground library.
+  selectSquare(key: string): void;
 }
 
 let lastApi: FakeApi | null = null;
 
 vi.mock("@lichess-org/chessground", () => ({
   Chessground: (_el: HTMLElement, config: Config): FakeApi => {
+    let selected: string | null = null;
     const api: FakeApi = {
       config,
       set(partial) {
@@ -66,6 +74,16 @@ vi.mock("@lichess-org/chessground", () => ({
         };
       },
       destroy() {},
+      selectSquare(key) {
+        const dests = api.config.movable?.dests?.get(selected as never) ?? [];
+        if (selected !== null && selected !== key && dests.includes(key as never)) {
+          const orig = selected;
+          selected = null;
+          api.config.movable!.events!.after!(orig as never, key as never, { premove: false });
+          return;
+        }
+        selected = key;
+      },
     };
     lastApi = api;
     return api;
@@ -92,7 +110,7 @@ const onStartAgain = vi.fn();
 const onNewContest = vi.fn();
 
 function renderScreen() {
-  render(
+  return render(
     <BuildScreen
       preset={H2H}
       players={PLAYERS}
@@ -268,6 +286,45 @@ describe("BuildScreen -- move first, then pick", () => {
 
     expect(screen.getByText("Left the line after d4")).toBeInTheDocument();
     expect(document.querySelector(".continue-option.chosen")).toBeNull(); // no chosen move left to highlight
+  });
+});
+
+describe("BuildScreen -- click-to-move (bug fix)", () => {
+  // Reported bug: click-select then click-destination on the build board
+  // didn't move the piece (dragging did). The FakeApi's selectSquare (above)
+  // models the same two-step click chessground itself uses internally; see
+  // BuildBoard.test.tsx for the identical two clicks run against the real,
+  // unmocked chessground library -- both disprove this task's own two
+  // suspects ("chessground reconfigured on re-render, resetting selection"
+  // and "the move handler only fires for drags"). No code-level cause was
+  // found.
+  it("a click-select then click-destination makes the move and opens the pick modal", async () => {
+    renderScreen();
+    lastApi!.selectSquare("g1"); // click 1: select the Knight
+    lastApi!.selectSquare("f3"); // click 2: click its destination dot
+
+    expect(await screen.findByRole("dialog", { name: "Choose your Knight" })).toBeInTheDocument();
+  });
+
+  it("a re-render between the two clicks doesn't drop the selection", async () => {
+    const { rerender } = renderScreen();
+    lastApi!.selectSquare("g1");
+
+    rerender(
+      <BuildScreen
+        preset={H2H}
+        players={PLAYERS}
+        kingMode={KingMode.EMERGE}
+        whiteKing={null}
+        blackKing={null}
+        chosenOpening={{ kind: "line", line: MORPHY_DEFENSE }}
+        onStartAgain={onStartAgain}
+        onNewContest={onNewContest}
+      />,
+    );
+
+    lastApi!.selectSquare("f3");
+    expect(await screen.findByRole("dialog", { name: "Choose your Knight" })).toBeInTheDocument();
   });
 });
 
