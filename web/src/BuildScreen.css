@@ -65,6 +65,19 @@
   gap: 8px;
 }
 
+/* Task 40: the header's own "Start again" link -- styled as understated
+   text, not a pill chip, so it doesn't compete with the contest/King-mode
+   chips next to it. */
+.start-again-link {
+  background: transparent;
+  border: none;
+  padding: 4px 2px;
+  font-size: 13px;
+  color: var(--text);
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
 .chip {
   display: inline-flex;
   align-items: center;
@@ -307,6 +320,21 @@
   margin: 0;
 }
 
+/* Task 40: "Stop with this core," under the You card only. */
+.stop-with-core {
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.stop-with-core:disabled {
+  opacity: 0.5;
+}
+
 /* Board + Book continues */
 .board-column {
   grid-area: board;
@@ -399,6 +427,122 @@
   margin: 2px 0 0;
   font-size: 13px;
   color: var(--text);
+}
+
+/* Task 40: "Take back," under the board. */
+.take-back {
+  align-self: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 16px;
+  font-size: 13px;
+  color: var(--text-h);
+}
+
+.take-back:disabled {
+  opacity: 0.5;
+}
+
+/* Task 40 "Leaving the book": replaces the book-continues panel entirely
+   once no continuation remains for White. */
+.book-exit {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.book-exit button {
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--accent);
+}
+
+/* Task 40: the finish screen's own summary card -- replaces the board
+   area's status line/board/book-continues/take-back entirely. */
+.finish-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.finish-ended-line {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.finish-opening {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text-h);
+}
+
+.finish-core {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.finish-core th,
+.finish-core td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.finish-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.finish-stats strong {
+  font-family: var(--mono);
+  color: var(--text-h);
+}
+
+.finish-open {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.finish-happy {
+  margin: 0;
+  text-align: center;
+  font-family: var(--heading);
+  font-size: 20px;
+  color: var(--accent);
+}
+
+.finish-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.finish-actions button {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--text-h);
 }
 
 /* Player | Field -- Task 38b moves this up next to the board/cards row

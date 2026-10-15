@@ -25,7 +25,7 @@ import userEvent from "@testing-library/user-event";
 import type { UserEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Config } from "@lichess-org/chessground/config";
-import { BOOK, PRESETS } from "./appData";
+import { BOOK, NFL, PRESETS } from "./appData";
 import BuildScreen from "./BuildScreen";
 import { ContestConfig } from "./engine/config";
 import type { ContestPreset } from "./engine/config";
@@ -72,6 +72,13 @@ const MORPHY_DEFENSE = BOOK.find((line) => line.eco === "C70" && line.name === "
 const WHITE_QB = PLAYERS.find((p) => p.name === "Joe Burrow")!;
 const BLACK_QB = PLAYERS.find((p) => p.name === "Jared Goff")!;
 
+// Task 40: BuildScreen no longer owns "start again"/"new contest"
+// navigation itself (that's App.tsx's job) -- every render site needs
+// these two callback props regardless, so a pair of shared spies (reset
+// in beforeEach below) saves repeating `vi.fn()` at every call site.
+const onStartAgain = vi.fn();
+const onNewContest = vi.fn();
+
 function renderScreen() {
   render(
     <BuildScreen
@@ -81,6 +88,8 @@ function renderScreen() {
       whiteKing={null}
       blackKing={null}
       chosenOpening={{ kind: "line", line: MORPHY_DEFENSE }}
+      onStartAgain={onStartAgain}
+      onNewContest={onNewContest}
     />,
   );
 }
@@ -100,6 +109,8 @@ function chosenContinueButton(): HTMLElement {
 beforeEach(() => {
   lastApi = null;
   window.localStorage.clear();
+  onStartAgain.mockClear();
+  onNewContest.mockClear();
 });
 
 function statusLine(): HTMLElement {
@@ -262,6 +273,8 @@ describe("BuildScreen -- How it works strip (Task 38d)", () => {
         whiteKing={null}
         blackKing={null}
         chosenOpening={{ kind: "line", line: MORPHY_DEFENSE }}
+        onStartAgain={onStartAgain}
+        onNewContest={onNewContest}
       />,
     );
     expect(screen.getByText(/You're White\./)).toBeInTheDocument();
@@ -373,6 +386,8 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
           whiteKing={WHITE_QB}
           blackKing={BLACK_QB}
           chosenOpening={{ kind: "own" }}
+          onStartAgain={onStartAgain}
+          onNewContest={onNewContest}
         />,
       );
       await developKnightAndBishop(user);
@@ -517,7 +532,16 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
   it("an over-cap player is greyed out and can't be locked", async () => {
     const tinyCapPreset: ContestPreset = { name: "Tiny Cap", buyIn: 1, contest: new ContestConfig({ fieldSize: 2, payouts: [], cap: 5000 }) };
     render(
-      <BuildScreen preset={tinyCapPreset} players={PLAYERS} kingMode={KingMode.EMERGE} whiteKing={null} blackKing={null} chosenOpening={{ kind: "own" }} />,
+      <BuildScreen
+        preset={tinyCapPreset}
+        players={PLAYERS}
+        kingMode={KingMode.EMERGE}
+        whiteKing={null}
+        blackKing={null}
+        chosenOpening={{ kind: "own" }}
+        onStartAgain={onStartAgain}
+        onNewContest={onNewContest}
+      />,
     );
     simulateMove("g1", "f3"); // White's first move -- a Knight move, no pawn pre-move needed
 
@@ -530,5 +554,94 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
     const user = userEvent.setup();
     await user.click(mcbrideRow);
     expect(within(dialog).getByRole("button", { name: "Lock player" })).toBeDisabled();
+  });
+});
+
+// Task 40: endings (Stop/dead end), the finish screen, Start again, and
+// Take back.
+describe("BuildScreen -- endings and start again (Task 40)", () => {
+  it("Stop with this core shows the summary with the locked players", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    await user.click(chosenContinueButton()); // 1. e4
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+    // Wait for Black's reply to land first -- Stop is disabled while Black
+    // is mid-reply, same as Take back.
+    await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+
+    const lockedName = youColumn().querySelector(".locked-name")!.textContent!.split(" · ")[0];
+
+    await user.click(within(youColumn()).getByRole("button", { name: "Stop with this core" }));
+
+    expect(screen.getByText("You stopped with this core.")).toBeInTheDocument();
+    expect(screen.getByText("Happy Hunting")).toBeInTheDocument();
+    const finishCard = document.querySelector(".finish-card") as HTMLElement;
+    expect(within(finishCard).getByText(lockedName)).toBeInTheDocument();
+  });
+
+  it("a dead end shows the right message and open slots", async () => {
+    // An empty player pool: every one of White's 20 legal first moves has
+    // zero eligible, unlocked players for whichever piece type it would
+    // lock -- the same "totally dead immediately" scenario build.test.ts's
+    // own checkWhiteDeadEnd coverage uses, just reached through the real
+    // screen instead of a hand-built BuildState.
+    render(
+      <BuildScreen
+        preset={H2H}
+        players={[]}
+        kingMode={KingMode.EMERGE}
+        whiteKing={null}
+        blackKing={null}
+        chosenOpening={{ kind: "own" }}
+        onStartAgain={onStartAgain}
+        onNewContest={onNewContest}
+      />,
+    );
+
+    expect(await screen.findByText("You have hit a dead end.")).toBeInTheDocument();
+    expect(screen.getByText("Happy Hunting")).toBeInTheDocument();
+    const finishCard = document.querySelector(".finish-card") as HTMLElement;
+    const openSlotsLine = within(finishCard).getByText(/^Open slots:/);
+    for (const slot of ["QB", "RB", "WR", "TE", "FLEX", "DST"]) {
+      expect(openSlotsLine.textContent).toContain(slot);
+    }
+  });
+
+  it("the header link asks for confirmation after a pick", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    await user.click(chosenContinueButton()); // 1. e4
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    await user.click(screen.getByRole("button", { name: "Start again" })); // the header link -- turn is Black's right now, so no other "Start again" is on screen
+
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(onStartAgain).toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+
+  it("take back after a pick restores salary remaining and returns the player to the pick list", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    await user.click(chosenContinueButton()); // 1. e4
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+    await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+
+    const lockedName = youColumn().querySelector(".locked-name")!.textContent!.split(" · ")[0];
+    const fullCap = `$${H2H.contest.effectiveCap(NFL).toLocaleString()}`;
+
+    await user.click(screen.getByRole("button", { name: "Take back" }));
+
+    expect(within(youColumn()).queryAllByRole("listitem")).toHaveLength(0);
+    expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(0);
+    expect(within(youColumn()).getByText(fullCap)).toBeInTheDocument(); // salary remaining is back to the full cap
+
+    simulateMove("e2", "e4"); // the same move is legal again from the start position
+    const dialog2 = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    expect(within(dialog2).getByText(new RegExp(lockedName))).toBeInTheDocument(); // the player is back in the pick list
   });
 });

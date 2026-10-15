@@ -22,6 +22,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
+import { PRESETS } from "./appData";
 import { loadEtrCsv } from "./engine/loaders";
 import { saveProjectionsCsv } from "./projectionsStore";
 import { SAMPLE_CSV, sampleCsvFile } from "./testFixtures";
@@ -109,5 +110,33 @@ describe("admin screen routing", () => {
     });
 
     await waitFor(() => expect(screen.getByText("No slate loaded yet.")).toBeInTheDocument());
+  });
+});
+
+// Task 40: "Start again" (same contest and King mode, back to the opening
+// choice) is BuildScreen's own header link, but the actual "back to
+// setup" navigation -- and remembering which contest to pre-select -- is
+// App.tsx's job, so this is an App-level test rather than a BuildScreen
+// one.
+describe("Start again (Task 40)", () => {
+  function optionLabel(name: string, fieldSize: number): string {
+    return `${name} — ${fieldSize.toLocaleString()} entries`;
+  }
+
+  it("Start again returns to setup with the same contest", async () => {
+    renderWithSavedSlate();
+    const user = userEvent.setup();
+    const h2h = PRESETS.find((p) => p.name === "H2H")!;
+
+    await user.selectOptions(screen.getByLabelText("1 · Contest"), optionLabel(h2h.name, h2h.contest.fieldSize));
+    await user.click(screen.getByRole("button", { name: "(Play your own opening)" }));
+
+    // Zero players locked yet -- the header link's own confirm is skipped
+    // (see BuildScreen's requestStartAgain), so this needs no window.confirm
+    // mock at all.
+    await user.click(screen.getByRole("button", { name: "Start again" }));
+
+    await waitFor(() => expect(screen.getByLabelText("1 · Contest")).toBeInTheDocument());
+    expect((screen.getByLabelText("1 · Contest") as HTMLSelectElement).value).toBe(String(PRESETS.indexOf(h2h)));
   });
 });

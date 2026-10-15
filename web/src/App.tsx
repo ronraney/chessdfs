@@ -13,8 +13,10 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 import AdminScreen from "./AdminScreen";
+import { PRESETS } from "./appData";
 import BuildScreen from "./BuildScreen";
 import { loadEtrCsv } from "./engine/loaders";
+import type { KingMode } from "./engine/models";
 import type { Player } from "./engine/models";
 import { getSavedProjectionsCsv } from "./projectionsStore";
 import type { ChosenSetup } from "./SetupScreen";
@@ -37,6 +39,24 @@ function App() {
   const [screen, setScreen] = useState<"setup" | "build">("setup");
   const [chosenSetup, setChosenSetup] = useState<ChosenSetup | null>(null);
   const [players, setPlayers] = useState<Player[] | null>(() => loadSavedPlayers());
+  // Task 40: "Start again" (same contest + King mode, back to the opening
+  // choice) carries these into SetupScreen's own initial state; "New
+  // contest" (full setup) leaves this null, same as a first-ever visit.
+  const [setupDefaults, setSetupDefaults] = useState<{ presetIndex: number; kingMode: KingMode } | null>(null);
+
+  function startAgain(): void {
+    if (chosenSetup !== null) {
+      setSetupDefaults({ presetIndex: PRESETS.indexOf(chosenSetup.preset), kingMode: chosenSetup.kingMode });
+    }
+    setChosenSetup(null);
+    setScreen("setup");
+  }
+
+  function newContest(): void {
+    setSetupDefaults(null);
+    setChosenSetup(null);
+    setScreen("setup");
+  }
 
   useEffect(() => {
     function onHashChange() {
@@ -78,6 +98,8 @@ function App() {
         whiteKing={chosenSetup.whiteKing}
         blackKing={chosenSetup.blackKing}
         chosenOpening={chosenSetup.opening}
+        onStartAgain={startAgain}
+        onNewContest={newContest}
       />
     );
   }
@@ -85,6 +107,8 @@ function App() {
   return (
     <SetupScreen
       players={players}
+      initialPresetIndex={setupDefaults?.presetIndex}
+      initialKingMode={setupDefaults?.kingMode}
       onChoose={(chosen) => {
         setChosenSetup(chosen);
         setScreen("build");

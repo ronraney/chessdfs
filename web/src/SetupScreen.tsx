@@ -66,6 +66,13 @@ export interface ChosenSetup {
 interface Props {
   players: readonly Player[];
   onChoose: (chosen: ChosenSetup) => void;
+  // Task 40 "Start again": App.tsx passes the just-finished build's own
+  // preset index/King mode back in here so the contest/King-mode step
+  // starts pre-selected to match ("same contest and King mode, back to
+  // the opening choice") rather than SetupScreen's own plain defaults. A
+  // fresh "New contest" (or the very first visit) omits both.
+  initialPresetIndex?: number;
+  initialKingMode?: KingMode;
 }
 
 interface Selection {
@@ -122,9 +129,9 @@ const ALL_CHIP = "All";
 const MAX_SEARCH_RESULTS = 20;
 const MIN_QUERY_LENGTH = 3;
 
-export default function SetupScreen({ players, onChoose }: Props) {
-  const [presetIndex, setPresetIndex] = useState(0);
-  const [kingMode, setKingMode] = useState<KingMode>(KingMode.EMERGE);
+export default function SetupScreen({ players, onChoose, initialPresetIndex, initialKingMode }: Props) {
+  const [presetIndex, setPresetIndex] = useState(initialPresetIndex ?? 0);
+  const [kingMode, setKingMode] = useState<KingMode>(initialKingMode ?? KingMode.EMERGE);
   const [whiteKingId, setWhiteKingId] = useState<string | null>(null);
 
   const preset = PRESETS[presetIndex];
