@@ -78,6 +78,7 @@
   gap: 8px;
   overflow-y: auto;
   max-height: 44vh;
+  min-height: 0; /* lets this flex child actually respect max-height/shrink, rather than forcing the modal taller */
 }
 
 .pick-row {
@@ -171,7 +172,17 @@
   .pick-modal {
     width: 100%;
     max-height: 85vh;
+    overflow-y: auto; /* belt-and-suspenders: .pick-row-list is the one piece meant to scroll, but this keeps the header/footer from ever being pushed off-screen if content runs long */
     border-radius: 12px 12px 0 0;
     border-bottom: none;
+  }
+
+  /* Task 41: the name column is the one that actually needs the room --
+     72px per numeric column (x3, plus gaps) leaves barely 50px for a
+     player's name at 360px. Narrower caps here, not a layout rewrite. */
+  .pick-column-header,
+  .pick-row {
+    grid-template-columns: 1fr repeat(3, minmax(0, 54px));
+    gap: 6px;
   }
 }

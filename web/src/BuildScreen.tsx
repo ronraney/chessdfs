@@ -661,6 +661,13 @@ export default function BuildScreen({
   // completed lineup). Disabled (see canStop below) while a pick/offer is
   // open or Black is mid-reply -- abandoning either mid-flight would leave
   // the finish screen showing a core that's about to change under it.
+  // Task 41 moves the button itself from under the You card to the
+  // board-column, beside Take back -- the mobile pass's own explicit
+  // ordering (status line, board, Book continues, Take back / Stop, then
+  // You, Field, Player | Field) has no way to place a child of the You
+  // card's own grid cell ahead of that cell as a whole, so the button
+  // moved out to where it can actually sit in that order; `canStop`/this
+  // handler are unchanged.
   function stopWithCore(): void {
     if (blackTimerRef.current !== null) clearTimeout(blackTimerRef.current);
     setEnding({ kind: "stopped" });
@@ -789,8 +796,6 @@ export default function BuildScreen({
           sideName="White"
           stats={whiteStats}
           moves={state.whiteMoves}
-          onStop={ending === null ? stopWithCore : undefined}
-          canStop={canStop}
         />
         <div className="board-column">
           {ending !== null ? (
@@ -806,9 +811,6 @@ export default function BuildScreen({
             <>
               <p className="status-line">{statusLine}</p>
               <BuildBoard fen={previewFen} dests={pendingMove === null ? dests : new Map()} lastMove={lastMove} onMove={handleBoardMove} />
-              <button type="button" className="take-back" disabled={!canTakeBack} onClick={takeBack}>
-                Take back
-              </button>
 
               {turn === "w" &&
                 (showBookExitPrompt ? (
@@ -841,6 +843,17 @@ export default function BuildScreen({
                     <p className="play-own-move">(Play your own move)</p>
                   </div>
                 ))}
+
+              <div className="build-controls">
+                <button type="button" className="take-back" disabled={!canTakeBack} onClick={takeBack}>
+                  Take back
+                </button>
+                {state.whiteMoves.length > 0 && (
+                  <button type="button" className="stop-with-core" disabled={!canStop} onClick={stopWithCore}>
+                    Stop with this core
+                  </button>
+                )}
+              </div>
             </>
           )}
         </div>
@@ -937,20 +950,12 @@ function SideColumn({
   sideName,
   stats,
   moves,
-  onStop,
-  canStop,
 }: {
   side: "you" | "field";
   label: string;
   sideName: string;
   stats: SideStats;
   moves: readonly Move[];
-  // Task 40: "Stop with this core" -- White's own card only (`onStop` is
-  // only ever passed for side "you"); available once at least one player
-  // is locked, same as the real "stop" command cli.py's free-play turn
-  // accepts at any point past that.
-  onStop?: () => void;
-  canStop?: boolean;
 }) {
   const openSlots = openSlotLabels(stats);
   return (
@@ -996,12 +1001,6 @@ function SideColumn({
       </ul>
 
       {openSlots.length > 0 && <p className="side-open">Open: {openSlots.join(" · ")}</p>}
-
-      {onStop !== undefined && moves.length > 0 && (
-        <button type="button" className="stop-with-core" disabled={!canStop} onClick={onStop}>
-          Stop with this core
-        </button>
-      )}
     </div>
   );
 }
@@ -1034,28 +1033,32 @@ function FinishCard({
         <span className="side-eyebrow">Opening</span> {openingLabel}
       </p>
 
-      <table className="finish-core">
-        <thead>
-          <tr>
-            <th>Piece</th>
-            <th>Player</th>
-            <th>Pos</th>
-            <th>Team</th>
-            <th>Salary</th>
-          </tr>
-        </thead>
-        <tbody>
-          {whiteMoves.map((m) => (
-            <tr key={m.player.id}>
-              <td>{PIECE_LABEL[m.piece]}</td>
-              <td>{m.player.name}</td>
-              <td>{m.player.positions[0]}</td>
-              <td>{m.player.team}</td>
-              <td>${m.player.salary.toLocaleString()}</td>
+      {/* Task 41: a 5-column table doesn't fit 360px gracefully -- this
+          scrolls internally rather than forcing the whole page wider. */}
+      <div className="finish-core-scroll">
+        <table className="finish-core">
+          <thead>
+            <tr>
+              <th>Piece</th>
+              <th>Player</th>
+              <th>Pos</th>
+              <th>Team</th>
+              <th>Salary</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {whiteMoves.map((m) => (
+              <tr key={m.player.id}>
+                <td>{PIECE_LABEL[m.piece]}</td>
+                <td>{m.player.name}</td>
+                <td>{m.player.positions[0]}</td>
+                <td>{m.player.team}</td>
+                <td>${m.player.salary.toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <div className="finish-stats">
         <p>

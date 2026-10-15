@@ -73,6 +73,12 @@
 }
 
 .setup-card select {
+  /* Task 41: a <select> with no explicit width sizes to its widest
+     OPTION's own text in some browsers -- several contest names are long
+     enough ("Screen Pass 30K ($15 GPP...") to force the card, and so the
+     page, wider than a 360px viewport. */
+  width: 100%;
+  box-sizing: border-box;
   height: 44px;
   padding: 0 12px;
   font: inherit;
@@ -349,6 +355,7 @@
 
 .explorer-row button {
   width: 100%;
+  min-width: 0; /* Task 41: a long family/variation name otherwise forces this grid cell -- and so the row, the list, the page -- wider than the viewport */
   box-sizing: border-box;
   display: grid;
   grid-template-columns: 32px 1.4fr 1.6fr auto;
@@ -470,5 +477,20 @@
   .explorer-games {
     grid-area: games;
     text-align: left;
+  }
+
+  /* Task 41: five tier chips (Small/Mid/Large/XL/All) plus Random don't
+     comfortably fit one line at 360-430px -- scrolling horizontally reads
+     better here than wrapping to a second row above the search box.
+     Desktop keeps wrapping (plenty of width, no reason to hide any chip
+     behind a scroll). */
+  .chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px; /* clears the scrollbar some browsers always reserve */
+  }
+
+  .chip {
+    flex: 0 0 auto;
   }
 }

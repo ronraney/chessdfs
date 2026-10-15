@@ -31,7 +31,7 @@ import { BuildState, KingMode, Move, Piece, Player, Side } from "./models";
 import { BookLine, bookContinuations } from "./openings";
 import { classify, pieceForChessType } from "./pieces";
 import type { ChessMove } from "./rules";
-import { applyMove, placeKings } from "./rules";
+import { applyMove, isLineupComplete, placeKings } from "./rules";
 import { SeededRandom } from "./rng";
 import { PieceBand, RosterSlot, SportConfig, loadSportConfig } from "./sport";
 
@@ -576,5 +576,40 @@ describe("id-collision regression (bug fix)", () => {
     expect(result.state.lockedPlayerIds).toEqual(new Set([whitePlayer.id]));
 
     expect(() => playBlackMove(result.state, BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(1))).not.toThrow();
+  });
+});
+
+// Task 41: "lineup complete" at the engine/state level -- no UI click-
+// through (BuildScreen has no way to accept a pre-built BuildState as a
+// prop anyway, so a UI-rendered version of this test isn't possible). A
+// hand-built BuildState with all 9 White roster slots filled (QB, 2 RB, 3
+// WR, TE, FLEX, DST), no moves actually played -- isLineupComplete is
+// exactly the signal BuildScreen's own finishOrScheduleBlack checks right
+// after every White commit (rules.isLineupComplete, via build.ts's
+// private isBuildOver) to end the build and show the finish screen's
+// "Your lineup is complete."
+describe("lineup complete (Task 41)", () => {
+  it("a state with 9 locked White players is a complete lineup", () => {
+    const king = makePlayer("qb0", "QB", 7000);
+    const rooks = Array.from({ length: 2 }, (_, i) => makePlayer(`rb${i}`, "RB", 5200 + i));
+    const bishops = Array.from({ length: 4 }, (_, i) => makePlayer(`wr${i}`, "WR", 5000 + i)); // 3 WR slots + 1 FLEX
+    const knight = makePlayer("te0", "TE", 4600);
+    const pawn = makePlayer("dst0", "DST", 2500);
+
+    const whiteMoves = [
+      new Move({ side: Side.WHITE, piece: Piece.KING, san: "x", player: king }),
+      ...rooks.map((p) => new Move({ side: Side.WHITE, piece: Piece.ROOK, san: "x", player: p })),
+      ...bishops.map((p) => new Move({ side: Side.WHITE, piece: Piece.BISHOP, san: "x", player: p })),
+      new Move({ side: Side.WHITE, piece: Piece.KNIGHT, san: "x", player: knight }),
+      new Move({ side: Side.WHITE, piece: Piece.PAWN, san: "x", player: pawn }),
+    ];
+    expect(whiteMoves).toHaveLength(9);
+
+    const state = new BuildState({
+      whiteMoves,
+      lockedPlayerIds: new Set(whiteMoves.map((m) => m.player.id)),
+    });
+
+    expect(isLineupComplete(state.whiteMoves.map((m) => m.player), NFL)).toBe(true);
   });
 });

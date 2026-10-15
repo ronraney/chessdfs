@@ -631,7 +631,9 @@ describe("BuildScreen -- endings and start again (Task 40)", () => {
 
     const lockedName = youColumn().querySelector(".locked-name")!.textContent!.split(" · ")[0];
 
-    await user.click(within(youColumn()).getByRole("button", { name: "Stop with this core" }));
+    // Task 41 moved this button from under the You card to board-column,
+    // beside Take back (the mobile pass's own explicit ordering).
+    await user.click(screen.getByRole("button", { name: "Stop with this core" }));
 
     expect(screen.getByText("You stopped with this core.")).toBeInTheDocument();
     expect(screen.getByText("Happy Hunting")).toBeInTheDocument();
