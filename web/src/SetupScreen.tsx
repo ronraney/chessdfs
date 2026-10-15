@@ -17,16 +17,15 @@
 // the contest itself can change after mount instead of being fixed for the
 // component's lifetime.
 //
-// The Explorer's old per-family expand-to-variations accordion is gone:
-// the mockups show one flat row per ranked family, already carrying its
-// representative line's variation name, full move list, and game count --
-// nothing left to expand into. This also removes the performance problem
-// Task 38c's own test-timeout fix needed: expanding a deep family (Ruy
-// Lopez alone has 235+ book entries) used to render one VariationRow per
-// variation, each calling the uncached-per-unique-line `previewFor` (~49ms
-// a call per HANDOFF.md) just to show a piece-sequence nobody asked the
-// Explorer to show in the first place -- only the Suggested card's own
-// single selection still needs a preview at all.
+// Task 39 re-adds the Explorer's per-family expand-to-variations drill-
+// down Task 38c dropped (that session's own mockup-matching pass found no
+// expand affordance in the static mockups and, separately, needed to fix
+// two real test timeouts caused by it -- see appData.ts's
+// variationsForFamily). This time it stays fast on purpose: an expanded
+// family's variation rows reuse the same preview-free ExplorerRow the flat
+// list already uses (name, numbered moves, games only -- no piece
+// sequence), so expanding even Ruy Lopez (235+ book entries) costs nothing
+// beyond a plain array filter+sort, no `previewFor` calls at all.
 import { useMemo, useState } from "react";
 import "./SetupScreen.css";
 import {
@@ -38,6 +37,7 @@ import {
   RANK_BY_FAMILY,
   previewFor,
   statsFor,
+  variationsForFamily,
 } from "./appData";
 import BoardPreview from "./BoardPreview";
 import type { ContestPreset } from "./engine/config";
@@ -134,6 +134,7 @@ export default function SetupScreen({ players, onChoose }: Props) {
 
   const [chip, setChip] = useState<string>(contestTier.name);
   const [query, setQuery] = useState("");
+  const [expandedFamily, setExpandedFamily] = useState<string | null>(null);
   const [selection, setSelection] = useState<Selection>(() => selectionFor(suggestOpening(preset.contest, RANKED_FAMILIES).line));
 
   const qbs = useMemo(
@@ -155,6 +156,7 @@ export default function SetupScreen({ players, onChoose }: Props) {
     const nextPreset = PRESETS[index];
     setChip(nextPreset.contest.entryTier(LAST_RANK).name);
     setSelection(selectionFor(suggestOpening(nextPreset.contest, RANKED_FAMILIES).line));
+    setExpandedFamily(null);
   }
 
   function randomPick(): void {
@@ -345,16 +347,37 @@ export default function SetupScreen({ players, onChoose }: Props) {
             <ul className="explorer-list">
               {visibleFamilies.map((fam) => {
                 const [, famVariation] = splitFamily(fam.line.name);
+                const expanded = expandedFamily === fam.name;
                 return (
-                  <ExplorerRow
-                    key={fam.name}
-                    rank={fam.rank}
-                    family={fam.name}
-                    variation={famVariation}
-                    moves={fam.line.moves}
-                    games={fam.games}
-                    onSelect={() => selectLine(fam.line)}
-                  />
+                  <li key={fam.name} className="explorer-row explorer-family-group">
+                    <ExplorerRowButton
+                      rank={fam.rank}
+                      family={fam.name}
+                      variation={famVariation}
+                      moves={fam.line.moves}
+                      games={fam.games}
+                      expanded={expanded}
+                      onSelect={() => {
+                        selectLine(fam.line);
+                        setExpandedFamily(expanded ? null : fam.name);
+                      }}
+                    />
+                    {expanded && (
+                      <ul className="explorer-list variation-list">
+                        {variationsForFamily(fam.name).map((variation) => (
+                          <ExplorerRow
+                            key={`${variation.line.eco}|${variation.line.name}|${variation.line.moves.join(" ")}`}
+                            rank={fam.rank}
+                            family={variation.line.name}
+                            variation=""
+                            moves={variation.line.moves}
+                            games={variation.stats?.games ?? null}
+                            onSelect={() => selectLine(variation.line)}
+                          />
+                        ))}
+                      </ul>
+                    )}
+                  </li>
                 );
               })}
             </ul>
@@ -369,37 +392,44 @@ export default function SetupScreen({ players, onChoose }: Props) {
   );
 }
 
-function ExplorerRow({
-  rank,
-  family,
-  variation,
-  moves,
-  games,
-  onSelect,
-}: {
+interface ExplorerRowProps {
   rank: number | null;
   family: string;
   variation: string;
   moves: readonly string[];
   games: number | null;
+  expanded?: boolean;
   onSelect: () => void;
-}) {
+}
+
+// Just the row's own button -- no <li> wrapper, so a family row (which
+// needs to wrap this plus its own expanded <ul> of variations in ONE <li>,
+// not two nested ones -- invalid HTML, and React warns about it) can use
+// it directly; ExplorerRow below adds the <li> for every other case (the
+// flat family list and search results), where a row is the whole <li>.
+function ExplorerRowButton({ rank, family, variation, moves, games, expanded, onSelect }: ExplorerRowProps) {
+  return (
+    <button type="button" onClick={onSelect} aria-expanded={expanded}>
+      <span className="explorer-rank">{rank ?? "—"}</span>
+      <span className="explorer-name">
+        <span className="explorer-family">{family}</span>
+        {variation !== "" && (
+          <>
+            {" · "}
+            <span className="explorer-variation">{variation}</span>
+          </>
+        )}
+      </span>
+      <span className="explorer-moves">{formatMoves(moves)}</span>
+      <span className="explorer-games">{games !== null ? games.toLocaleString() : "—"}</span>
+    </button>
+  );
+}
+
+function ExplorerRow(props: ExplorerRowProps) {
   return (
     <li className="explorer-row">
-      <button type="button" onClick={onSelect}>
-        <span className="explorer-rank">{rank ?? "—"}</span>
-        <span className="explorer-name">
-          <span className="explorer-family">{family}</span>
-          {variation !== "" && (
-            <>
-              {" · "}
-              <span className="explorer-variation">{variation}</span>
-            </>
-          )}
-        </span>
-        <span className="explorer-moves">{formatMoves(moves)}</span>
-        <span className="explorer-games">{games !== null ? games.toLocaleString() : "—"}</span>
-      </button>
+      <ExplorerRowButton {...props} />
     </li>
   );
 }

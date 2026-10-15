@@ -9,7 +9,7 @@ import type { Piece } from "./engine/models";
 import type { ContestConfig } from "./engine/config";
 import type { Player } from "./engine/models";
 import { classify } from "./engine/pieces";
-import { openRosterSlots } from "./engine/rules";
+import { maxAssignable, openRosterSlots } from "./engine/rules";
 import type { SportConfig } from "./engine/sport";
 
 // Task 38b: a piece band's own position(s)/salary range, read off `sport`
@@ -60,6 +60,23 @@ export function sideStats(players: readonly Player[], sport: SportConfig, contes
   const ownershipTotal = players.reduce((sum, p) => sum + p.ownFor(tier), 0);
   const projTotal = players.reduce((sum, p) => sum + p.proj, 0);
   return { salaryRemaining, openSlots, openSlotCount, avgRemainingPerOpenSlot, projTotal, ownershipTotal };
+}
+
+// Task 39: the pick modal's "why is this row greyed out" label -- the same
+// two checks rules.lineupStillCompletable makes (cap, then roster slots),
+// just surfaced individually instead of collapsed into one boolean. UI-
+// layer composition of already-exported primitives (maxAssignable), not a
+// new engine rule: `lineupStillCompletable` itself also checks
+// `currentPlayers.length > sport.rosterSize` first, but that can't trip
+// here -- every caller passes a side's own current roster, which is never
+// over `rosterSize` to begin with (this function only ever asks "would
+// ONE more pick overflow it"). Null means the pick is feasible.
+export function pickReason(currentPlayers: readonly Player[], candidate: Player, sport: SportConfig, contest: ContestConfig): string | null {
+  const cap = contest.effectiveCap(sport);
+  const spent = currentPlayers.reduce((sum, p) => sum + p.salary, 0) + candidate.salary;
+  if (spent > cap) return "over the cap";
+  if (maxAssignable([...currentPlayers, candidate], sport.rosterSlots) < currentPlayers.length + 1) return "no slot left";
+  return null;
 }
 
 // cli.py's _eligible_sorted: every unlocked player classifying as `piece`,

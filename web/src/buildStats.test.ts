@@ -6,7 +6,7 @@
 // bands the Morphy Defense line happens to touch.
 import { describe, expect, it } from "vitest";
 import nflConfig from "./data/config/sports/nfl.json";
-import { eligiblePlayers, sideStats } from "./buildStats";
+import { eligiblePlayers, pickReason, sideStats } from "./buildStats";
 import { ContestConfig } from "./engine/config";
 import { Piece, Player } from "./engine/models";
 import { loadSportConfig } from "./engine/sport";
@@ -83,5 +83,36 @@ describe("eligiblePlayers", () => {
     const result = eligiblePlayers(Piece.BISHOP, lockedByBlack, pool, NFL);
     expect(result.some((p) => p.id === wr1.id)).toBe(false);
     expect(result.map((p) => p.id)).toEqual([wr2.id]);
+  });
+});
+
+// Task 39: the pick modal's "grey this row out, with a reason" check.
+describe("pickReason", () => {
+  it("null (feasible) for an ordinary affordable, slot-available pick", () => {
+    const candidate = player("rb1", "RB", 6000, 15.0);
+    expect(pickReason([], candidate, NFL, CONTEST)).toBeNull();
+  });
+
+  it("'over the cap' once the candidate's own salary alone overflows it", () => {
+    const tightContest = new ContestConfig({ fieldSize: 1000, payouts: [], cap: 10000 });
+    const candidate = player("rb1", "RB", 15000, 15.0);
+    expect(pickReason([], candidate, NFL, tightContest)).toBe("over the cap");
+  });
+
+  it("'no slot left' once every RB-eligible slot (RB x2, FLEX) is already spoken for", () => {
+    const rb1 = player("rb1", "RB", 5500, 10);
+    const rb2 = player("rb2", "RB", 5500, 10);
+    const rb3 = player("rb3", "RB", 5500, 10); // fills RB, RB, FLEX -- no RB-eligible slot left
+    const candidate = player("rb4", "RB", 5500, 10);
+    expect(pickReason([rb1, rb2, rb3], candidate, NFL, CONTEST)).toBe("no slot left");
+  });
+
+  it("cap is checked before slots -- an over-cap pick that's also slot-infeasible still reads 'over the cap'", () => {
+    const tightContest = new ContestConfig({ fieldSize: 1000, payouts: [], cap: 1000 });
+    const rb1 = player("rb1", "RB", 500, 10);
+    const rb2 = player("rb2", "RB", 500, 10);
+    const rb3 = player("rb3", "RB", 500, 10); // already no RB-eligible slot left, and barely any cap room
+    const candidate = player("rb4", "RB", 5000, 10); // way over what's left
+    expect(pickReason([rb1, rb2, rb3], candidate, NFL, tightContest)).toBe("over the cap");
   });
 });

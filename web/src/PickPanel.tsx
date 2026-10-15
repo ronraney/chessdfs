@@ -10,6 +10,13 @@
 // the one thing that actually calls onPick. Cancel (or the × button)
 // closes without picking -- BuildScreen never committed the move to engine
 // state in the first place, so there's nothing to undo.
+//
+// Task 39: `reasons` greys out (and labels) any candidate buildStats.
+// pickReason flags as infeasible -- still shown (and still selectable, to
+// see why), but "Lock player" disables itself once the current selection
+// is one of them, so a greyed row can never actually be locked. The
+// default selection skips straight to the first FEASIBLE candidate so the
+// common case (the top projection is fine) still needs no extra click.
 import { useMemo, useState } from "react";
 import "./PickPanel.css";
 import { pieceBandLabel, sideStats } from "./buildStats";
@@ -26,6 +33,8 @@ const PIECE_LABEL: Record<Piece, string> = {
   PAWN: "Pawn",
 };
 
+const NO_REASONS: ReadonlyMap<string, string> = new Map();
+
 interface Props {
   piece: Piece;
   moveLabel: string; // e.g. "4. Ba4"
@@ -34,6 +43,7 @@ interface Props {
   currentPlayers: readonly Player[];
   sport: SportConfig;
   contest: ContestConfig;
+  reasons?: ReadonlyMap<string, string>; // player id -> why greyed out; absent means feasible
   onPick: (player: Player) => void;
   onCancel: () => void;
   error: string | null;
@@ -47,13 +57,15 @@ export default function PickPanel({
   currentPlayers,
   sport,
   contest,
+  reasons = NO_REASONS,
   onPick,
   onCancel,
   error,
 }: Props) {
   const sorted = useMemo(() => [...candidates].sort((a, b) => b.proj - a.proj), [candidates]);
-  const [selectedId, setSelectedId] = useState<string | null>(sorted[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState<string | null>(() => sorted.find((p) => !reasons.has(p.id))?.id ?? sorted[0]?.id ?? null);
   const selected = sorted.find((p) => p.id === selectedId) ?? sorted[0] ?? null;
+  const selectedReason = selected !== null ? (reasons.get(selected.id) ?? null) : null;
   const tier = contest.fieldTier();
   const band = pieceBandLabel(piece, sport);
 
@@ -99,21 +111,23 @@ export default function PickPanel({
               <span>Own</span>
             </div>
             <div className="pick-row-list">
-              {sorted.map((player) => (
-                <button
-                  key={player.id}
-                  type="button"
-                  className={player.id === selected?.id ? "pick-row selected" : "pick-row"}
-                  onClick={() => setSelectedId(player.id)}
-                >
-                  <span className="pick-row-name">
-                    {player.name} · {player.team}
-                  </span>
-                  <span>${player.salary.toLocaleString()}</span>
-                  <span>{player.proj.toFixed(1)}</span>
-                  <span>{(player.ownFor(tier) * 100).toFixed(1)}%</span>
-                </button>
-              ))}
+              {sorted.map((player) => {
+                const reason = reasons.get(player.id) ?? null;
+                const classes = ["pick-row"];
+                if (player.id === selected?.id) classes.push("selected");
+                if (reason !== null) classes.push("infeasible");
+                return (
+                  <button key={player.id} type="button" className={classes.join(" ")} onClick={() => setSelectedId(player.id)}>
+                    <span className="pick-row-name">
+                      {player.name} · {player.team}
+                      {reason !== null && <span className="pick-row-reason"> · {reason}</span>}
+                    </span>
+                    <span>${player.salary.toLocaleString()}</span>
+                    <span>{player.proj.toFixed(1)}</span>
+                    <span>{(player.ownFor(tier) * 100).toFixed(1)}%</span>
+                  </button>
+                );
+              })}
             </div>
           </>
         )}
@@ -130,7 +144,12 @@ export default function PickPanel({
             <button type="button" onClick={onCancel}>
               Cancel
             </button>
-            <button type="button" className="lock-player" disabled={selected === null} onClick={() => selected !== null && onPick(selected)}>
+            <button
+              type="button"
+              className="lock-player"
+              disabled={selected === null || selectedReason !== null}
+              onClick={() => selected !== null && onPick(selected)}
+            >
               Lock player
             </button>
           </div>

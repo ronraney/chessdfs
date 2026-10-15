@@ -1,24 +1,32 @@
 // Task 38: the build screen's move-first-then-pick flow -- UI-layer
 // composition of already-exported engine primitives, same spirit as
 // buildStats.ts. No new engine rules: "DFS-legal, offerable move" is just
-// chess.js's own legal moves filtered by build.moveIsCompletable, with
-// captures and castling excluded outright ("not offered as legal targets"
-// this task -- next task adds them); "suggestion" is openings.
-// bookContinuations/openingName, read from the chosen line or the book.
+// chess.js's own legal moves filtered by build.moveIsCompletable;
+// "suggestion" is openings.bookContinuations/openingName, read from the
+// chosen line or the book.
+//
+// Task 39 drops the capture/castling exclusion dfsLegalMoves used to apply
+// ("not offered as legal targets" -- Task 38's own words for "next task
+// adds them"): build.moveIsCompletable (via resolvePlayers) already
+// correctly resolves both, so there was never an engine gap, just a UI-
+// layer restriction. classifyMove is new here: the UI needs to know not
+// just THAT a move is offerable but WHICH of five pick flows it drives
+// (silent King move, ordinary single pick, an instant no-modal capture
+// transfer, a capture-of-an-unmoved-piece pick, or castling) before it can
+// decide what to show.
 import type { Move as ChessJsMove } from "chess.js";
 import { moveIsCompletable } from "./engine/build";
 import type { ContestConfig } from "./engine/config";
-import type { BuildState, KingMode, Player } from "./engine/models";
+import { KingMode, Piece, type BuildState, type Player } from "./engine/models";
 import { bookContinuations, openingName, type BookLine } from "./engine/openings";
-import { isCaptureMove, type ChessMove } from "./engine/rules";
+import { pieceForChessType } from "./engine/pieces";
+import { capturedSquare, isCaptureMove, type ChessMove } from "./engine/rules";
 import type { SportConfig } from "./engine/sport";
 import type { ChosenOpening } from "./SetupScreen";
 
-// Every legal chess move for the side to move that this task offers as a
-// drag target: not a capture, not castling (both excluded "for now" --
-// RULES.md's castling/capture handling isn't built into this screen yet),
-// and DFS-legal (an eligible, unlocked, cap-feasible player exists for the
-// piece band it would lock).
+// Every legal chess move for the side to move that's DFS-legal: an
+// eligible, unlocked, roster/salary-feasible player (or player pair, for
+// castling) exists for it right now.
 export function dfsLegalMoves(
   state: BuildState,
   sport: SportConfig,
@@ -27,10 +35,37 @@ export function dfsLegalMoves(
   kingMode: KingMode,
 ): ChessJsMove[] {
   return state.board.moves({ verbose: true }).filter((move) => {
-    if (isCaptureMove(move) || move.isKingsideCastle() || move.isQueensideCastle()) return false;
     const chessMove: ChessMove = { from: move.from, to: move.to, promotion: move.promotion };
     return moveIsCompletable(state, chessMove, sport, contest, players, kingMode);
   });
+}
+
+export type MoveKind =
+  | { kind: "silentKing" } // PLACED mode only -- "later King moves lock no player"
+  | { kind: "ordinary"; piece: Piece }
+  | { kind: "captureTransfer" } // the captured piece already moved -- its own locked player transfers, no pick needed
+  | { kind: "captureUnmoved"; capturedPiece: Piece } // never moved -- the capturing side picks a player of ITS type
+  | { kind: "castleEmerge" } // King + Rook, both newly locked
+  | { kind: "castlePlaced" }; // Rook only -- the King is already locked from setup
+
+// Which of the five pick flows `move` (an already-matched, legal chess.js
+// move) drives, read off `state` as it stands right before the move --
+// `isCaptureMove`/`capturedSquare` identify a capture; `state.pieceLocks`
+// (checked at the captured square, before the move clears it) says whether
+// there's a player to transfer or not.
+export function classifyMove(state: BuildState, move: ChessJsMove, kingMode: KingMode): MoveKind {
+  if (move.isKingsideCastle() || move.isQueensideCastle()) {
+    return kingMode === KingMode.PLACED ? { kind: "castlePlaced" } : { kind: "castleEmerge" };
+  }
+  if (isCaptureMove(move)) {
+    const square = capturedSquare(move);
+    const history = state.pieceLocks.get(square) ?? [];
+    if (history.length > 0) return { kind: "captureTransfer" };
+    return { kind: "captureUnmoved", capturedPiece: pieceForChessType(move.captured!) };
+  }
+  const piece = pieceForChessType(move.piece);
+  if (kingMode === KingMode.PLACED && piece === Piece.KING) return { kind: "silentKing" };
+  return { kind: "ordinary", piece };
 }
 
 // The legal, verbose move matching a book line's SAN token on the current

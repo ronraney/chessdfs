@@ -136,6 +136,23 @@ describe("SetupScreen", () => {
     );
   });
 
+  it("expanding Ruy Lopez lists its variations, and selecting one updates the Suggested card (Task 39)", async () => {
+    const { user } = await renderScreen();
+    await user.click(screen.getByRole("button", { name: "All" }));
+    const familyButton = screen.getByText("Ruy Lopez").closest("button")!;
+    await user.click(familyButton); // expands AND selects the representative line
+
+    expect(familyButton).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Ruy Lopez: Bird Variation")).toBeInTheDocument(); // a named variation, listed
+
+    await user.click(screen.getByText("Ruy Lopez: Bird Variation").closest("button")!);
+
+    const card = document.querySelector(".suggested-card") as HTMLElement;
+    expect(within(card).getByRole("heading", { level: 2, name: "Ruy Lopez" })).toBeInTheDocument();
+    expect(within(card).getByText("Bird Variation")).toBeInTheDocument();
+    expect(within(card).getByText("1. e4 e5 2. Nf3 Nc6 3. Bb5 Nd4")).toBeInTheDocument();
+  });
+
   it("Place your King now lists only QBs", async () => {
     const { user } = await renderScreen();
     await user.click(screen.getByLabelText("Place your King now"));

@@ -18,12 +18,17 @@
 // <Piece>" with a single "Lock player" button (candidates are fixed-sorted
 // by projection, the top one pre-selected) rather than Task 38's per-row
 // "Pick" buttons.
+import { Chess } from "chess.js";
+import type { Square } from "chess.js";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { UserEvent } from "@testing-library/user-event";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Config } from "@lichess-org/chessground/config";
 import { BOOK, PRESETS } from "./appData";
 import BuildScreen from "./BuildScreen";
+import { ContestConfig } from "./engine/config";
+import type { ContestPreset } from "./engine/config";
 import { loadEtrCsv } from "./engine/loaders";
 import { KingMode } from "./engine/models";
 import { SAMPLE_CSV } from "./testFixtures";
@@ -64,6 +69,8 @@ function simulateMove(orig: string, dest: string): void {
 const PLAYERS = loadEtrCsv(SAMPLE_CSV);
 const H2H = PRESETS.find((preset) => preset.name === "H2H")!;
 const MORPHY_DEFENSE = BOOK.find((line) => line.eco === "C70" && line.name === "Ruy Lopez: Morphy Defense")!;
+const WHITE_QB = PLAYERS.find((p) => p.name === "Joe Burrow")!;
+const BLACK_QB = PLAYERS.find((p) => p.name === "Jared Goff")!;
 
 function renderScreen() {
   render(
@@ -265,5 +272,263 @@ describe("BuildScreen -- How it works strip (Task 38d)", () => {
     unmount(); // simulates a reload -- a fresh mount, same localStorage
     renderScreen();
     expect(screen.queryByText(/You're White\./)).toBeNull();
+  });
+});
+
+// Task 39: castling, captures, and unaffordable picks.
+describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", () => {
+  // BuildScreen seeds its own SeededRandom from Math.random() once per
+  // mount (see its own header comment) -- fixing Math.random() here makes
+  // every one of Black's own book/random choices in this describe block
+  // fully reproducible from one run to the next, not just "probably fine
+  // most of the time." Picked empirically: this value's own resulting
+  // game develops cleanly through the sequences these tests drive.
+  beforeEach(() => {
+    vi.spyOn(Math, "random").mockReturnValue(0.137);
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // Plays 1. e4 2. Nf3 3. Bb5 for White -- a Knight move and a Bishop
+  // move locked (canCastle's own requirement), f1/g1 both clear, same
+  // shape as the Ruy Lopez's own opening -- so O-O is chess-AND-DFS-legal
+  // next, regardless of whatever Black actually replies with in between
+  // (its own castling eligibility never depends on Black's moves).
+  async function developKnightAndBishop(user: UserEvent): Promise<void> {
+    const moves: [string, string][] = [
+      ["e2", "e4"],
+      ["g1", "f3"],
+      ["f1", "b5"],
+    ];
+    for (const [from, to] of moves) {
+      simulateMove(from, to);
+      const dialog = await screen.findByRole("dialog");
+      await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+      // Waits for actual, non-empty dests -- the direct signal that it's
+      // genuinely White's turn again with real options, not just "the
+      // status line's text happens to differ right now" (which a stray
+      // intermediate render could satisfy a tick before Black's own
+      // delayed reply has actually landed). Not a fieldColumn listitem
+      // count either: PLACED mode already starts with one (the placed
+      // Black QB) before any real move, throwing off a plain "+1" count.
+      await waitFor(() => expect(lastApi!.config.movable!.dests!.size).toBeGreaterThan(0), { timeout: 2000 });
+    }
+  }
+
+  it(
+    "castling locks QB + RB (Let him emerge)",
+    async () => {
+      renderScreen();
+      const user = userEvent.setup();
+      await developKnightAndBishop(user);
+
+      expect(lastApi!.config.movable!.dests!.get("e1" as never)).toContain("g1");
+      simulateMove("e1", "g1"); // O-O
+
+      const kingDialog = await screen.findByRole("dialog", { name: "Choose your King" });
+      expect(statusLine().textContent).toBe("Pick your QB, then your RB (castling).");
+      await user.click(within(kingDialog).getByRole("button", { name: "Lock player" }));
+
+      const rookDialog = await screen.findByRole("dialog", { name: "Choose your Rook" });
+      expect(statusLine().textContent).toBe("Pick your QB, then your RB (castling).");
+      await user.click(within(rookDialog).getByRole("button", { name: "Lock player" }));
+
+      expect(screen.queryByRole("dialog")).toBeNull();
+      // Three White picks already locked (pawn, knight, bishop) + King + Rook from castling.
+      expect(within(youColumn()).queryAllByRole("listitem")).toHaveLength(5);
+      expect(within(youColumn()).getByText((text) => text.includes("♚"))).toBeInTheDocument();
+    },
+    15000,
+  );
+
+  it(
+    "Cancel during the King step reverts the whole castling attempt",
+    async () => {
+      renderScreen();
+      const user = userEvent.setup();
+      await developKnightAndBishop(user);
+
+      const fenBefore = lastApi!.config.fen;
+      simulateMove("e1", "g1");
+      const kingDialog = await screen.findByRole("dialog", { name: "Choose your King" });
+      await user.click(within(kingDialog).getByRole("button", { name: "Cancel" }));
+
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(lastApi!.config.fen).toBe(fenBefore); // the castle itself never committed
+      expect(within(youColumn()).queryAllByRole("listitem")).toHaveLength(3); // still just pawn, knight, bishop
+    },
+    15000,
+  );
+
+  it(
+    "Place now castling offers the QB switch",
+    async () => {
+      const user = userEvent.setup();
+      render(
+        <BuildScreen
+          preset={H2H}
+          players={PLAYERS}
+          kingMode={KingMode.PLACED}
+          whiteKing={WHITE_QB}
+          blackKing={BLACK_QB}
+          chosenOpening={{ kind: "own" }}
+        />,
+      );
+      await developKnightAndBishop(user);
+
+      simulateMove("e1", "g1"); // O-O -- the King is already locked from setup
+      const rookDialog = await screen.findByRole("dialog", { name: "Choose your Rook" });
+      expect(within(rookDialog).queryByText(WHITE_QB.name)).toBeNull(); // not re-offered as a Rook candidate
+      await user.click(within(rookDialog).getByRole("button", { name: "Lock player" }));
+
+      expect(statusLine().textContent).toBe("Switch your QB?");
+      const switchDialog = await screen.findByRole("dialog", { name: "Choose your King" });
+      expect(within(switchDialog).queryByText(WHITE_QB.name)).toBeNull(); // the current QB isn't offered as a switch target
+
+      await user.click(within(switchDialog).getByRole("button", { name: "Cancel" })); // decline -- keep the current QB
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(within(youColumn()).getByText(new RegExp(WHITE_QB.name))).toBeInTheDocument();
+
+      await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(4), { timeout: 2000 }); // Black's reply still fires
+    },
+    15000,
+  );
+
+  // Every square's starting occupant, for isUnmovedCapture below.
+  const STARTING_FEN_BOARD = new Chess();
+  function isSameStartingPiece(fen: string, square: Square): boolean {
+    const current = new Chess(fen).get(square);
+    const starting = STARTING_FEN_BOARD.get(square);
+    return current !== undefined && starting !== undefined && current.type === starting.type && current.color === starting.color;
+  }
+
+  // Plays harmless opening moves (whichever non-capturing dest comes
+  // first) until a legal capture matching `predicate` appears among
+  // White's own offered dests -- Black's real, book-driven replies decide
+  // exactly when that happens, not a scripted sequence, so this adapts to
+  // whatever Black actually plays rather than assuming a specific line.
+  function isCastleMove(from: string, to: string): boolean {
+    return (from === "e1" && (to === "g1" || to === "c1")) || (from === "e8" && (to === "g8" || to === "c8"));
+  }
+
+  // Normal developing moves, tried in this order -- central pawns and
+  // minor pieces create far more contact (and so capture opportunities)
+  // than the first alphabetically-offered move (which is always some
+  // edge pawn shuffling in place, per isolation -- that almost never
+  // creates a capture within a handful of plies).
+  const DEVELOPING_MOVES: [string, string][] = [
+    ["e2", "e4"],
+    ["d2", "d4"],
+    ["g1", "f3"],
+    ["b1", "c3"],
+    ["f1", "c4"],
+    ["f1", "b5"],
+    ["c1", "f4"],
+    ["c1", "g5"],
+    ["d1", "f3"],
+    ["g2", "g3"],
+  ];
+
+  async function playUntilCapture(user: UserEvent, predicate: (fen: string, from: Square, to: Square) => boolean): Promise<void> {
+    for (let ply = 0; ply < 8; ply++) {
+      const fen = lastApi!.config.fen!;
+      const chess = new Chess(fen);
+      const destsNow = lastApi!.config.movable!.dests!;
+      const isOffered = (from: string, to: string) => (destsNow.get(from as never) ?? []).includes(to as never);
+
+      let capture: { from: string; to: string } | null = null;
+      for (const [from, tos] of destsNow) {
+        for (const to of tos) {
+          if (chess.get(to as Square) !== undefined && !isCastleMove(from, to) && predicate(fen, from as Square, to as Square)) {
+            capture = { from, to };
+            break;
+          }
+        }
+        if (capture !== null) break;
+      }
+
+      if (capture !== null) {
+        simulateMove(capture.from, capture.to);
+        // No modal for a transfer; a modal for an unmoved-piece capture --
+        // either way, wait for the board to actually reflect the move
+        // before returning (simulateMove calls straight into the mocked
+        // chessground callback, outside of React's own event handling, so
+        // nothing guarantees the resulting re-render has flushed yet).
+        await waitFor(() => expect(lastApi!.config.fen).not.toBe(fen));
+        return;
+      }
+
+      // A filler ply: any other offered move, preferring a normal
+      // developing one (more contact, more likely to create the capture
+      // this loop is actually looking for within a few more plies).
+      // Whatever it turns out to be gets driven through its own real
+      // flow -- castling needs two picks, a transfer capture needs none.
+      const developing = DEVELOPING_MOVES.find(([from, to]) => isOffered(from, to));
+      const [from, to] = developing ?? [...destsNow.entries()].flatMap(([f, tos]) => tos.map((t) => [f, t] as [string, string]))[0];
+      simulateMove(from, to);
+      if (isCastleMove(from, to)) {
+        const kingDialog = await screen.findByRole("dialog");
+        await user.click(within(kingDialog).getByRole("button", { name: "Lock player" }));
+        const rookDialog = await screen.findByRole("dialog");
+        await user.click(within(rookDialog).getByRole("button", { name: "Lock player" }));
+      } else if (chess.get(to as Square) === undefined || isSameStartingPiece(fen, to as Square)) {
+        // ordinary, or a capture of an unmoved piece -- both open a modal.
+        const dialog = await screen.findByRole("dialog");
+        await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+      } // else: a transfer capture -- no modal at all.
+      await waitFor(() => expect(lastApi!.config.movable!.dests!.size).toBeGreaterThan(0), { timeout: 2000 });
+    }
+    throw new Error("no matching capture became available within 8 plies");
+  }
+
+  it(
+    "a capture transfers the player with no modal",
+    async () => {
+      renderScreen();
+      const user = userEvent.setup();
+      // Any capture of a piece that ALREADY has lock history -- i.e. not
+      // its starting-square occupant -- is a transfer.
+      await playUntilCapture(user, (fen, _from, to) => !isSameStartingPiece(fen, to));
+
+      expect(screen.queryByRole("dialog")).toBeNull(); // no modal at all
+      expect(statusLine().textContent).toMatch(/^You captured .+\./);
+    },
+    15000,
+  );
+
+  it(
+    "capturing an unmoved piece opens the modal for that piece type",
+    async () => {
+      renderScreen();
+      const user = userEvent.setup();
+      // Any capture whose target is STILL its own starting piece has never
+      // moved (never been locked) -- almost always a pawn this early.
+      await playUntilCapture(user, (fen, _from, to) => isSameStartingPiece(fen, to));
+
+      const dialog = await screen.findByRole("dialog");
+      expect(dialog).toHaveAccessibleName(/^Choose your (Pawn|Knight|Bishop|Rook|Queen)$/);
+      await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+      expect(statusLine().textContent).toMatch(/^You captured .+\./);
+    },
+    15000,
+  );
+
+  it("an over-cap player is greyed out and can't be locked", async () => {
+    const tinyCapPreset: ContestPreset = { name: "Tiny Cap", buyIn: 1, contest: new ContestConfig({ fieldSize: 2, payouts: [], cap: 5000 }) };
+    render(
+      <BuildScreen preset={tinyCapPreset} players={PLAYERS} kingMode={KingMode.EMERGE} whiteKing={null} blackKing={null} chosenOpening={{ kind: "own" }} />,
+    );
+    simulateMove("g1", "f3"); // White's first move -- a Knight move, no pawn pre-move needed
+
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Knight" });
+    // Trey McBride ($6,700) is over a $5,000 cap with nothing else locked yet.
+    const mcbrideRow = within(dialog).getByText(/Trey McBride/).closest("button")!;
+    expect(mcbrideRow).toHaveClass("infeasible");
+    expect(within(mcbrideRow).getByText(/over the cap/)).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.click(mcbrideRow);
+    expect(within(dialog).getByRole("button", { name: "Lock player" })).toBeDisabled();
   });
 });

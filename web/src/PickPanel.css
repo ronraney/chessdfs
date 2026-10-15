@@ -104,6 +104,23 @@
   border-color: var(--accent);
 }
 
+/* Task 39: a row that would make White's lineup impossible to complete --
+   still visible and selectable (so its reason can be seen), just dimmed;
+   "Lock player" itself is what actually refuses it, see PickPanel.tsx. */
+.pick-row.infeasible {
+  opacity: 0.5;
+}
+
+.pick-row.infeasible.selected {
+  opacity: 0.75;
+  border-color: var(--danger);
+}
+
+.pick-row-reason {
+  color: var(--danger);
+  font-style: italic;
+}
+
 .pick-row-name {
   overflow: hidden;
   text-overflow: ellipsis;

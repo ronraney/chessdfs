@@ -369,6 +369,16 @@
   background: var(--bg);
 }
 
+/* Task 39: a family row's expanded variation list -- indented and
+   bordered on the left to read as nested under its own family row. */
+.explorer-family-group .variation-list {
+  margin: 2px 0 6px 14px;
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
+  max-height: none;
+  overflow-y: visible;
+}
+
 .explorer-rank {
   font-family: var(--mono);
   font-size: 13px;
