@@ -13,7 +13,7 @@ import { maxAssignable, openRosterSlots } from "./engine/rules";
 import type { PieceBand, SportConfig } from "./engine/sport";
 
 // Task 38b: a piece band's own position(s)/salary range, read off `sport`
-// (e.g. "TE · $5,000+") -- the pick modal's subtitle and the build screen's
+// (e.g. "TE · $4,500+") -- the pick modal's subtitle and the build screen's
 // "Book continues" entries both describe the same band, so the formatting
 // lives here once. `maxSalary` is exclusive (PieceBand.matches: `salary <
 // maxSalary`), hence the -1 on the displayed upper bound.

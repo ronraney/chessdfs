@@ -52,8 +52,13 @@ describe("classify", () => {
     expect(pool(makePlayer("WR", 5000))).toEqual(new Set([Piece.BISHOP]));
   });
 
-  it("TE Knight boundary 4999/5000", () => {
-    expect(pool(makePlayer("TE", 4999))).toEqual(new Set([Piece.PAWN]));
+  it("TE Knight floor is 4500, unlike RB/WR's 5000", () => {
+    // Knight's own floor is $4,500, not Rook/Bishop's $5,000 -- a TE from
+    // $4,500 up to (but not including) $5,000 is in BOTH the Knight and
+    // Pawn pools (Pawn's own band still runs up to $5,000), not Knight-only.
+    expect(pool(makePlayer("TE", 4499))).toEqual(new Set([Piece.PAWN]));
+    expect(pool(makePlayer("TE", 4500))).toEqual(new Set([Piece.KNIGHT, Piece.PAWN]));
+    expect(pool(makePlayer("TE", 4999))).toEqual(new Set([Piece.KNIGHT, Piece.PAWN]));
     expect(pool(makePlayer("TE", 5000))).toEqual(new Set([Piece.KNIGHT]));
   });
 

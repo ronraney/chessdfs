@@ -31,10 +31,10 @@ describe("pieceBandLabel", () => {
     expect(pieceBandLabel(Piece.QUEEN, NFL)).toBe("$7,000+");
   });
 
-  it("Rook/Bishop/Knight have no ceiling -- just a floor", () => {
+  it("Rook/Bishop/Knight have no ceiling -- just a floor (Knight's own is lower)", () => {
     expect(pieceBandLabel(Piece.ROOK, NFL)).toBe("RB · $5,000+");
     expect(pieceBandLabel(Piece.BISHOP, NFL)).toBe("WR · $5,000+");
-    expect(pieceBandLabel(Piece.KNIGHT, NFL)).toBe("TE · $5,000+");
+    expect(pieceBandLabel(Piece.KNIGHT, NFL)).toBe("TE · $4,500+");
   });
 
   it("Pawn joins both its bands", () => {
@@ -86,7 +86,7 @@ describe("sideStats", () => {
 describe("eligiblePlayers", () => {
   const wr1 = player("wr1", "WR", 6000, 18.0); // BISHOP band (WR, 5000-7000)
   const wr2 = player("wr2", "WR", 5500, 12.0); // BISHOP band
-  const te1 = player("te1", "TE", 5000, 9.0); // KNIGHT band (TE, 4500-7000)
+  const te1 = player("te1", "TE", 5000, 9.0); // KNIGHT band (TE >= 4500, no ceiling)
   const cheapWr = player("wr3", "WR", 4000, 6.0); // below BISHOP's floor -> PAWN catch-all
 
   it("filters to the moved piece's band only", () => {

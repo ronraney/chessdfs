@@ -48,8 +48,14 @@ def test_wr_bishop_boundary_4999_5000():
     assert classify(make_player("WR", 5000), NFL) == {Piece.BISHOP}
 
 
-def test_te_knight_boundary_4999_5000():
-    assert classify(make_player("TE", 4999), NFL) == {Piece.PAWN}
+def test_te_knight_floor_is_4500_unlike_rb_wr():
+    """Knight's own floor is $4,500, not Rook/Bishop's $5,000 -- a TE from
+    $4,500 up to (but not including) $5,000 is in BOTH the Knight and
+    Pawn pools (Pawn's own band still runs up to $5,000), not Knight-only.
+    """
+    assert classify(make_player("TE", 4499), NFL) == {Piece.PAWN}
+    assert classify(make_player("TE", 4500), NFL) == {Piece.KNIGHT, Piece.PAWN}
+    assert classify(make_player("TE", 4999), NFL) == {Piece.KNIGHT, Piece.PAWN}
     assert classify(make_player("TE", 5000), NFL) == {Piece.KNIGHT}
 
 

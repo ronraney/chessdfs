@@ -256,9 +256,6 @@ def _ready_to_castle_queenside_moves() -> list[tuple[str, str]]:
 
 
 def _ready_to_castle_players() -> list[Player]:
-    # te1 is 5200, not the old 4600 -- Knight's salary floor moved to
-    # $5,000 ("piece pools"), and this player locks via a real Knight move
-    # (b1c3) further down.
     return [
         make_player("w_pawn", "WR", 3000), make_player("b1", "WR", 3000), make_player("te1", "TE", 5200),
         make_player("b2", "WR", 3000), make_player("wr1", "WR", 5000), make_player("b3", "WR", 3000),
@@ -394,7 +391,7 @@ def scenario_capture_unmoved_knight() -> dict:
     board = chess.Board("4k1n1/8/8/8/2B5/8/8/4K3 w - - 0 1")
     state = BuildState(board=board)
     capture_move = uci("c4g8")
-    knight_pick = make_player("te1", "TE", 5200)  # was 4600 -- Knight's floor is now $5,000
+    knight_pick = make_player("te1", "TE", 5200)
     assert is_legal_capture(state, capture_move, NFL, CONTEST) is False
     assert is_legal_capture(state, capture_move, NFL, CONTEST, knight_pick) is True
     new_state = apply_capture_move(state, capture_move, NFL, CONTEST, knight_pick)

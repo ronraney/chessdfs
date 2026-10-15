@@ -6,7 +6,7 @@
     {"piece": "QUEEN", "positions": null, "exclude_positions": ["QB"], "min_salary": 7000, "max_salary": null},
     {"piece": "ROOK", "positions": ["RB"], "exclude_positions": null, "min_salary": 5000, "max_salary": null},
     {"piece": "BISHOP", "positions": ["WR"], "exclude_positions": null, "min_salary": 5000, "max_salary": null},
-    {"piece": "KNIGHT", "positions": ["TE"], "exclude_positions": null, "min_salary": 5000, "max_salary": null},
+    {"piece": "KNIGHT", "positions": ["TE"], "exclude_positions": null, "min_salary": 4500, "max_salary": null},
     {"piece": "PAWN", "positions": null, "exclude_positions": ["QB"], "min_salary": null, "max_salary": 5000},
     {"piece": "PAWN", "positions": ["DST"], "exclude_positions": null, "min_salary": null, "max_salary": null}
   ],
