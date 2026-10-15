@@ -102,6 +102,7 @@
 
 .pick-row.selected {
   border-color: var(--accent);
+  background: var(--accent-bg);
 }
 
 /* Task 39: a row that would make White's lineup impossible to complete --
@@ -109,11 +110,7 @@
    "Lock player" itself is what actually refuses it, see PickPanel.tsx. */
 .pick-row.infeasible {
   opacity: 0.5;
-}
-
-.pick-row.infeasible.selected {
-  opacity: 0.75;
-  border-color: var(--danger);
+  cursor: not-allowed;
 }
 
 .pick-row-reason {

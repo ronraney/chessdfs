@@ -11,12 +11,16 @@
 // closes without picking -- BuildScreen never committed the move to engine
 // state in the first place, so there's nothing to undo.
 //
-// Task 39: `reasons` greys out (and labels) any candidate buildStats.
-// pickReason flags as infeasible -- still shown (and still selectable, to
-// see why), but "Lock player" disables itself once the current selection
-// is one of them, so a greyed row can never actually be locked. The
-// default selection skips straight to the first FEASIBLE candidate so the
-// common case (the top projection is fine) still needs no extra click.
+// Bug fix (post-Task-40): `reasons` greys out (and labels) any candidate
+// buildStats.pickReason flags as infeasible -- those rows can't be
+// selected at all now (clicking one is a no-op), so "Lock player" staying
+// disabled for them is moot in practice, but the check stays as a second
+// guard. Nothing is pre-selected: the row list opens with no selection at
+// all (`selectedId` starts null), "Lock player" stays disabled, and the
+// footer stays blank until the player actually clicks a (feasible) row --
+// matching design/4-club-build-pick.png and 6-slate-build-pick.png, where
+// the picked row carries a visible accent outline + tinted background and
+// the footer names who's selected.
 import { useMemo, useState } from "react";
 import "./PickPanel.css";
 import { pieceBandLabel, sideStats } from "./buildStats";
@@ -63,8 +67,8 @@ export default function PickPanel({
   error,
 }: Props) {
   const sorted = useMemo(() => [...candidates].sort((a, b) => b.proj - a.proj), [candidates]);
-  const [selectedId, setSelectedId] = useState<string | null>(() => sorted.find((p) => !reasons.has(p.id))?.id ?? sorted[0]?.id ?? null);
-  const selected = sorted.find((p) => p.id === selectedId) ?? sorted[0] ?? null;
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = sorted.find((p) => p.id === selectedId) ?? null;
   const selectedReason = selected !== null ? (reasons.get(selected.id) ?? null) : null;
   const tier = contest.fieldTier();
   const band = pieceBandLabel(piece, sport);
@@ -117,7 +121,13 @@ export default function PickPanel({
                 if (player.id === selected?.id) classes.push("selected");
                 if (reason !== null) classes.push("infeasible");
                 return (
-                  <button key={player.id} type="button" className={classes.join(" ")} onClick={() => setSelectedId(player.id)}>
+                  <button
+                    key={player.id}
+                    type="button"
+                    className={classes.join(" ")}
+                    disabled={reason !== null}
+                    onClick={() => setSelectedId(player.id)}
+                  >
                     <span className="pick-row-name">
                       {player.name} · {player.team}
                       {reason !== null && <span className="pick-row-reason"> · {reason}</span>}
@@ -133,9 +143,9 @@ export default function PickPanel({
         )}
 
         <div className="pick-modal-footer">
-          {after !== null && (
+          {after !== null && selected !== null && (
             <span className="pick-after">
-              After this pick: <strong>${after.salaryRemaining.toLocaleString()}</strong> left ·{" "}
+              Selected: {selected.name} · After this pick: <strong>${after.salaryRemaining.toLocaleString()}</strong> left ·{" "}
               ${after.avgRemainingPerOpenSlot.toLocaleString(undefined, { maximumFractionDigits: 0 })} / slot ·{" "}
               {after.openSlotCount} open
             </span>

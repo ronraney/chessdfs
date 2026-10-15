@@ -54,7 +54,7 @@ import { BOOK, LAST_RANK, NFL, RANKED_FAMILIES, RANK_BY_FAMILY } from "./appData
 import BuildBoard from "./BuildBoard";
 import { classifyMove, dfsLegalMoves, type MoveKind } from "./buildFlow";
 import { eligiblePlayers, pickReason, pieceBandLabel, sideStats, type SideStats } from "./buildStats";
-import { HAPPY_HUNTING, checkWhiteDeadEnd, playBlackMove, playWhiteMove } from "./engine/build";
+import { HAPPY_HUNTING, NoLegalBlackMoveError, checkWhiteDeadEnd, playBlackMove, playWhiteMove } from "./engine/build";
 import type { ContestPreset } from "./engine/config";
 import { BuildState, KingMode, Piece, Side, type Move, type Player } from "./engine/models";
 import { bookContinuations, openingLine, openingName, splitFamily, type BookLine } from "./engine/openings";
@@ -292,6 +292,14 @@ export default function BuildScreen({
   const [ending, setEnding] = useState<Ending | null>(() =>
     checkWhiteDeadEnd(state, NFL, preset.contest, players, kingMode) !== null ? { kind: "deadEnd", side: Side.WHITE } : null,
   );
+  // Bug fix: Black's reply threw something OTHER than a genuine "no legal
+  // move" (NoLegalBlackMoveError) -- not a dead end, just surfaced as-is so
+  // it's visible instead of silently mislabeled. The build doesn't end:
+  // `ending` stays null, so Take back (which only needs pastStates.length
+  // > 0 and nothing mid-flight) is still reachable, same as the bug report
+  // asks for. Cleared on the next real action (a new commit, or Take back
+  // itself) so it doesn't linger once the player has moved past it.
+  const [blackMoveError, setBlackMoveError] = useState<string | null>(null);
   // Task 40 "Take back": a stack of every `state` snapshot right BEFORE a
   // White move was committed (pushed once per commit() call, never for
   // Black's own reply -- popping one entry undoes a White move AND
@@ -426,17 +434,19 @@ export default function BuildScreen({
   // above the plain "your move"/"Field played X" text, since it replaces
   // that prompt entirely until dismissed.
   const statusLine: string =
-    switchOffer !== null
-      ? "Switch your QB?"
-      : pendingMove !== null
-        ? pendingPickText(pendingMove)
-        : turn === "b"
-          ? whiteCaptureNote ?? "The Field is moving…"
-          : showBookExitPrompt
-            ? "There is no longer an opening line. Continue, or start again?"
-            : lastBlackMove !== null
-              ? `${blackMoveNote ?? `Field played ${lastBlackMove.san} and locked ${lastBlackMove.player.name}.`} ${whiteToMoveText}`
-              : whiteToMoveText;
+    blackMoveError !== null
+      ? `Something went wrong: ${blackMoveError}`
+      : switchOffer !== null
+        ? "Switch your QB?"
+        : pendingMove !== null
+          ? pendingPickText(pendingMove)
+          : turn === "b"
+            ? whiteCaptureNote ?? "The Field is moving…"
+            : showBookExitPrompt
+              ? "There is no longer an opening line. Continue, or start again?"
+              : lastBlackMove !== null
+                ? `${blackMoveNote ?? `Field played ${lastBlackMove.san} and locked ${lastBlackMove.player.name}.`} ${whiteToMoveText}`
+                : whiteToMoveText;
 
   const previewFen = useMemo(() => {
     if (pendingMove === null) return state.board.fen();
@@ -476,16 +486,25 @@ export default function BuildScreen({
         if (checkWhiteDeadEnd(result.state, NFL, preset.contest, players, kingMode) !== null) {
           setEnding({ kind: "deadEnd", side: Side.WHITE });
         }
-      } catch {
-        // Task 40: Black has no legal (chess-AND-DFS) move at all -- cli.py's
-        // own _run_one_build catches the exact same RuntimeError from
-        // play_black_move rather than checking for it ahead of time (unlike
-        // White's own proactive checkWhiteDeadEnd); `newState` (closed over
-        // above, not `state`) is White's roster exactly as it stood right
-        // before this failed attempt -- the finish screen's own "open
-        // slots" field reads it fresh off `state` at render time, which
-        // this catch leaves unchanged since no setState for it ever ran.
-        setEnding({ kind: "deadEnd", side: Side.BLACK });
+      } catch (e) {
+        if (e instanceof NoLegalBlackMoveError) {
+          // Task 40: Black has no legal (chess-AND-DFS) move at all --
+          // cli.py's own _run_one_build catches the exact same RuntimeError
+          // from play_black_move rather than checking for it ahead of time
+          // (unlike White's own proactive checkWhiteDeadEnd); `newState`
+          // (closed over above, not `state`) is White's roster exactly as
+          // it stood right before this failed attempt -- the finish
+          // screen's own "open slots" field reads it fresh off `state` at
+          // render time, which this catch leaves unchanged since no
+          // setState for it ever ran.
+          setEnding({ kind: "deadEnd", side: Side.BLACK });
+        } else {
+          // Bug fix: anything else is a real failure, not a dead end --
+          // surface it instead of lying about why the build stopped. The
+          // build doesn't end (`ending` stays null); Take back is still
+          // the way out.
+          setBlackMoveError(e instanceof Error ? e.message : String(e));
+        }
       } finally {
         setBlackMoving(false);
       }
@@ -533,6 +552,7 @@ export default function BuildScreen({
     setState(newState);
     setPendingMove(null);
     setWhiteCaptureNote(opts.captureNote ?? null);
+    setBlackMoveError(null);
     if (opts.deferBlackReply) return;
     finishOrScheduleBlack(newState);
   }
@@ -660,6 +680,7 @@ export default function BuildScreen({
     setState(previous);
     setWhiteCaptureNote(null);
     setBlackMoveNote(null);
+    setBlackMoveError(null);
   }
   const canTakeBack = pastStates.length > 0 && pendingMove === null && switchOffer === null && !blackMoving && ending === null;
 

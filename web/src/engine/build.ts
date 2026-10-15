@@ -60,6 +60,20 @@ import type { SportConfig } from "./sport";
 export const HAPPY_HUNTING = "Happy Hunting";
 export const NO_LEGAL_MOVES = "No legal moves";
 
+// Bug fix: playBlackMove's one deliberate "Black genuinely has no legal
+// (chess-AND-DFS) move" signal -- a dedicated subclass, not a plain Error,
+// so a caller (BuildScreen) can tell a real dead end apart from any OTHER
+// exception (a book/data inconsistency, a future engine bug, ...) without
+// fragile string-matching on `.message`. Only ever thrown from the "no
+// book line to commit to, and no legal move resolves at all" branch below
+// -- every other failure propagates as whatever it actually is.
+export class NoLegalBlackMoveError extends Error {
+  constructor() {
+    super("Black has no legal move available");
+    this.name = "NoLegalBlackMoveError";
+  }
+}
+
 export interface MoveResultFields {
   state: BuildState;
   opening: string | null;
@@ -527,7 +541,7 @@ export function playBlackMove(
       });
     }
     if (candidates.length === 0) {
-      throw new Error("Black has no legal move available");
+      throw new NoLegalBlackMoveError();
     }
     const chosen = rng.choice(candidates);
     chessMove = { from: chosen.from, to: chosen.to, promotion: chosen.promotion };

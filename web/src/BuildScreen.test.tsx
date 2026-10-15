@@ -29,9 +29,21 @@ import { BOOK, NFL, PRESETS } from "./appData";
 import BuildScreen from "./BuildScreen";
 import { ContestConfig } from "./engine/config";
 import type { ContestPreset } from "./engine/config";
+import { playBlackMove } from "./engine/build";
 import { loadEtrCsv } from "./engine/loaders";
-import { KingMode } from "./engine/models";
+import { KingMode, Piece } from "./engine/models";
+import { classify } from "./engine/pieces";
 import { SAMPLE_CSV } from "./testFixtures";
+
+// Bug fix: `playBlackMove` is partially mocked (real implementation kept
+// by default) so one test can force it to throw something other than its
+// own NoLegalBlackMoveError, without hand-crafting a real engine scenario
+// for "an unexpected error" (which, by definition, isn't a scenario the
+// engine is supposed to produce on purpose).
+vi.mock("./engine/build", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./engine/build")>();
+  return { ...actual, playBlackMove: vi.fn(actual.playBlackMove) };
+});
 
 interface FakeApi {
   config: Config;
@@ -106,11 +118,22 @@ function chosenContinueButton(): HTMLElement {
   return document.querySelector(".continue-option.chosen") as HTMLElement;
 }
 
+// Bug fix (post-Task-40): the pick modal no longer pre-selects a row --
+// every test that used to go straight to "Lock player" now has to select
+// a row first. Rows are sorted by projection descending, so the first one
+// is always "the top candidate" every pre-existing test's own name/intent
+// already assumed.
+async function selectTopRow(user: UserEvent, dialog: HTMLElement): Promise<void> {
+  const firstRow = dialog.querySelector(".pick-row") as HTMLElement;
+  await user.click(firstRow);
+}
+
 beforeEach(() => {
   lastApi = null;
   window.localStorage.clear();
   onStartAgain.mockClear();
   onNewContest.mockClear();
+  vi.mocked(playBlackMove).mockClear(); // clears call history only -- the wrapped real implementation stays
 });
 
 function statusLine(): HTMLElement {
@@ -180,6 +203,9 @@ describe("BuildScreen -- move first, then pick", () => {
     simulateMove("d2", "d4"); // deviates from the suggested e4
 
     const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    expect(dialog.textContent).not.toContain("After this pick:"); // nothing selected yet
+
+    await selectTopRow(user, dialog);
     expect(dialog.textContent).toContain("After this pick:");
 
     await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
@@ -189,6 +215,28 @@ describe("BuildScreen -- move first, then pick", () => {
     expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(0); // Black hasn't replied yet
 
     await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+  });
+
+  // Bug fix (post-Task-40): selecting a row previously showed no visible
+  // change (a default pre-selection made "Lock player" immediately
+  // clickable with nothing for the player to actually click). Now nothing
+  // is selected until a row is clicked.
+  it("selecting a row marks it selected and updates the footer", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    simulateMove("d2", "d4");
+
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    expect(dialog.textContent).not.toContain("After this pick:");
+    expect(within(dialog).getByRole("button", { name: "Lock player" })).toBeDisabled();
+
+    const firstRow = dialog.querySelector(".pick-row") as HTMLElement;
+    await user.click(firstRow);
+
+    expect(firstRow).toHaveClass("selected");
+    expect(dialog.textContent).toContain(`Selected: ${firstRow.querySelector(".pick-row-name")!.textContent!.split(" · ")[0]}`);
+    expect(dialog.textContent).toContain("After this pick:");
+    expect(within(dialog).getByRole("button", { name: "Lock player" })).not.toBeDisabled();
   });
 
   it("cancel restores the previous position and the banner's chosen line", async () => {
@@ -213,6 +261,7 @@ describe("BuildScreen -- move first, then pick", () => {
     const user = userEvent.setup();
     simulateMove("d2", "d4"); // no longer the Ruy Lopez's own "e4"
     const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await selectTopRow(user, dialog);
     await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
 
     await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
@@ -242,6 +291,7 @@ describe("BuildScreen -- status line (Task 38d)", () => {
     const user = userEvent.setup();
     await user.click(chosenContinueButton());
     const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await selectTopRow(user, dialog);
     await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
 
     expect(statusLine().textContent).toBe("The Field is moving…");
@@ -317,6 +367,7 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
     for (const [from, to] of moves) {
       simulateMove(from, to);
       const dialog = await screen.findByRole("dialog");
+      await selectTopRow(user, dialog);
       await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
       // Waits for actual, non-empty dests -- the direct signal that it's
       // genuinely White's turn again with real options, not just "the
@@ -341,10 +392,12 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
 
       const kingDialog = await screen.findByRole("dialog", { name: "Choose your King" });
       expect(statusLine().textContent).toBe("Pick your QB, then your RB (castling).");
+      await selectTopRow(user, kingDialog);
       await user.click(within(kingDialog).getByRole("button", { name: "Lock player" }));
 
       const rookDialog = await screen.findByRole("dialog", { name: "Choose your Rook" });
       expect(statusLine().textContent).toBe("Pick your QB, then your RB (castling).");
+      await selectTopRow(user, rookDialog);
       await user.click(within(rookDialog).getByRole("button", { name: "Lock player" }));
 
       expect(screen.queryByRole("dialog")).toBeNull();
@@ -395,6 +448,7 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
       simulateMove("e1", "g1"); // O-O -- the King is already locked from setup
       const rookDialog = await screen.findByRole("dialog", { name: "Choose your Rook" });
       expect(within(rookDialog).queryByText(WHITE_QB.name)).toBeNull(); // not re-offered as a Rook candidate
+      await selectTopRow(user, rookDialog);
       await user.click(within(rookDialog).getByRole("button", { name: "Lock player" }));
 
       expect(statusLine().textContent).toBe("Switch your QB?");
@@ -484,12 +538,15 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
       simulateMove(from, to);
       if (isCastleMove(from, to)) {
         const kingDialog = await screen.findByRole("dialog");
+        await selectTopRow(user, kingDialog);
         await user.click(within(kingDialog).getByRole("button", { name: "Lock player" }));
         const rookDialog = await screen.findByRole("dialog");
+        await selectTopRow(user, rookDialog);
         await user.click(within(rookDialog).getByRole("button", { name: "Lock player" }));
       } else if (chess.get(to as Square) === undefined || isSameStartingPiece(fen, to as Square)) {
         // ordinary, or a capture of an unmoved piece -- both open a modal.
         const dialog = await screen.findByRole("dialog");
+        await selectTopRow(user, dialog);
         await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
       } // else: a transfer capture -- no modal at all.
       await waitFor(() => expect(lastApi!.config.movable!.dests!.size).toBeGreaterThan(0), { timeout: 2000 });
@@ -523,6 +580,7 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
 
       const dialog = await screen.findByRole("dialog");
       expect(dialog).toHaveAccessibleName(/^Choose your (Pawn|Knight|Bishop|Rook|Queen)$/);
+      await selectTopRow(user, dialog);
       await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
       expect(statusLine().textContent).toMatch(/^You captured .+\./);
     },
@@ -565,6 +623,7 @@ describe("BuildScreen -- endings and start again (Task 40)", () => {
     const user = userEvent.setup();
     await user.click(chosenContinueButton()); // 1. e4
     const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await selectTopRow(user, dialog);
     await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
     // Wait for Black's reply to land first -- Stop is disabled while Black
     // is mid-reply, same as Take back.
@@ -613,6 +672,7 @@ describe("BuildScreen -- endings and start again (Task 40)", () => {
     const user = userEvent.setup();
     await user.click(chosenContinueButton()); // 1. e4
     const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await selectTopRow(user, dialog);
     await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
 
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
@@ -628,6 +688,7 @@ describe("BuildScreen -- endings and start again (Task 40)", () => {
     const user = userEvent.setup();
     await user.click(chosenContinueButton()); // 1. e4
     const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await selectTopRow(user, dialog);
     await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
     await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
 
@@ -643,5 +704,58 @@ describe("BuildScreen -- endings and start again (Task 40)", () => {
     simulateMove("e2", "e4"); // the same move is legal again from the start position
     const dialog2 = await screen.findByRole("dialog", { name: "Choose your Pawn" });
     expect(within(dialog2).getByText(new RegExp(lockedName))).toBeInTheDocument(); // the player is back in the pick list
+  });
+});
+
+// Bug fix: Black's reply crashed the build with a false "Black has hit a
+// dead end." when its own preferred book continuation wasn't DFS-legal.
+// The engine's own re-choose logic (chooseBlackCommittedLine filters book
+// continuations by playability before ever committing to one) already
+// covers this; these tests cover the screen's own side: a real depleted
+// band doesn't crash the build, and the screen only ever reports a dead
+// end for the engine's own NoLegalBlackMoveError, never for anything else.
+describe("BuildScreen -- Black's reply never crashes the build (bug fix)", () => {
+  const LONDON_SYSTEM = BOOK.find((line) => line.eco === "A48" && line.name === "London System")!;
+
+  it("Black still moves with no Knight-band TE available (London System line)", async () => {
+    const noTE = PLAYERS.filter((p) => classify(p, NFL) !== Piece.KNIGHT);
+    render(
+      <BuildScreen
+        preset={H2H}
+        players={noTE}
+        kingMode={KingMode.EMERGE}
+        whiteKing={null}
+        blackKing={null}
+        chosenOpening={{ kind: "line", line: LONDON_SYSTEM }}
+        onStartAgain={onStartAgain}
+        onNewContest={onNewContest}
+      />,
+    );
+    const user = userEvent.setup();
+    await user.click(chosenContinueButton()); // plays the London System's own first move, 1. d4
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await selectTopRow(user, dialog);
+    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+
+    await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+    expect(screen.queryByText(/dead end/i)).toBeNull();
+  });
+
+  it("an unexpected error from Black's move is not reported as a dead end", async () => {
+    vi.mocked(playBlackMove).mockImplementationOnce(() => {
+      throw new Error("boom: something broke");
+    });
+    renderScreen();
+    const user = userEvent.setup();
+    await user.click(chosenContinueButton());
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await selectTopRow(user, dialog);
+    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+
+    await waitFor(() => expect(statusLine().textContent).toBe("Something went wrong: boom: something broke"), { timeout: 2000 });
+
+    expect(screen.queryByText(/dead end/i)).toBeNull();
+    expect(document.querySelector(".finish-card")).toBeNull(); // the build hasn't ended
+    expect(screen.getByRole("button", { name: "Take back" })).not.toBeDisabled();
   });
 });
