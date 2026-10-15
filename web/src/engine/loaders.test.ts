@@ -15,7 +15,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import nflConfig from "../data/config/sports/nfl.json";
-import { loadEtrCsv, loadLineStats, loadOpeningBook, loadPopularity } from "./loaders";
+import { SlateValidationError, loadEtrCsv, loadLineStats, loadOpeningBook, loadPopularity, validateSlateCsv } from "./loaders";
 import { classify } from "./pieces";
 import { loadSportConfig } from "./sport";
 
@@ -73,6 +73,76 @@ describe("loadEtrCsv", () => {
   it('falls back to a plain "id" column when "DK_ID" is absent, keeping every player distinct', () => {
     const players = loadEtrCsv(ID_ONLY_CSV);
     expect(players.map((p) => p.id)).toEqual(["1001", "1002", "1003"]);
+  });
+});
+
+// Task 43: admin-upload-only rigor (not loadEtrCsv itself -- see
+// validateSlateCsv's own comment for why that'd break every other caller's
+// small/synthetic CSVs).
+describe("validateSlateCsv", () => {
+  const HEADER = "Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field,DK_ID";
+
+  function row(id: string, name: string, pos: string, salary: number): string {
+    return `${name},${pos},AAA,BBB,"$${salary.toLocaleString()}",10.0,10.00%,10.00%,${id}`;
+  }
+
+  // QB(1) + RB(2) + WR(3) + TE(1) + DST(1) -- exactly covers every
+  // dedicated slot with nothing left over for FLEX, but FLEX's own check
+  // only asks for >=1 RB/WR/TE total (see validateSlateCsv's own comment:
+  // a plain per-slot count, not a full across-slots matching), which the
+  // RB/WR/TE already on the roster trivially satisfy.
+  const FEASIBLE_ROWS = [
+    row("1", "QB1", "QB", 6000),
+    row("2", "RB1", "RB", 5200),
+    row("3", "RB2", "RB", 5300),
+    row("4", "WR1", "WR", 5000),
+    row("5", "WR2", "WR", 5100),
+    row("6", "WR3", "WR", 5200),
+    row("7", "TE1", "TE", 4500),
+    row("8", "DST1", "DST", 2500),
+  ];
+
+  function csv(rows: readonly string[]): string {
+    return [HEADER, ...rows].join("\n");
+  }
+
+  it("the real sample CSV validates cleanly", () => {
+    const result = validateSlateCsv(SAMPLE_CSV, NFL);
+    expect(result.players).toHaveLength(301);
+    expect(result.idColumn).toBe("DK_ID");
+  });
+
+  it("a feasible minimal slate validates cleanly and reports the ID column used", () => {
+    const result = validateSlateCsv(csv(FEASIBLE_ROWS), NFL);
+    expect(result.players).toHaveLength(8);
+    expect(result.idColumn).toBe("DK_ID");
+  });
+
+  it("rejects a slate with no ID column at all (neither DK_ID nor id)", () => {
+    const noIdHeader = "Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field";
+    const badCsv = [noIdHeader, "QB1,QB,AAA,BBB,$6000,10.0,10.00%,10.00%"].join("\n");
+    expect(() => validateSlateCsv(badCsv, NFL)).toThrow(SlateValidationError);
+    expect(() => validateSlateCsv(badCsv, NFL)).toThrow(/No ID column found/);
+  });
+
+  it("rejects a slate with a missing ID value", () => {
+    const rows = [...FEASIBLE_ROWS.slice(0, -1), row("", "DST1", "DST", 2500)];
+    expect(() => validateSlateCsv(csv(rows), NFL)).toThrow(/missing an ID value/);
+  });
+
+  it("rejects a slate with duplicate IDs", () => {
+    const rows = [...FEASIBLE_ROWS.slice(0, -1), row("1", "DST1", "DST", 2500)]; // "1" reused from QB1
+    expect(() => validateSlateCsv(csv(rows), NFL)).toThrow(/Duplicate ID\(s\): 1/);
+  });
+
+  it("rejects a slate missing required columns, naming them", () => {
+    const badCsv = ["Player,DK Pos,DK_ID", "QB1,QB,1"].join("\n");
+    expect(() => validateSlateCsv(badCsv, NFL)).toThrow(/Missing required column\(s\): Team, Opp, DK Salary, DK Proj, Small Field, Large Field\./);
+  });
+
+  it("rejects a slate with too few players for a roster slot, naming it", () => {
+    const rows = FEASIBLE_ROWS.filter((r) => !r.startsWith("RB2,")); // only 1 RB, needs 2
+    expect(() => validateSlateCsv(csv(rows), NFL)).toThrow(/Not enough players for slot\(s\): RB \(need 2, have 1\)/);
   });
 });
 

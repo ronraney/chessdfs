@@ -49,6 +49,22 @@
   margin: 4px 0 0;
 }
 
+.pick-move-list {
+  margin: 6px 0 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.pick-move.highlight {
+  color: var(--accent);
+  background: var(--accent-bg);
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-weight: 700;
+}
+
 .pick-modal-close {
   min-width: 44px;
   min-height: 44px;

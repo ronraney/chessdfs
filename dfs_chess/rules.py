@@ -142,6 +142,48 @@ def open_roster_slots(players: list[Player], roster_slots: list[RosterSlot]) -> 
     return open_counts
 
 
+def assign_roster_slots(players: list[Player], roster_slots: list[RosterSlot]) -> list[str]:
+    """A concrete roster-slot assignment for `players` -- which named slot
+    (RosterSlot.name, e.g. "RB" or "FLEX") each player occupies, parallel
+    to `players`. Same Kuhn's matching as max_assignable/open_roster_slots
+    (same slot-instance expansion, same augmenting-path order) -- just
+    recording which instance each player actually landed in instead of a
+    count. Fully assigns every player whenever
+    max_assignable(players, roster_slots) == len(players), which every
+    caller's own `players` already satisfies (lineup_still_completable
+    gates every lock during the build on exactly that). Which of several
+    interchangeable same-position players lands in a dedicated slot vs.
+    FLEX is whatever the augmenting search finds first, not necessarily
+    `players`' own order -- cosmetic only, since same-named slot instances
+    are indistinguishable on screen.
+    """
+    instances: list[RosterSlot] = []
+    for slot in roster_slots:
+        instances.extend([slot] * slot.count)
+    occupant: list[int | None] = [None] * len(instances)
+
+    def augment(player_idx: int, visited: set[int]) -> bool:
+        positions = {p.upper() for p in players[player_idx].positions}
+        for idx, slot in enumerate(instances):
+            if idx in visited or not (slot.positions & positions):
+                continue
+            visited.add(idx)
+            if occupant[idx] is None or augment(occupant[idx], visited):
+                occupant[idx] = player_idx
+                return True
+        return False
+
+    for i in range(len(players)):
+        augment(i, set())
+
+    slot_names: list[str] = [""] * len(players)
+    for idx, slot in enumerate(instances):
+        player_idx = occupant[idx]
+        if player_idx is not None:
+            slot_names[player_idx] = slot.name
+    return slot_names
+
+
 def captured_square(board: chess.Board, move: chess.Move) -> chess.Square:
     """The square holding the piece `move` captures. Normally `to_square`;
     for en passant the captured pawn sits beside it. Call before pushing.

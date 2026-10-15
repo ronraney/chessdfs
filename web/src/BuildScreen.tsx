@@ -59,8 +59,8 @@ import type { ContestPreset } from "./engine/config";
 import { BuildState, KingMode, Piece, Side, type Move, type Player } from "./engine/models";
 import { bookContinuations, openingLine, openingName, splitFamily, type BookLine } from "./engine/openings";
 import { SeededRandom } from "./engine/rng";
-import { capturedSquare, isLineupComplete, placeKings, pushSilentMove, switchKing, type ChessMove } from "./engine/rules";
-import PickPanel from "./PickPanel";
+import { assignRosterSlots, capturedSquare, isLineupComplete, placeKings, pushSilentMove, switchKing, type ChessMove } from "./engine/rules";
+import PickPanel, { type PickMoveContext } from "./PickPanel";
 import type { ChosenOpening } from "./SetupScreen";
 import ThemeToggle from "./ThemeToggle";
 
@@ -748,6 +748,19 @@ export default function BuildScreen({
   const movesForBanner = onChosenLine && chosenLine !== null ? chosenLine.moves : history;
   const bannerPlayedCount = onChosenLine ? playedCount : history.length;
 
+  // Task 43: the pick modal's own move-list display -- the chosen line's
+  // full moves (with the pick highlighted at its own depth) while this
+  // exact pending move still continues that line; the moves actually
+  // played so far plus the pending one otherwise (off-book, or this is
+  // the move that leaves the line). Either way the highlighted index is
+  // `history.length` -- the pending move's own depth, since `history`
+  // itself never includes it until the pick commits.
+  const pendingOnChosenLine = pendingMove !== null && chosenLine !== null && onChosenLine && pendingMove.san === chosenNextMove;
+  const pendingMoveContext: PickMoveContext | null =
+    pendingMove !== null
+      ? { moves: pendingOnChosenLine ? chosenLine!.moves : [...history, pendingMove.san], highlightIndex: history.length }
+      : null;
+
   const pendingCandidates = pendingMove !== null ? eligiblePlayers(pendingPiece(pendingMove), state.lockedPlayerIds, players, NFL) : [];
   const pendingPlayerBaseline = pendingMove !== null ? pendingBaseline(pendingMove, state.whiteMoves) : [];
   const pendingReasons = new Map<string, string>();
@@ -891,6 +904,7 @@ export default function BuildScreen({
           piece={pendingPiece(pendingMove)}
           moveLabel={`${moveNumber}. ${pendingMove.san}`}
           openingLabel={openingName([...history, pendingMove.san], BOOK)}
+          moveContext={pendingMoveContext}
           candidates={pendingCandidates}
           currentPlayers={pendingPlayerBaseline}
           sport={NFL}
@@ -907,6 +921,7 @@ export default function BuildScreen({
           piece={Piece.KING}
           moveLabel="Switch your QB?"
           openingLabel={null}
+          moveContext={null}
           candidates={switchCandidates}
           currentPlayers={switchBaseline}
           sport={NFL}
@@ -1050,6 +1065,11 @@ function FinishCard({
   const openSlots = openSlotLabels(whiteStats);
   const [copied, setCopied] = useState(false);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Task 43: DK roster slot (QB/RB/WR/TE/FLEX/DST), one per whiteMoves
+  // entry, same order -- see assignRosterSlots' own comment for why WHICH
+  // interchangeable player draws "FLEX" vs. its own dedicated slot is a
+  // cosmetic artifact of the matching search, not lock order.
+  const slots = useMemo(() => assignRosterSlots(whiteMoves.map((m) => m.player), NFL.rosterSlots), [whiteMoves]);
 
   useEffect(() => {
     return () => {
@@ -1058,7 +1078,7 @@ function FinishCard({
   }, []);
 
   async function copyLineup(): Promise<void> {
-    await navigator.clipboard.writeText(lineupText(whiteMoves, whiteStats, openingLabel, history));
+    await navigator.clipboard.writeText(lineupText(whiteMoves, slots, whiteStats, openingLabel, history));
     setCopied(true);
     if (copiedTimerRef.current !== null) clearTimeout(copiedTimerRef.current);
     copiedTimerRef.current = setTimeout(() => setCopied(false), 1500);
@@ -1072,11 +1092,13 @@ function FinishCard({
       </p>
 
       {/* Task 41: a 5-column table doesn't fit 360px gracefully -- this
-          scrolls internally rather than forcing the whole page wider. */}
+          scrolls internally rather than forcing the whole page wider.
+          Task 43 adds a 6th (Slot) -- still scrolls, not a new concern. */}
       <div className="finish-core-scroll">
         <table className="finish-core">
           <thead>
             <tr>
+              <th>Slot</th>
               <th>Piece</th>
               <th>Player</th>
               <th>Pos</th>
@@ -1085,8 +1107,9 @@ function FinishCard({
             </tr>
           </thead>
           <tbody>
-            {whiteMoves.map((m) => (
+            {whiteMoves.map((m, i) => (
               <tr key={m.player.id}>
+                <td>{slots[i]}</td>
                 <td>{PIECE_LABEL[m.piece]}</td>
                 <td>{m.player.name}</td>
                 <td>{m.player.positions[0]}</td>
@@ -1131,12 +1154,21 @@ function FinishCard({
 
 // Finish screen's "Copy lineup" -- plain tab-separated text (pastes cleanly
 // into a spreadsheet), one row per locked player matching the on-screen
-// finish-core table (Piece/Player/Pos/Team/Salary) plus a totals block.
-// "Salary used" has no stored field of its own (SideStats only tracks
-// salaryRemaining) -- it's just the locked players' own salaries summed.
-function lineupText(whiteMoves: readonly Move[], whiteStats: SideStats, openingLabel: string, history: readonly string[]): string {
-  const rows = whiteMoves.map((m) =>
-    [PIECE_LABEL[m.piece], m.player.name, m.player.positions[0], m.player.team, `$${m.player.salary.toLocaleString()}`].join("\t"),
+// finish-core table (Slot/Piece/Player/Pos/Team/Salary) plus a totals
+// block. "Salary used" has no stored field of its own (SideStats only
+// tracks salaryRemaining) -- it's just the locked players' own salaries
+// summed. `slots` is parallel to `whiteMoves`, from assignRosterSlots.
+function lineupText(
+  whiteMoves: readonly Move[],
+  slots: readonly string[],
+  whiteStats: SideStats,
+  openingLabel: string,
+  history: readonly string[],
+): string {
+  const rows = whiteMoves.map((m, i) =>
+    [slots[i], PIECE_LABEL[m.piece], m.player.name, m.player.positions[0], m.player.team, `$${m.player.salary.toLocaleString()}`].join(
+      "\t",
+    ),
   );
   const salaryUsed = whiteMoves.reduce((sum, m) => sum + m.player.salary, 0);
   const totals = [

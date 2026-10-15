@@ -127,6 +127,54 @@ export function openRosterSlots(
   return openCounts;
 }
 
+// Task 43: a concrete roster-slot assignment for `players` -- which named
+// slot (RosterSlot.name, e.g. "RB" or "FLEX") each player occupies,
+// parallel to `players`. Same Kuhn's matching as maxAssignable/
+// openRosterSlots (same slot-instance expansion, same augmenting-path
+// order) -- just recording which instance each player actually landed in
+// instead of a count. Fully assigns every player whenever
+// maxAssignable(players, rosterSlots) === players.length, which every
+// caller's own `players` already satisfies (lineupStillCompletable gates
+// every lock during the build on exactly that). Which of several
+// interchangeable same-position players lands in a dedicated slot vs.
+// FLEX is whatever the augmenting search finds first, not necessarily
+// `players`' own order -- cosmetic only, since same-named slot instances
+// are indistinguishable on screen.
+export function assignRosterSlots(players: readonly Player[], rosterSlots: readonly RosterSlot[]): string[] {
+  const instances: RosterSlot[] = [];
+  for (const slot of rosterSlots) {
+    for (let i = 0; i < slot.count; i++) {
+      instances.push(slot);
+    }
+  }
+  const occupant: (number | null)[] = new Array(instances.length).fill(null);
+
+  function augment(playerIdx: number, visited: Set<number>): boolean {
+    const positions = new Set(players[playerIdx].positions.map((p) => p.toUpperCase()));
+    for (let idx = 0; idx < instances.length; idx++) {
+      if (visited.has(idx) || !intersects(instances[idx].positions, positions)) continue;
+      visited.add(idx);
+      const current = occupant[idx];
+      if (current === null || augment(current, visited)) {
+        occupant[idx] = playerIdx;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  for (let i = 0; i < players.length; i++) {
+    augment(i, new Set());
+  }
+
+  const slotNames: string[] = new Array(players.length).fill("");
+  instances.forEach((slot, idx) => {
+    const playerIdx = occupant[idx];
+    if (playerIdx !== null) slotNames[playerIdx] = slot.name;
+  });
+  return slotNames;
+}
+
 // A candidate ordinary move, UCI-shorthand (e.g. {from: "e2", to: "e4"}) --
 // the TS stand-in for Python's chess.Move, which chess.js has no public
 // constructor for. promotion only disambiguates same-from/to promotion

@@ -12,6 +12,7 @@ from pathlib import Path
 
 from .models import Player
 from .openings import BookLine
+from .sport import SportConfig
 
 _MOVE_NUMBER = re.compile(r"^\d+\.$")
 
@@ -82,6 +83,70 @@ def load_etr_csv(
                 )
             )
     return players
+
+
+class SlateValidationError(Exception):
+    pass
+
+
+# Task 43: admin-upload-only rigor -- a separate function from
+# load_etr_csv itself (not folded into it) so every other caller (tests,
+# tools, the CLI's own load) keeps working against small/synthetic CSVs
+# that were never meant to form a complete, roster-feasible lineup. Mirrors
+# loaders.ts's validateSlateCsv 1:1 (same checks, same order, same message
+# wording) -- only the admin upload (TS side; there's no Python admin
+# screen) needs "is this actually a usable slate" rigor, but the checks
+# themselves live here too for parity. Raises SlateValidationError
+# describing the first problem found (column shape before IDs before
+# roster-slot feasibility -- parsing rows needs the columns to exist
+# first); returns the parsed players + which column was used as the ID
+# otherwise.
+def validate_etr_csv(
+    path: str | Path,
+    sport: SportConfig,
+    column_map: dict[str, str] = ETR_COLUMN_MAP,
+) -> tuple[list[Player], str]:
+    with open(path, "r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        fields = reader.fieldnames or []
+        rows = list(reader)
+
+    required_keys = ["name", "pos", "team", "opp", "salary", "proj", "own_small", "own_large"]
+    missing_columns = [key for key in required_keys if column_map[key] not in fields]
+    if missing_columns:
+        names = ", ".join(column_map[key] for key in missing_columns)
+        raise SlateValidationError(f"Missing required column(s): {names}.")
+
+    if column_map["id"] not in fields and "id" not in fields:
+        raise SlateValidationError(f'No ID column found (expected "{column_map["id"]}" or "id").')
+    id_column = _resolve_id_column(column_map, fields)
+
+    missing_id_count = sum(1 for row in rows if not (row.get(id_column) or "").strip())
+    if missing_id_count:
+        raise SlateValidationError(f"{missing_id_count} player(s) are missing an ID value.")
+
+    seen_ids: set[str] = set()
+    duplicate_ids: set[str] = set()
+    for row in rows:
+        row_id = row[id_column]
+        if row_id in seen_ids:
+            duplicate_ids.add(row_id)
+        seen_ids.add(row_id)
+    if duplicate_ids:
+        raise SlateValidationError(f"Duplicate ID(s): {', '.join(duplicate_ids)}.")
+
+    players = load_etr_csv(path, column_map)
+
+    short_slots = [
+        (slot, sum(1 for p in players if slot.positions & {pos.upper() for pos in p.positions}))
+        for slot in sport.roster_slots
+    ]
+    short_slots = [(slot, have) for slot, have in short_slots if have < slot.count]
+    if short_slots:
+        detail = ", ".join(f"{slot.name} (need {slot.count}, have {have})" for slot, have in short_slots)
+        raise SlateValidationError(f"Not enough players for slot(s): {detail}.")
+
+    return players, id_column
 
 
 def _parse_pgn_moves(pgn: str) -> tuple[str, ...]:

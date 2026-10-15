@@ -39,10 +39,21 @@ const PIECE_LABEL: Record<Piece, string> = {
 
 const NO_REASONS: ReadonlyMap<string, string> = new Map();
 
+// Task 43: the move list shown under the title -- the chosen line's own
+// full moves (on-book picks) or the moves actually played so far plus the
+// one being decided (off-book picks); either way `highlightIndex` is the
+// move being picked right now. Null for the switch-QB offer (not a real
+// chess move pick), same as `openingLabel`.
+export interface PickMoveContext {
+  moves: readonly string[];
+  highlightIndex: number;
+}
+
 interface Props {
   piece: Piece;
   moveLabel: string; // e.g. "4. Ba4"
   openingLabel: string | null; // e.g. "Morphy Defense" -- null out of book
+  moveContext: PickMoveContext | null;
   candidates: readonly Player[];
   currentPlayers: readonly Player[];
   sport: SportConfig;
@@ -53,10 +64,40 @@ interface Props {
   error: string | null;
 }
 
+// "1. e4 e5 2. Nf3 ..." with the move at `highlightIndex` (the one being
+// picked right now) visually called out -- the rest read as plain context,
+// same move-numbering convention as BuildScreen's own MovesProgress/
+// SetupScreen's formatMoves.
+function PickMoveList({ moves, highlightIndex }: PickMoveContext) {
+  const pairs: { num: number; whiteIdx: number; white: string; blackIdx: number; black: string | undefined }[] = [];
+  for (let i = 0; i < moves.length; i += 2) {
+    pairs.push({ num: i / 2 + 1, whiteIdx: i, white: moves[i], blackIdx: i + 1, black: moves[i + 1] });
+  }
+  function moveClass(idx: number): string {
+    return idx === highlightIndex ? "pick-move highlight" : "pick-move";
+  }
+  return (
+    <p className="pick-move-list">
+      {pairs.map((pair) => (
+        <span key={pair.num} className="pick-move-pair">
+          <span className="pick-move-number">{pair.num}.</span> <span className={moveClass(pair.whiteIdx)}>{pair.white}</span>
+          {pair.black !== undefined && (
+            <>
+              {" "}
+              <span className={moveClass(pair.blackIdx)}>{pair.black}</span>
+            </>
+          )}{" "}
+        </span>
+      ))}
+    </p>
+  );
+}
+
 export default function PickPanel({
   piece,
   moveLabel,
   openingLabel,
+  moveContext,
   candidates,
   currentPlayers,
   sport,
@@ -88,6 +129,7 @@ export default function PickPanel({
               {openingLabel !== null && ` · ${openingLabel}`}
             </p>
             <h2>Choose your {PIECE_LABEL[piece]}</h2>
+            {moveContext !== null && <PickMoveList moves={moveContext.moves} highlightIndex={moveContext.highlightIndex} />}
             <p className="pick-subtitle">
               {band !== null && `${band} · `}
               sorted by projection

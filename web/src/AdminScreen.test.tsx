@@ -51,18 +51,24 @@ describe("AdminScreen", () => {
     expect(screen.getByLabelText("Projections CSV")).toBeInTheDocument();
   });
 
-  it("uploading the sample CSV shows the player count and saves it", async () => {
+  // Task 43: the success status now also names the ID column used and
+  // breaks the count down by position, on top of the total.
+  it("uploading the sample CSV shows the player count, ID column, and position breakdown, and saves it", async () => {
     render(<AdminScreen />);
     const user = userEvent.setup();
     await logIn(user);
 
     await user.upload(screen.getByLabelText("Projections CSV"), sampleCsvFile());
 
-    await waitFor(() => expect(screen.getByText(`${SAMPLE_PLAYER_COUNT} players loaded`)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(`${SAMPLE_PLAYER_COUNT} players loaded · ID column: DK_ID`)).toBeInTheDocument());
+    expect(screen.getByText(/QB: \d+/)).toBeInTheDocument();
     expect(getSavedProjectionsCsv()).toBe(SAMPLE_CSV);
   });
 
-  it("a bad file shows a clear parse error and saves nothing", async () => {
+  // Task 43: slate validation replaces the old "parses to >0 rows" check --
+  // a file with none of the required columns now names exactly which ones
+  // are missing, instead of the old generic fallback message.
+  it("a file missing every required column names them and saves nothing", async () => {
     render(<AdminScreen />);
     const user = userEvent.setup();
     await logIn(user);
@@ -70,8 +76,25 @@ describe("AdminScreen", () => {
     const badFile = new File(["not,a,projections,file\n1,2,3,4"], "junk.csv", { type: "text/csv" });
     await user.upload(screen.getByLabelText("Projections CSV"), badFile);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/Couldn't read that file/);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Missing required column\(s\): Player, DK Pos, Team, Opp, DK Salary, DK Proj/);
     expect(getSavedProjectionsCsv()).toBeNull();
+  });
+
+  // Task 43: a rejected upload keeps whatever slate was already saved --
+  // the previously-saved sample stays in place and shown, not cleared.
+  it("a rejected upload keeps the previously saved slate", async () => {
+    render(<AdminScreen />);
+    const user = userEvent.setup();
+    await logIn(user);
+    await user.upload(screen.getByLabelText("Projections CSV"), sampleCsvFile());
+    await waitFor(() => expect(screen.getByText(`${SAMPLE_PLAYER_COUNT} players loaded · ID column: DK_ID`)).toBeInTheDocument());
+
+    const badFile = new File(["not,a,projections,file\n1,2,3,4"], "junk.csv", { type: "text/csv" });
+    await user.upload(screen.getByLabelText("Projections CSV"), badFile);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Missing required column/);
+    expect(screen.getByText(`${SAMPLE_PLAYER_COUNT} players loaded · ID column: DK_ID`)).toBeInTheDocument(); // unchanged
+    expect(getSavedProjectionsCsv()).toBe(SAMPLE_CSV); // unchanged
   });
 
   it("Clear projections removes the saved slate", async () => {
@@ -79,7 +102,7 @@ describe("AdminScreen", () => {
     const user = userEvent.setup();
     await logIn(user);
     await user.upload(screen.getByLabelText("Projections CSV"), sampleCsvFile());
-    await waitFor(() => expect(screen.getByText(`${SAMPLE_PLAYER_COUNT} players loaded`)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(`${SAMPLE_PLAYER_COUNT} players loaded · ID column: DK_ID`)).toBeInTheDocument());
 
     await user.click(screen.getByRole("button", { name: "Clear projections" }));
 

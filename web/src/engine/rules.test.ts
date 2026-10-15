@@ -16,6 +16,7 @@ import type { ChessMove } from "./rules";
 import {
   applyCaptureMove,
   applyMove,
+  assignRosterSlots,
   canCastle,
   castle,
   isLegalCapture,
@@ -632,5 +633,64 @@ describe("lineupStillCompletable", () => {
     const threeRbs = [0, 1, 2].map((i) => makePlayer(`rb${i}`, "RB", 5200)); // fills RB(2) + FLEX(1)
     const roster = [...threeRbs, hybrid];
     expect(lineupStillCompletable(roster, NFL, CONTEST_CAP)).toBe(true); // hybrid still fits via WR
+  });
+});
+
+// Task 43: DK slot display on the finish screen/Copy lineup.
+describe("assignRosterSlots", () => {
+  it("assigns each player to their own dedicated slot, with no overflow", () => {
+    const roster = [makePlayer("qb1", "QB", 6000), makePlayer("rb1", "RB", 5200), makePlayer("wr1", "WR", 5000), makePlayer("te1", "TE", 4500)];
+    expect(assignRosterSlots(roster, NFL.rosterSlots)).toEqual(["QB", "RB", "WR", "TE"]);
+  });
+
+  it("a 3rd RB beyond the 2 dedicated slots lands in FLEX -- some RB does, not necessarily the 3rd one locked", () => {
+    // Which of the 3 interchangeable RBs ends up labeled FLEX vs. RB is
+    // whatever the augmenting search finds first, not lock order (RB and
+    // RB are indistinguishable slot instances anyway) -- the multiset of
+    // labels is the actual contract, not a specific player->label mapping.
+    const roster = [0, 1, 2].map((i) => makePlayer(`rb${i}`, "RB", 5200));
+    expect(assignRosterSlots(roster, NFL.rosterSlots).sort()).toEqual(["FLEX", "RB", "RB"]);
+  });
+
+  it("a full 9-player lineup assigns every DK slot exactly once", () => {
+    const roster = [
+      makePlayer("qb1", "QB", 6000),
+      makePlayer("rb1", "RB", 5200),
+      makePlayer("rb2", "RB", 5300),
+      makePlayer("wr1", "WR", 5000),
+      makePlayer("wr2", "WR", 5100),
+      makePlayer("wr3", "WR", 5200),
+      makePlayer("te1", "TE", 4500),
+      makePlayer("rb3", "RB", 5400), // flex
+      makePlayer("dst1", "DST", 2500),
+    ];
+    const slots = assignRosterSlots(roster, NFL.rosterSlots);
+    expect(slots.sort()).toEqual(["DST", "FLEX", "QB", "RB", "RB", "TE", "WR", "WR", "WR"]);
+  });
+
+  it("a multi-position player still gets a valid slot when sharing the roster with same-family players", () => {
+    // 3 pure RBs fill RB(2)+FLEX(1) entirely; the RB/WR hybrid has nowhere
+    // left in the RB family, but WR(3) is wide open -- same feasibility
+    // lineupStillCompletable's own "multi-position player fills either
+    // slot" test already covers; this just checks assignRosterSlots finds
+    // the same valid total assignment maxAssignable already guarantees
+    // exists, not which specific slot name the hybrid draws.
+    const hybrid = new Player({
+      id: "h1",
+      name: "Hybrid",
+      positions: ["RB", "WR"],
+      team: "AAA",
+      opp: "BBB",
+      salary: 3000,
+      proj: 10.0,
+      ownSmall: 0.1,
+      ownLarge: 0.1,
+    });
+    const threeRbs = [0, 1, 2].map((i) => makePlayer(`rb${i}`, "RB", 5200));
+    const roster = [...threeRbs, hybrid];
+    const slots = assignRosterSlots(roster, NFL.rosterSlots);
+    expect(slots).toHaveLength(roster.length);
+    expect(slots.every((s) => s !== "")).toBe(true); // every player landed somewhere
+    expect(slots.sort()).toEqual(["FLEX", "RB", "RB", "WR"]);
   });
 });

@@ -100,25 +100,77 @@ function formatMoves(moves: readonly string[]): string {
   return pairs.join(" ");
 }
 
-const PIECE_LETTER: Record<Piece, string> = {
-  [Piece.KING]: "K",
-  [Piece.QUEEN]: "Q",
-  [Piece.ROOK]: "R",
-  [Piece.BISHOP]: "B",
-  [Piece.KNIGHT]: "N",
-  [Piece.PAWN]: "P",
+const PIECE_NAME: Record<Piece, string> = {
+  [Piece.KING]: "King",
+  [Piece.QUEEN]: "Queen",
+  [Piece.ROOK]: "Rook",
+  [Piece.BISHOP]: "Bishop",
+  [Piece.KNIGHT]: "Knight",
+  [Piece.PAWN]: "Pawn",
 };
 
-function pieceLetters(pieces: readonly Piece[]): string {
-  return pieces.length === 0 ? "—" : pieces.map((p) => PIECE_LETTER[p]).join(" ");
+// Standard Unicode chess glyphs: the "white" (outline) codepoints for
+// White's own pieces, the "black" (solid) codepoints for Black's --
+// distinct by shape alone, not just color, so they still read correctly
+// without relying on a light/dark theme's own palette.
+const WHITE_GLYPH: Record<Piece, string> = {
+  [Piece.KING]: "♔",
+  [Piece.QUEEN]: "♕",
+  [Piece.ROOK]: "♖",
+  [Piece.BISHOP]: "♗",
+  [Piece.KNIGHT]: "♘",
+  [Piece.PAWN]: "♙",
+};
+
+const BLACK_GLYPH: Record<Piece, string> = {
+  [Piece.KING]: "♚",
+  [Piece.QUEEN]: "♛",
+  [Piece.ROOK]: "♜",
+  [Piece.BISHOP]: "♝",
+  [Piece.KNIGHT]: "♞",
+  [Piece.PAWN]: "♟",
+};
+
+interface SidedPiece {
+  piece: Piece;
+  side: "w" | "b";
 }
 
+// Zips whitePieces/blackPieces back into actual PLAY order (White's move,
+// then Black's reply, move after move) -- e.g. Morphy Defense's own
+// P(w) P(b) N(w) N(b) B(w) P(b), matching design/1-club-setup.png's own
+// icon row, not the two lists shown separately.
+function interleavePieces(whitePieces: readonly Piece[], blackPieces: readonly Piece[]): SidedPiece[] {
+  const result: SidedPiece[] = [];
+  const len = Math.max(whitePieces.length, blackPieces.length);
+  for (let i = 0; i < len; i++) {
+    if (i < whitePieces.length) result.push({ piece: whitePieces[i], side: "w" });
+    if (i < blackPieces.length) result.push({ piece: blackPieces[i], side: "b" });
+  }
+  return result;
+}
+
+// Task 43: replaces the old "White: P N B / Black: P N B" letter-code text
+// with a row of piece icons in actual move order, per
+// design/1-club-setup.png -- White's own pieces drawn as the outline glyph,
+// Black's as the solid one.
 function PieceSequence({ preview }: { preview: OpeningPreviewResult }) {
+  const pieces = interleavePieces(preview.whitePieces, preview.blackPieces);
+  if (pieces.length === 0) {
+    return <p className="piece-sequence">—</p>;
+  }
   return (
-    <p className="piece-sequence">
-      <span>White: {pieceLetters(preview.whitePieces)}</span>
-      <span>Black: {pieceLetters(preview.blackPieces)}</span>
-    </p>
+    <div className="piece-sequence">
+      {pieces.map((entry, i) => (
+        <span
+          key={i}
+          className="piece-sequence-icon"
+          title={`${entry.side === "w" ? "White" : "Black"} ${PIECE_NAME[entry.piece]}`}
+        >
+          {entry.side === "w" ? WHITE_GLYPH[entry.piece] : BLACK_GLYPH[entry.piece]}
+        </span>
+      ))}
+    </div>
   );
 }
 

@@ -222,47 +222,87 @@ describe("BuildScreen -- move first, then pick", () => {
     expect(within(youColumn()).queryAllByRole("listitem")).toHaveLength(0); // still not committed
   });
 
-  it("the pick modal shows the 'After this pick' footer, and Lock player commits the top candidate", async () => {
+  // Task 43: the pick modal's own move-list display, under the title.
+  it("playing the chosen line's own suggested move shows its full move list, with that move highlighted", async () => {
     renderScreen();
     const user = userEvent.setup();
-    simulateMove("d2", "d4"); // deviates from the suggested e4
+    await user.click(chosenContinueButton()); // Morphy Defense's own 1. e4
 
     const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
-    expect(dialog.textContent).not.toContain("After this pick:"); // nothing selected yet
-
-    await selectTopRow(user, dialog);
-    expect(dialog.textContent).toContain("After this pick:");
-
-    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
-
-    expect(screen.queryByRole("dialog")).toBeNull(); // modal closes once the pick locks
-    expect(document.querySelector(".opening-moves")?.textContent).toContain("d4"); // now actually locked in
-    expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(0); // Black hasn't replied yet
-
-    await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+    const moveList = dialog.querySelector(".pick-move-list") as HTMLElement;
+    expect(moveList.textContent?.replace(/\s+/g, " ").trim()).toBe("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6"); // the full chosen line, not just what's played
+    const highlighted = moveList.querySelector(".highlight") as HTMLElement;
+    expect(highlighted.textContent).toBe("e4"); // the move being picked right now
   });
+
+  it("deviating from the chosen line shows only the moves played so far, with the pending one highlighted", async () => {
+    renderScreen();
+    simulateMove("d2", "d4"); // deviates from Morphy Defense's own 1. e4
+
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    const moveList = dialog.querySelector(".pick-move-list") as HTMLElement;
+    expect(moveList.textContent?.replace(/\s+/g, " ").trim()).toBe("1. d4"); // not the Morphy Defense line
+    const highlighted = moveList.querySelector(".highlight") as HTMLElement;
+    expect(highlighted.textContent).toBe("d4");
+  });
+
+  // Task 43: this and a handful of other real-interaction tests below
+  // (flagged individually) run right at the edge of Vitest's 5000ms
+  // default under full-suite load -- confirmed via several repeated full-
+  // suite and isolated runs this session, same pre-existing cause as
+  // BuildScreen.secondMove.test.tsx/SetupScreen.test.tsx's own fix
+  // elsewhere this task (real chessground + real engine work, no
+  // removable inefficiency found). Extended to match that same precedent,
+  // not newly invented here.
+  it(
+    "the pick modal shows the 'After this pick' footer, and Lock player commits the top candidate",
+    async () => {
+      renderScreen();
+      const user = userEvent.setup();
+      simulateMove("d2", "d4"); // deviates from the suggested e4
+
+      const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+      expect(dialog.textContent).not.toContain("After this pick:"); // nothing selected yet
+
+      await selectTopRow(user, dialog);
+      expect(dialog.textContent).toContain("After this pick:");
+
+      await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+
+      expect(screen.queryByRole("dialog")).toBeNull(); // modal closes once the pick locks
+      expect(document.querySelector(".opening-moves")?.textContent).toContain("d4"); // now actually locked in
+      expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(0); // Black hasn't replied yet
+
+      await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+    },
+    15000,
+  );
 
   // Bug fix (post-Task-40): selecting a row previously showed no visible
   // change (a default pre-selection made "Lock player" immediately
   // clickable with nothing for the player to actually click). Now nothing
   // is selected until a row is clicked.
-  it("selecting a row marks it selected and updates the footer", async () => {
-    renderScreen();
-    const user = userEvent.setup();
-    simulateMove("d2", "d4");
+  it(
+    "selecting a row marks it selected and updates the footer",
+    async () => {
+      renderScreen();
+      const user = userEvent.setup();
+      simulateMove("d2", "d4");
 
-    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
-    expect(dialog.textContent).not.toContain("After this pick:");
-    expect(within(dialog).getByRole("button", { name: "Lock player" })).toBeDisabled();
+      const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+      expect(dialog.textContent).not.toContain("After this pick:");
+      expect(within(dialog).getByRole("button", { name: "Lock player" })).toBeDisabled();
 
-    const firstRow = dialog.querySelector(".pick-row") as HTMLElement;
-    await user.click(firstRow);
+      const firstRow = dialog.querySelector(".pick-row") as HTMLElement;
+      await user.click(firstRow);
 
-    expect(firstRow).toHaveClass("selected");
-    expect(dialog.textContent).toContain(`Selected: ${firstRow.querySelector(".pick-row-name")!.textContent!.split(" · ")[0]}`);
-    expect(dialog.textContent).toContain("After this pick:");
-    expect(within(dialog).getByRole("button", { name: "Lock player" })).not.toBeDisabled();
-  });
+      expect(firstRow).toHaveClass("selected");
+      expect(dialog.textContent).toContain(`Selected: ${firstRow.querySelector(".pick-row-name")!.textContent!.split(" · ")[0]}`);
+      expect(dialog.textContent).toContain("After this pick:");
+      expect(within(dialog).getByRole("button", { name: "Lock player" })).not.toBeDisabled();
+    },
+    15000,
+  );
 
   it("cancel restores the previous position and the banner's chosen line", async () => {
     renderScreen();
@@ -686,7 +726,7 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
       await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
       expect(statusLine().textContent).toMatch(/^You captured .+\./);
     },
-    15000,
+    20000, // observed as high as ~13.8s under full-suite load -- the heaviest test in this file (up to 8 plies of real engine + chessground interaction)
   );
 
   it("an over-cap player is greyed out and can't be locked", async () => {
@@ -720,59 +760,82 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
 // Task 40: endings (Stop/dead end), the finish screen, Start again, and
 // Take back.
 describe("BuildScreen -- endings and start again (Task 40)", () => {
-  it("Stop with this core shows the summary with the locked players", async () => {
-    renderScreen();
-    const user = userEvent.setup();
-    await user.click(chosenContinueButton()); // 1. e4
-    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
-    await selectTopRow(user, dialog);
-    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
-    // Wait for Black's reply to land first -- Stop is disabled while Black
-    // is mid-reply, same as Take back.
-    await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+  it(
+    "Stop with this core shows the summary with the locked players",
+    async () => {
+      renderScreen();
+      const user = userEvent.setup();
+      await user.click(chosenContinueButton()); // 1. e4
+      const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+      await selectTopRow(user, dialog);
+      await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+      // Wait for Black's reply to land first -- Stop is disabled while Black
+      // is mid-reply, same as Take back.
+      await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
 
-    const lockedName = youColumn().querySelector(".locked-name")!.textContent!.split(" · ")[0];
+      const lockedName = youColumn().querySelector(".locked-name")!.textContent!.split(" · ")[0];
 
-    // Task 41 moved this button from under the You card to board-column,
-    // beside Take back (the mobile pass's own explicit ordering).
-    await user.click(screen.getByRole("button", { name: "Stop with this core" }));
+      // Task 41 moved this button from under the You card to board-column,
+      // beside Take back (the mobile pass's own explicit ordering).
+      await user.click(screen.getByRole("button", { name: "Stop with this core" }));
 
-    expect(screen.getByText("You stopped with this core.")).toBeInTheDocument();
-    expect(screen.getByText("Happy Hunting")).toBeInTheDocument();
-    const finishCard = document.querySelector(".finish-card") as HTMLElement;
-    expect(within(finishCard).getByText(lockedName)).toBeInTheDocument();
-  });
+      expect(screen.getByText("You stopped with this core.")).toBeInTheDocument();
+      expect(screen.getByText("Happy Hunting")).toBeInTheDocument();
+      const finishCard = document.querySelector(".finish-card") as HTMLElement;
+      expect(within(finishCard).getByText(lockedName)).toBeInTheDocument();
 
-  it("Copy lineup copies the locked core and totals as plain text, then shows Copied briefly", async () => {
-    renderScreen();
-    const user = userEvent.setup(); // installs its own navigator.clipboard stub (writeText/readText) -- real enough to round-trip through, no separate mock needed
-    await user.click(chosenContinueButton()); // 1. e4
-    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
-    await selectTopRow(user, dialog);
-    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
-    await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+      // Task 43: a DK roster slot (Slot column), before Piece -- folded
+      // into this same test (not a new one) since it already drives the
+      // exact lock -> Black-reply -> Stop flow needed; a second standalone
+      // test would just repeat that same real-engine setup for no added
+      // coverage.
+      const headers = [...finishCard.querySelectorAll(".finish-core thead th")].map((th) => th.textContent);
+      expect(headers[0]).toBe("Slot");
+      expect(headers[1]).toBe("Piece");
+      const firstRowCells = [...finishCard.querySelectorAll(".finish-core tbody tr")[0].querySelectorAll("td")].map((td) => td.textContent);
+      expect(["QB", "RB", "WR", "TE", "FLEX", "DST"]).toContain(firstRowCells[0]);
+    },
+    15000,
+  );
 
-    const lockedName = youColumn().querySelector(".locked-name")!.textContent!.split(" · ")[0];
-    await user.click(screen.getByRole("button", { name: "Stop with this core" }));
+  it(
+    "Copy lineup copies the locked core and totals as plain text, then shows Copied briefly",
+    async () => {
+      renderScreen();
+      const user = userEvent.setup(); // installs its own navigator.clipboard stub (writeText/readText) -- real enough to round-trip through, no separate mock needed
+      await user.click(chosenContinueButton()); // 1. e4
+      const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+      await selectTopRow(user, dialog);
+      await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+      await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
 
-    await user.click(screen.getByRole("button", { name: "Copy lineup" }));
+      const lockedName = youColumn().querySelector(".locked-name")!.textContent!.split(" · ")[0];
+      await user.click(screen.getByRole("button", { name: "Stop with this core" }));
 
-    const text = await waitFor(async () => {
-      const t = await navigator.clipboard.readText();
-      expect(t).not.toBe("");
-      return t;
-    });
-    expect(text).toContain(lockedName);
-    expect(text).toMatch(/Salary used: \$[\d,]+/);
-    expect(text).toMatch(/Salary remaining: \$[\d,]+/);
-    expect(text).toMatch(/Projection: [\d.]+ pts/);
-    expect(text).toMatch(/Ownership: [\d.]+%/);
-    expect(text).toMatch(/Opening: .+/);
-    expect(text).toMatch(/Moves: 1\. e4/);
+      await user.click(screen.getByRole("button", { name: "Copy lineup" }));
 
-    expect(await screen.findByRole("button", { name: "Copied" })).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Copy lineup" })).toBeInTheDocument(), { timeout: 3000 });
-  });
+      const text = await waitFor(async () => {
+        const t = await navigator.clipboard.readText();
+        expect(t).not.toBe("");
+        return t;
+      });
+      expect(text).toContain(lockedName);
+      // Task 43: Slot is the first tab-separated field, before the Piece label.
+      const firstDataLine = text.split("\n")[0];
+      const [slotCell] = firstDataLine.split("\t");
+      expect(["QB", "RB", "WR", "TE", "FLEX", "DST"]).toContain(slotCell);
+      expect(text).toMatch(/Salary used: \$[\d,]+/);
+      expect(text).toMatch(/Salary remaining: \$[\d,]+/);
+      expect(text).toMatch(/Projection: [\d.]+ pts/);
+      expect(text).toMatch(/Ownership: [\d.]+%/);
+      expect(text).toMatch(/Opening: .+/);
+      expect(text).toMatch(/Moves: 1\. e4/);
+
+      expect(await screen.findByRole("button", { name: "Copied" })).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByRole("button", { name: "Copy lineup" })).toBeInTheDocument(), { timeout: 3000 });
+    },
+    15000,
+  );
 
   it("a dead end shows the right message and open slots", async () => {
     // An empty player pool: every one of White's 20 legal first moves has
@@ -818,28 +881,32 @@ describe("BuildScreen -- endings and start again (Task 40)", () => {
     confirmSpy.mockRestore();
   });
 
-  it("take back after a pick restores salary remaining and returns the player to the pick list", async () => {
-    renderScreen();
-    const user = userEvent.setup();
-    await user.click(chosenContinueButton()); // 1. e4
-    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
-    await selectTopRow(user, dialog);
-    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
-    await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+  it(
+    "take back after a pick restores salary remaining and returns the player to the pick list",
+    async () => {
+      renderScreen();
+      const user = userEvent.setup();
+      await user.click(chosenContinueButton()); // 1. e4
+      const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+      await selectTopRow(user, dialog);
+      await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+      await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
 
-    const lockedName = youColumn().querySelector(".locked-name")!.textContent!.split(" · ")[0];
-    const fullCap = `$${H2H.contest.effectiveCap(NFL).toLocaleString()}`;
+      const lockedName = youColumn().querySelector(".locked-name")!.textContent!.split(" · ")[0];
+      const fullCap = `$${H2H.contest.effectiveCap(NFL).toLocaleString()}`;
 
-    await user.click(screen.getByRole("button", { name: "Take back" }));
+      await user.click(screen.getByRole("button", { name: "Take back" }));
 
-    expect(within(youColumn()).queryAllByRole("listitem")).toHaveLength(0);
-    expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(0);
-    expect(within(youColumn()).getByText(fullCap)).toBeInTheDocument(); // salary remaining is back to the full cap
+      expect(within(youColumn()).queryAllByRole("listitem")).toHaveLength(0);
+      expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(0);
+      expect(within(youColumn()).getByText(fullCap)).toBeInTheDocument(); // salary remaining is back to the full cap
 
-    simulateMove("e2", "e4"); // the same move is legal again from the start position
-    const dialog2 = await screen.findByRole("dialog", { name: "Choose your Pawn" });
-    expect(within(dialog2).getByText(new RegExp(lockedName))).toBeInTheDocument(); // the player is back in the pick list
-  });
+      simulateMove("e2", "e4"); // the same move is legal again from the start position
+      const dialog2 = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+      expect(within(dialog2).getByText(new RegExp(lockedName))).toBeInTheDocument(); // the player is back in the pick list
+    },
+    15000,
+  );
 });
 
 // Bug fix: Black's reply crashed the build with a false "Black has hit a

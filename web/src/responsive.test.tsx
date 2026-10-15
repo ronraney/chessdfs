@@ -106,6 +106,7 @@ describe("Pick modal -- bottom sheet (DOM structure, real render -- see file hea
         piece={Piece.BISHOP}
         moveLabel="1. d4"
         openingLabel={null}
+        moveContext={null}
         candidates={candidates}
         currentPlayers={[]}
         sport={NFL}

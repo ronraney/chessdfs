@@ -10,6 +10,7 @@ from dfs_chess.rules import (
     lineup_still_completable,
     apply_capture_move,
     apply_move,
+    assign_roster_slots,
     can_castle,
     castle,
     is_legal_capture,
@@ -218,6 +219,69 @@ def test_multi_position_player_fills_either_slot():
     three_rbs = [make_player(f"rb{i}", "RB", 5200) for i in range(3)]  # fills RB(2) + FLEX(1)
     roster = three_rbs + [hybrid]
     assert lineup_still_completable(roster, NFL, CONTEST.cap) is True  # hybrid still fits via WR
+
+
+# Task 43: DK slot display on the finish screen/Copy lineup.
+
+def test_assign_roster_slots_dedicated_slots_no_overflow():
+    roster = [
+        make_player("qb1", "QB", 6000),
+        make_player("rb1", "RB", 5200),
+        make_player("wr1", "WR", 5000),
+        make_player("te1", "TE", 4500),
+    ]
+    assert assign_roster_slots(roster, NFL.roster_slots) == ["QB", "RB", "WR", "TE"]
+
+
+def test_assign_roster_slots_3rd_rb_lands_in_flex():
+    # Which of the 3 interchangeable RBs ends up labeled FLEX vs. RB is
+    # whatever the augmenting search finds first, not lock order (RB and
+    # RB are indistinguishable slot instances anyway) -- the multiset of
+    # labels is the actual contract, not a specific player->label mapping.
+    roster = [make_player(f"rb{i}", "RB", 5200) for i in range(3)]
+    assert sorted(assign_roster_slots(roster, NFL.roster_slots)) == ["FLEX", "RB", "RB"]
+
+
+def test_assign_roster_slots_full_9_player_lineup():
+    roster = [
+        make_player("qb1", "QB", 6000),
+        make_player("rb1", "RB", 5200),
+        make_player("rb2", "RB", 5300),
+        make_player("wr1", "WR", 5000),
+        make_player("wr2", "WR", 5100),
+        make_player("wr3", "WR", 5200),
+        make_player("te1", "TE", 4500),
+        make_player("rb3", "RB", 5400),  # flex
+        make_player("dst1", "DST", 2500),
+    ]
+    slots = assign_roster_slots(roster, NFL.roster_slots)
+    assert sorted(slots) == ["DST", "FLEX", "QB", "RB", "RB", "TE", "WR", "WR", "WR"]
+
+
+def test_assign_roster_slots_multi_position_player_gets_a_valid_slot():
+    # 3 pure RBs fill RB(2)+FLEX(1) entirely; the RB/WR hybrid has nowhere
+    # left in the RB family, but WR(3) is wide open -- same feasibility
+    # test_multi_position_player_fills_either_slot already covers; this
+    # just checks assign_roster_slots finds the same valid total
+    # assignment max_assignable already guarantees exists, not which
+    # specific slot name the hybrid draws.
+    hybrid = Player(
+        id="h1",
+        name="Hybrid",
+        positions=("RB", "WR"),
+        team="AAA",
+        opp="BBB",
+        salary=3000,
+        proj=10.0,
+        own_small=0.1,
+        own_large=0.1,
+    )
+    three_rbs = [make_player(f"rb{i}", "RB", 5200) for i in range(3)]
+    roster = three_rbs + [hybrid]
+    slots = assign_roster_slots(roster, NFL.roster_slots)
+    assert len(slots) == len(roster)
+    assert all(s != "" for s in slots)
+    assert sorted(slots) == ["FLEX", "RB", "RB", "WR"]
 
 
 # --- castling ----------------------------------------------------------------

@@ -116,36 +116,51 @@ function anyLegalMove(): [string, string] {
 }
 
 describe("BuildScreen -- White's second move (bug fix)", () => {
-  it("plays a full cycle -- move, pick, lock, Black replies, White's second move opens the pick modal", async () => {
-    renderScreen();
-    const user = userEvent.setup();
+  // Task 43: this test's own real-DOM/real-chessground/real-engine work
+  // (confirmed via isolated timing runs, no inefficiency found -- see the
+  // "after castling"/"White can move again after a capture" tests below,
+  // the ones that already needed the same extension) legitimately costs
+  // 3-4s even on a quiet machine; under full-suite parallel load that left
+  // too little headroom against Vitest's 5000ms default. Same fix as those
+  // two siblings, not a new pattern.
+  it(
+    "plays a full cycle -- move, pick, lock, Black replies, White's second move opens the pick modal",
+    async () => {
+      renderScreen();
+      const user = userEvent.setup();
 
-    clickMove("g1", "f3"); // White's first move -- works today
-    await lockTopCandidate(user, "Choose your Knight");
-    await waitForWhitesTurn(); // Black has replied; it's genuinely White's turn again
+      clickMove("g1", "f3"); // White's first move -- works today
+      await lockTopCandidate(user, "Choose your Knight");
+      await waitForWhitesTurn(); // Black has replied; it's genuinely White's turn again
 
-    const [from, to] = anyLegalMove();
-    clickMove(from, to); // White's second move -- the reported failure
+      const [from, to] = anyLegalMove();
+      clickMove(from, to); // White's second move -- the reported failure
 
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
-  });
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    },
+    15000,
+  );
 
-  it("White can move again after Take back", async () => {
-    renderScreen();
-    const user = userEvent.setup();
+  it(
+    "White can move again after Take back",
+    async () => {
+      renderScreen();
+      const user = userEvent.setup();
 
-    clickMove("g1", "f3");
-    await lockTopCandidate(user, "Choose your Knight");
-    await waitForWhitesTurn();
+      clickMove("g1", "f3");
+      await lockTopCandidate(user, "Choose your Knight");
+      await waitForWhitesTurn();
 
-    await user.click(screen.getByRole("button", { name: "Take back" }));
-    await waitForWhitesTurn();
+      await user.click(screen.getByRole("button", { name: "Take back" }));
+      await waitForWhitesTurn();
 
-    const [from, to] = anyLegalMove();
-    clickMove(from, to);
+      const [from, to] = anyLegalMove();
+      clickMove(from, to);
 
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
-  });
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    },
+    15000,
+  );
 
   // Seeding Math.random (same value BuildScreen.test.tsx's own castling
   // block uses) makes Black's book/random replies reproducible, so a

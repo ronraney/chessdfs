@@ -85,7 +85,7 @@ describe("admin screen routing", () => {
     await logIntoAdmin(user);
 
     await user.upload(screen.getByLabelText("Projections CSV"), sampleCsvFile());
-    await waitFor(() => expect(screen.getByText(`${SAMPLE_PLAYER_COUNT} players loaded`)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(`${SAMPLE_PLAYER_COUNT} players loaded · ID column: DK_ID`)).toBeInTheDocument());
 
     act(() => {
       window.location.hash = "";
@@ -101,7 +101,7 @@ describe("admin screen routing", () => {
     render(<App />);
     const user = userEvent.setup();
     await logIntoAdmin(user);
-    await waitFor(() => expect(screen.getByText(`${SAMPLE_PLAYER_COUNT} players loaded`)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(`${SAMPLE_PLAYER_COUNT} players loaded · ID column: DK_ID`)).toBeInTheDocument());
 
     await user.click(screen.getByRole("button", { name: "Clear projections" }));
 

@@ -15,6 +15,7 @@
 import { parse } from "papaparse";
 import { Player } from "./models";
 import { BookLine } from "./openings";
+import type { SportConfig } from "./sport";
 
 // Verified against data/samples/NFL Weekly DFS System - Projections.csv.
 // `id` and `DK_ID` are both present and identical in that sample; DK_ID is
@@ -82,6 +83,75 @@ export function loadEtrCsv(data: string, columnMap: EtrColumnMap = ETR_COLUMN_MA
         ownLarge: parsePercent(row[columnMap.ownLarge]),
       }),
   );
+}
+
+// Task 43: slate validation for the admin upload -- a separate function
+// from loadEtrCsv itself (not folded into it) so every OTHER caller
+// (tests, tools, the CLI's own load) keeps working against small/synthetic
+// CSVs that were never meant to form a complete, roster-feasible lineup.
+// Only the admin upload needs "is this actually a usable slate" rigor.
+// Throws a SlateValidationError describing the first problem found (column
+// shape before IDs before roster-slot feasibility -- parsing rows needs
+// the columns to exist first); returns the parsed players + which column
+// was used as the ID otherwise.
+export class SlateValidationError extends Error {}
+
+export interface SlateValidationResult {
+  players: Player[];
+  idColumn: string;
+}
+
+const REQUIRED_COLUMN_KEYS = ["name", "pos", "team", "opp", "salary", "proj", "ownSmall", "ownLarge"] as const;
+
+export function validateSlateCsv(
+  data: string,
+  sport: SportConfig,
+  columnMap: EtrColumnMap = ETR_COLUMN_MAP,
+): SlateValidationResult {
+  const parsed = parse<Record<string, string>>(data, { header: true, skipEmptyLines: true });
+  const fields = parsed.meta.fields ?? [];
+
+  const missingColumns = REQUIRED_COLUMN_KEYS.filter((key) => !fields.includes(columnMap[key]));
+  if (missingColumns.length > 0) {
+    throw new SlateValidationError(`Missing required column(s): ${missingColumns.map((key) => columnMap[key]).join(", ")}.`);
+  }
+
+  if (!fields.includes(columnMap.id) && !fields.includes("id")) {
+    throw new SlateValidationError(`No ID column found (expected "${columnMap.id}" or "id").`);
+  }
+  const idColumn = resolveIdColumn(columnMap, fields);
+
+  const rows = parsed.data;
+  const missingIdCount = rows.filter((row) => (row[idColumn] ?? "").trim() === "").length;
+  if (missingIdCount > 0) {
+    throw new SlateValidationError(`${missingIdCount} player(s) are missing an ID value.`);
+  }
+
+  const seenIds = new Set<string>();
+  const duplicateIds = new Set<string>();
+  for (const row of rows) {
+    const id = row[idColumn];
+    if (seenIds.has(id)) duplicateIds.add(id);
+    seenIds.add(id);
+  }
+  if (duplicateIds.size > 0) {
+    throw new SlateValidationError(`Duplicate ID(s): ${[...duplicateIds].join(", ")}.`);
+  }
+
+  const players = loadEtrCsv(data, columnMap);
+
+  const shortSlots = sport.rosterSlots
+    .map((slot) => ({
+      slot,
+      have: players.filter((p) => p.positions.some((pos) => slot.positions.has(pos.toUpperCase()))).length,
+    }))
+    .filter(({ slot, have }) => have < slot.count);
+  if (shortSlots.length > 0) {
+    const detail = shortSlots.map(({ slot, have }) => `${slot.name} (need ${slot.count}, have ${have})`).join(", ");
+    throw new SlateValidationError(`Not enough players for slot(s): ${detail}.`);
+  }
+
+  return { players, idColumn };
 }
 
 const MOVE_NUMBER = /^\d+\.$/;

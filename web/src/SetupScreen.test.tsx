@@ -89,20 +89,30 @@ describe("SetupScreen", () => {
     expect(screen.getAllByText("Najdorf Variation").length).toBeGreaterThan(0);
   });
 
-  it("Random stays within the selected chip", async () => {
-    const { user } = await renderScreen();
-    await user.click(screen.getByRole("button", { name: "Large" }));
-    const largeTier = H2H.contest.entryTiers(RANKED_FAMILIES.length).find((tier) => tier.name === "Large")!;
+  // Task 43: six real re-renders of the Large-tier explorer list (plus the
+  // Random click itself) legitimately cost more than most of this file's
+  // other tests (confirmed via isolated timing runs -- no inefficiency
+  // found to remove), leaving too little headroom against Vitest's 5000ms
+  // default under full-suite load. Same fix BuildScreen.secondMove.test.tsx
+  // already uses for its own heaviest tests.
+  it(
+    "Random stays within the selected chip",
+    async () => {
+      const { user } = await renderScreen();
+      await user.click(screen.getByRole("button", { name: "Large" }));
+      const largeTier = H2H.contest.entryTiers(RANKED_FAMILIES.length).find((tier) => tier.name === "Large")!;
 
-    for (let i = 0; i < 6; i++) {
-      await user.click(screen.getByRole("button", { name: "Random" }));
-      const familyName = screen.getByRole("heading", { level: 2 }).textContent;
-      const family = RANKED_FAMILIES.find((f) => f.name === familyName);
-      expect(family).toBeDefined();
-      expect(family!.rank).toBeGreaterThanOrEqual(largeTier.lowRank);
-      expect(family!.rank).toBeLessThanOrEqual(largeTier.highRank);
-    }
-  });
+      for (let i = 0; i < 6; i++) {
+        await user.click(screen.getByRole("button", { name: "Random" }));
+        const familyName = screen.getByRole("heading", { level: 2 }).textContent;
+        const family = RANKED_FAMILIES.find((f) => f.name === familyName);
+        expect(family).toBeDefined();
+        expect(family!.rank).toBeGreaterThanOrEqual(largeTier.lowRank);
+        expect(family!.rank).toBeLessThanOrEqual(largeTier.highRank);
+      }
+    },
+    15000,
+  );
 
   it("an off-tier pick shows the tag (e.g. Large-style)", async () => {
     const { user } = await renderScreen(); // H2H's own tier is Small
@@ -111,30 +121,64 @@ describe("SetupScreen", () => {
     expect(screen.getByText("Large-style")).toBeInTheDocument();
   });
 
-  it("choosing a family in the explorer plays its representative line, not the bare family row (Task 38 bug fix)", async () => {
-    const { onChoose, user } = await renderScreen();
-    await user.click(screen.getByRole("button", { name: "All" })); // Ruy Lopez regardless of H2H's own tier
-    await user.click(screen.getByText("Ruy Lopez").closest("button")!);
+  // Task 43: the "All" chip renders every ranked family (the explorer's
+  // largest possible list) -- legitimately the slowest first paint in this
+  // file (confirmed via isolated timing runs, no inefficiency found to
+  // remove). Same fix as "Random stays within the selected chip" above.
+  it(
+    "choosing a family in the explorer plays its representative line, not the bare family row (Task 38 bug fix)",
+    async () => {
+      const { onChoose, user } = await renderScreen();
+      await user.click(screen.getByRole("button", { name: "All" })); // Ruy Lopez regardless of H2H's own tier
+      await user.click(screen.getByText("Ruy Lopez").closest("button")!);
 
-    const card = document.querySelector(".suggested-card") as HTMLElement;
-    expect(within(card).getByRole("heading", { level: 2, name: "Ruy Lopez" })).toBeInTheDocument();
-    expect(within(card).getByText("Morphy Defense")).toBeInTheDocument();
-    // ends 3...a6, not the bare 5-ply "Ruy Lopez" row
-    expect(within(card).getByText("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6")).toBeInTheDocument();
+      const card = document.querySelector(".suggested-card") as HTMLElement;
+      expect(within(card).getByRole("heading", { level: 2, name: "Ruy Lopez" })).toBeInTheDocument();
+      expect(within(card).getByText("Morphy Defense")).toBeInTheDocument();
+      // ends 3...a6, not the bare 5-ply "Ruy Lopez" row
+      expect(within(card).getByText("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Play this" }));
-    expect(onChoose).toHaveBeenCalledWith(
-      expect.objectContaining({
-        opening: {
-          kind: "line",
-          line: expect.objectContaining({
-            name: "Ruy Lopez: Morphy Defense",
-            moves: ["e4", "e5", "Nf3", "Nc6", "Bb5", "a6"],
-          }),
-        },
-      }),
-    );
-  });
+      await user.click(screen.getByRole("button", { name: "Play this" }));
+      expect(onChoose).toHaveBeenCalledWith(
+        expect.objectContaining({
+          opening: {
+            kind: "line",
+            line: expect.objectContaining({
+              name: "Ruy Lopez: Morphy Defense",
+              moves: ["e4", "e5", "Nf3", "Nc6", "Bb5", "a6"],
+            }),
+          },
+        }),
+      );
+    },
+    15000,
+  );
+
+  // Task 43: the Suggested card's piece sequence is icons in move order now
+  // (design/1-club-setup.png), not the old "White: P N B / Black: P N B"
+  // text. Morphy Defense (e4 e5 Nf3 Nc6 Bb5 a6) -> White pawn, Black pawn,
+  // White knight, Black knight, White bishop, Black pawn, in that order.
+  it(
+    "the Suggested card shows the piece sequence as icons in move order, White then Black each ply",
+    async () => {
+      const { user } = await renderScreen();
+      await user.click(screen.getByRole("button", { name: "All" }));
+      await user.click(screen.getByText("Ruy Lopez").closest("button")!);
+
+      const card = document.querySelector(".suggested-card") as HTMLElement;
+      const icons = [...card.querySelectorAll(".piece-sequence-icon")];
+      expect(icons.map((el) => el.getAttribute("title"))).toEqual([
+        "White Pawn",
+        "Black Pawn",
+        "White Knight",
+        "Black Knight",
+        "White Bishop",
+        "Black Pawn",
+      ]);
+      expect(screen.queryByText(/White:/)).toBeNull(); // the old letter-code text is gone
+    },
+    15000,
+  );
 
   it("expanding Ruy Lopez lists its variations, and selecting one updates the Suggested card (Task 39)", async () => {
     const { user } = await renderScreen();

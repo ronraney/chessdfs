@@ -9,7 +9,9 @@
 // password or skip the check outright.
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import "./App.css";
-import { loadEtrCsv } from "./engine/loaders";
+import { NFL } from "./appData";
+import { SlateValidationError, validateSlateCsv } from "./engine/loaders";
+import type { Player } from "./engine/models";
 import { clearProjectionsCsv, getSavedProjectionsCsv, saveProjectionsCsv } from "./projectionsStore";
 import ThemeToggle from "./ThemeToggle";
 
@@ -24,11 +26,32 @@ function readFileAsText(file: File): Promise<string> {
   });
 }
 
-function countSavedPlayers(): number | null {
+interface SlateSummary {
+  playerCount: number;
+  byPosition: readonly (readonly [string, number])[];
+  idColumn: string;
+}
+
+// Task 43: "by position" is a plain tally of each player's own first
+// listed position (QB/RB/WR/TE/DST) -- independent of validateSlateCsv's
+// own roster-SLOT feasibility check (RosterSlot.positions, e.g. FLEX's
+// RB/WR/TE), since this is just describing what's in the file, not
+// re-deriving DK slot eligibility.
+function countByPosition(players: readonly Player[]): readonly (readonly [string, number])[] {
+  const counts = new Map<string, number>();
+  for (const p of players) {
+    const pos = p.positions[0];
+    counts.set(pos, (counts.get(pos) ?? 0) + 1);
+  }
+  return [...counts.entries()].sort(([a], [b]) => a.localeCompare(b));
+}
+
+function summarizeSavedSlate(): SlateSummary | null {
   const csv = getSavedProjectionsCsv();
   if (csv === null) return null;
   try {
-    return loadEtrCsv(csv).length;
+    const { players, idColumn } = validateSlateCsv(csv, NFL);
+    return { playerCount: players.length, byPosition: countByPosition(players), idColumn };
   } catch {
     return null;
   }
@@ -38,7 +61,7 @@ function AdminScreen() {
   const [authed, setAuthed] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState(false);
-  const [playerCount, setPlayerCount] = useState<number | null>(() => countSavedPlayers());
+  const [slate, setSlate] = useState<SlateSummary | null>(() => summarizeSavedSlate());
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   function handleSubmitPassword(event: FormEvent<HTMLFormElement>): void {
@@ -51,26 +74,32 @@ function AdminScreen() {
     }
   }
 
+  // Task 43: a rejected upload keeps whatever slate was already saved --
+  // saveProjectionsCsv/setSlate only run on the success path below, same
+  // as before; validateSlateCsv just replaces the old "parses to >0 rows"
+  // check with real rigor (ID column present and complete, no duplicate
+  // IDs, every required column present, enough players for every roster
+  // slot), and its own SlateValidationError message (naming exactly what's
+  // wrong) is shown as-is instead of a generic fallback.
   async function handleUpload(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0];
     if (!file) return;
     try {
       const text = await readFileAsText(file);
-      const parsed = loadEtrCsv(text);
-      if (parsed.length === 0) {
-        throw new Error("no players found in that file");
-      }
+      const { players, idColumn } = validateSlateCsv(text, NFL);
       saveProjectionsCsv(text);
-      setPlayerCount(parsed.length);
+      setSlate({ playerCount: players.length, byPosition: countByPosition(players), idColumn });
       setUploadError(null);
-    } catch {
-      setUploadError("Couldn't read that file as a projections CSV -- check it's a valid DK projections export.");
+    } catch (e) {
+      setUploadError(
+        e instanceof SlateValidationError ? e.message : "Couldn't read that file as a projections CSV -- check it's a valid DK projections export.",
+      );
     }
   }
 
   function handleClear(): void {
     clearProjectionsCsv();
-    setPlayerCount(null);
+    setSlate(null);
     setUploadError(null);
   }
 
@@ -114,8 +143,15 @@ function AdminScreen() {
           Projections CSV
         </label>
         <input id="admin-projections-csv" type="file" accept=".csv" onChange={handleUpload} />
-        {playerCount !== null && <p className="status">{playerCount} players loaded</p>}
-        {playerCount === null && uploadError === null && <p className="status">No projections saved yet.</p>}
+        {slate !== null && (
+          <div className="status">
+            <p>
+              {slate.playerCount} players loaded · ID column: {slate.idColumn}
+            </p>
+            <p>{slate.byPosition.map(([pos, count]) => `${pos}: ${count}`).join(" · ")}</p>
+          </div>
+        )}
+        {slate === null && uploadError === null && <p className="status">No projections saved yet.</p>}
         {uploadError !== null && (
           <p className="error" role="alert">
             {uploadError}
