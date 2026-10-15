@@ -743,6 +743,37 @@ describe("BuildScreen -- endings and start again (Task 40)", () => {
     expect(within(finishCard).getByText(lockedName)).toBeInTheDocument();
   });
 
+  it("Copy lineup copies the locked core and totals as plain text, then shows Copied briefly", async () => {
+    renderScreen();
+    const user = userEvent.setup(); // installs its own navigator.clipboard stub (writeText/readText) -- real enough to round-trip through, no separate mock needed
+    await user.click(chosenContinueButton()); // 1. e4
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await selectTopRow(user, dialog);
+    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+    await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+
+    const lockedName = youColumn().querySelector(".locked-name")!.textContent!.split(" · ")[0];
+    await user.click(screen.getByRole("button", { name: "Stop with this core" }));
+
+    await user.click(screen.getByRole("button", { name: "Copy lineup" }));
+
+    const text = await waitFor(async () => {
+      const t = await navigator.clipboard.readText();
+      expect(t).not.toBe("");
+      return t;
+    });
+    expect(text).toContain(lockedName);
+    expect(text).toMatch(/Salary used: \$[\d,]+/);
+    expect(text).toMatch(/Salary remaining: \$[\d,]+/);
+    expect(text).toMatch(/Projection: [\d.]+ pts/);
+    expect(text).toMatch(/Ownership: [\d.]+%/);
+    expect(text).toMatch(/Opening: .+/);
+    expect(text).toMatch(/Moves: 1\. e4/);
+
+    expect(await screen.findByRole("button", { name: "Copied" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Copy lineup" })).toBeInTheDocument(), { timeout: 3000 });
+  });
+
   it("a dead end shows the right message and open slots", async () => {
     // An empty player pool: every one of White's 20 legal first moves has
     // zero eligible, unlocked players for whichever piece type it would

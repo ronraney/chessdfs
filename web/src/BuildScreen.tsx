@@ -821,6 +821,7 @@ export default function BuildScreen({
             <FinishCard
               ending={ending}
               openingLabel={finalOpeningLabel}
+              history={history}
               whiteMoves={state.whiteMoves}
               whiteStats={whiteStats}
               onStartAgain={onStartAgain}
@@ -1032,6 +1033,7 @@ function SideColumn({
 function FinishCard({
   ending,
   openingLabel,
+  history,
   whiteMoves,
   whiteStats,
   onStartAgain,
@@ -1039,12 +1041,29 @@ function FinishCard({
 }: {
   ending: Ending;
   openingLabel: string;
+  history: readonly string[];
   whiteMoves: readonly Move[];
   whiteStats: SideStats;
   onStartAgain: () => void;
   onNewContest: () => void;
 }) {
   const openSlots = openSlotLabels(whiteStats);
+  const [copied, setCopied] = useState(false);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current !== null) clearTimeout(copiedTimerRef.current);
+    };
+  }, []);
+
+  async function copyLineup(): Promise<void> {
+    await navigator.clipboard.writeText(lineupText(whiteMoves, whiteStats, openingLabel, history));
+    setCopied(true);
+    if (copiedTimerRef.current !== null) clearTimeout(copiedTimerRef.current);
+    copiedTimerRef.current = setTimeout(() => setCopied(false), 1500);
+  }
+
   return (
     <div className="finish-card">
       <p className="finish-ended-line">{endingHeadline(ending)}</p>
@@ -1096,6 +1115,9 @@ function FinishCard({
       <p className="finish-happy">{HAPPY_HUNTING}</p>
 
       <div className="finish-actions">
+        <button type="button" onClick={() => void copyLineup()}>
+          {copied ? "Copied" : "Copy lineup"}
+        </button>
         <button type="button" onClick={onStartAgain}>
           Start again
         </button>
@@ -1105,6 +1127,37 @@ function FinishCard({
       </div>
     </div>
   );
+}
+
+// Finish screen's "Copy lineup" -- plain tab-separated text (pastes cleanly
+// into a spreadsheet), one row per locked player matching the on-screen
+// finish-core table (Piece/Player/Pos/Team/Salary) plus a totals block.
+// "Salary used" has no stored field of its own (SideStats only tracks
+// salaryRemaining) -- it's just the locked players' own salaries summed.
+function lineupText(whiteMoves: readonly Move[], whiteStats: SideStats, openingLabel: string, history: readonly string[]): string {
+  const rows = whiteMoves.map((m) =>
+    [PIECE_LABEL[m.piece], m.player.name, m.player.positions[0], m.player.team, `$${m.player.salary.toLocaleString()}`].join("\t"),
+  );
+  const salaryUsed = whiteMoves.reduce((sum, m) => sum + m.player.salary, 0);
+  const totals = [
+    `Salary used: $${salaryUsed.toLocaleString()}`,
+    `Salary remaining: $${whiteStats.salaryRemaining.toLocaleString()}`,
+    `Projection: ${whiteStats.projTotal.toFixed(1)} pts`,
+    `Ownership: ${(whiteStats.ownershipTotal * 100).toFixed(1)}%`,
+    `Opening: ${openingLabel}`,
+    `Moves: ${formatMoveList(history)}`,
+  ];
+  return [...rows, "", ...totals].join("\n");
+}
+
+function formatMoveList(history: readonly string[]): string {
+  const pairs: string[] = [];
+  for (let i = 0; i < history.length; i += 2) {
+    const num = i / 2 + 1;
+    const black = history[i + 1];
+    pairs.push(black !== undefined ? `${num}. ${history[i]} ${black}` : `${num}. ${history[i]}`);
+  }
+  return pairs.join(" ");
 }
 
 function PlayerFieldTable({ white, black }: { white: readonly Move[]; black: readonly Move[] }) {
