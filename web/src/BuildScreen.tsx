@@ -300,6 +300,15 @@ export default function BuildScreen({
   // asks for. Cleared on the next real action (a new commit, or Take back
   // itself) so it doesn't linger once the player has moved past it.
   const [blackMoveError, setBlackMoveError] = useState<string | null>(null);
+  // Bug fix: handleBoardMove used to just `return` when chessground
+  // reported a move whose (orig, dest) didn't match any of White's own
+  // offered dests -- silent, no feedback at all. Normally unreachable
+  // (dests only ever offers matched's own from/to pairs), but a move
+  // should never just vanish if it somehow does happen (e.g. a stale
+  // handler reading a dests set that's since changed) -- the status line
+  // says why instead. Cleared at the top of every handleBoardMove call, so
+  // the next attempt (successful or not) always starts fresh.
+  const [moveRejected, setMoveRejected] = useState<string | null>(null);
   // Task 40 "Take back": a stack of every `state` snapshot right BEFORE a
   // White move was committed (pushed once per commit() call, never for
   // Black's own reply -- popping one entry undoes a White move AND
@@ -436,7 +445,9 @@ export default function BuildScreen({
   const statusLine: string =
     blackMoveError !== null
       ? `Something went wrong: ${blackMoveError}`
-      : switchOffer !== null
+      : moveRejected !== null
+        ? moveRejected
+        : switchOffer !== null
         ? "Switch your QB?"
         : pendingMove !== null
           ? pendingPickText(pendingMove)
@@ -559,7 +570,14 @@ export default function BuildScreen({
 
   function handleBoardMove(orig: Key, dest: Key): void {
     const matched = legalMoves.find((m) => m.from === orig && m.to === dest);
-    if (matched === undefined) return; // dests only ever offers matched's own from/to pairs
+    if (matched === undefined) {
+      // dests only ever offers matched's own from/to pairs, so this
+      // shouldn't be reachable in practice -- but a rejected move must
+      // never just vanish, so it's reported rather than assumed away.
+      setMoveRejected(`${orig}-${dest} isn't a legal move right now.`);
+      return;
+    }
+    setMoveRejected(null);
     if (showBookExitPrompt) setBookExitDismissed(true); // playing a move is an implicit "Continue"
     const chessMove: ChessMove = { from: matched.from, to: matched.to, promotion: matched.promotion };
     const kind = classifyMove(state, matched, kingMode);
@@ -688,6 +706,7 @@ export default function BuildScreen({
     setWhiteCaptureNote(null);
     setBlackMoveNote(null);
     setBlackMoveError(null);
+    setMoveRejected(null);
   }
   const canTakeBack = pastStates.length > 0 && pendingMove === null && switchOffer === null && !blackMoving && ending === null;
 

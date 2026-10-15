@@ -289,6 +289,44 @@ describe("BuildScreen -- move first, then pick", () => {
   });
 });
 
+describe("BuildScreen -- a rejected move is never dropped silently (bug fix)", () => {
+  it("reports why in the status line instead of doing nothing", async () => {
+    renderScreen();
+    simulateMove("e2", "e5"); // not one of White's own offered dests
+
+    await waitFor(() => expect(statusLine().textContent).toBe("e2-e5 isn't a legal move right now."));
+    expect(screen.queryByRole("dialog")).toBeNull(); // nothing was actually played
+    expect(within(youColumn()).queryAllByRole("listitem")).toHaveLength(0);
+  });
+
+  it("clears once a real move is played", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    simulateMove("e2", "e5");
+    await waitFor(() => expect(statusLine().textContent).toBe("e2-e5 isn't a legal move right now."));
+
+    await user.click(chosenContinueButton());
+    expect(await screen.findByRole("dialog", { name: "Choose your Pawn" })).toBeInTheDocument();
+    expect(statusLine().textContent).not.toContain("isn't a legal move");
+  });
+
+  it("clears on Take back", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    simulateMove("d2", "d4");
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await selectTopRow(user, dialog);
+    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+    await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+
+    simulateMove("e2", "e5"); // bogus move once it's White's turn again
+    await waitFor(() => expect(statusLine().textContent).toBe("e2-e5 isn't a legal move right now."));
+
+    await user.click(screen.getByRole("button", { name: "Take back" }));
+    expect(statusLine().textContent).not.toContain("isn't a legal move");
+  });
+});
+
 describe("BuildScreen -- click-to-move (bug fix)", () => {
   // Reported bug: click-select then click-destination on the build board
   // didn't move the piece (dragging did). The FakeApi's selectSquare (above)
