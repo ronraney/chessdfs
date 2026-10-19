@@ -100,6 +100,11 @@ count absolutely must not flake.
 
 ## Where We Are
 
+- **GPL-3.0 is accepted, decided 2026-10-14**, covering both GPL-3.0
+  dependencies in this repo: chessground (previously an open item above)
+  and Stockfish (`stockfish` npm package, added this session for Black's
+  out-of-book move — see web/src/stockfishEngine.ts). No further license
+  decision needed for either.
 - **387 Vitest tests passing, 233 pytest passing**, `tsc -b` and `oxlint`
   both clean (re-confirmed after each of this session's three commits,
   full `npm run test` re-run 3+ times per commit to rule out flakes under
@@ -185,34 +190,33 @@ count absolutely must not flake.
    responsiveness, Explorer row wrapping, piece-icon boxes, the pick-modal
    metric column, the reordered PLACED-mode castling flow, this session's
    chessground resize fix, and the "Pts from optimal" display).
-2. Decide on chessground's GPL-3.0 license — long-standing, unchanged.
-3. The Monte Carlo sim port from `rraney/nfl-dfs` — still needed. (Note:
+2. The Monte Carlo sim port from `rraney/nfl-dfs` — still needed. (Note:
    this is NOT the same thing as this session's new lineup optimizer —
    the optimizer answers "what's the single best legal lineup," the sim
    answers "what's this lineup's distribution of outcomes.")
-4. Simulated "Top 10%" metric — still a known gap.
-5. Ron needs to create **`web/.env`** with his own `VITE_ADMIN_PASSWORD=...`
+3. Simulated "Top 10%" metric — still a known gap.
+4. Ron needs to create **`web/.env`** with his own `VITE_ADMIN_PASSWORD=...`
    — still not created, deliberately.
-6. `CONTINUATION_LIMIT = 8` (Book continues' cap) is still a guessed
+5. `CONTINUATION_LIMIT = 8` (Book continues' cap) is still a guessed
    number, not spec'd — flag if it needs tuning either direction. Now also
    worth revisiting alongside this session's popularity-sort fix: with
    real per-position popularity driving the order, 8 may surface a
    different, more "obviously right" set of moves than it did before.
-7. PLACED king mode's "silent King move while dragging" path still has no
+6. PLACED king mode's "silent King move while dragging" path still has no
    dedicated test.
-8. If the engine changes, re-run `tools/export_parity.py` and `npm run
+7. If the engine changes, re-run `tools/export_parity.py` and `npm run
    test` to keep the parity fixture honest. **Note**: `engine/optimizer.ts`
    is NOT in the parity harness — it has no Python equivalent at all
    (display-only), so there's nothing to keep in parity.
-9. If more tests start flaking under full-suite load, the same "extend
+8. If more tests start flaking under full-suite load, the same "extend
    this specific test's timeout to match its real cost" treatment applies
    — but check for a genuine fixable inefficiency first (this session
    found one: a redundant full-book rescan, fixed instead of just padding
    the timeout).
-10. **`tools/sim_builds.py`** still calls `classify(p, sport)` with the old
+9. **`tools/sim_builds.py`** still calls `classify(p, sport)` with the old
     2-arg signature and assumes Rook is RB-only — unchanged, out of scope,
     flagged again.
-11. **DEFAULT_EXCLUDED_FAMILIES serves two different purposes now** (see
+10. **DEFAULT_EXCLUDED_FAMILIES serves two different purposes now** (see
     Open Items) — worth deciding whether that's intentional.
 
 ## Open Items
