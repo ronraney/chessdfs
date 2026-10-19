@@ -11,8 +11,9 @@
 // random.Random. None needed converting into a new kind of test.
 import type { Square } from "chess.js";
 import { Chess } from "chess.js";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import nflConfig from "../data/config/sports/nfl.json";
+import type { BlackEngine, EngineCandidate } from "./blackEngine";
 import {
   HAPPY_HUNTING,
   NO_LEGAL_MOVES,
@@ -99,33 +100,33 @@ function lastOf<T>(items: readonly T[]): T {
 // --- Black's book play -------------------------------------------------------
 
 describe("Black's book play", () => {
-  it("stays in book while a line matches", () => {
+  it("stays in book while a line matches", async () => {
     const pool = nflPool();
     const [whitePlayer, ...blackPool] = pool;
 
     const result = playWhiteMove(new BuildState(), uci("e2e4"), whitePlayer, NFL, CONTEST, BOOK);
     expect(result.message).toBeNull();
 
-    const blackResult = playBlackMove(result.state, BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(1));
+    const blackResult = await playBlackMove(result.state, BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(1));
 
     const playedSan = lastOf(blackResult.state.blackMoves).san;
     expect(bookContinuations(["e4"], BOOK).has(playedSan)).toBe(true);
     expect(blackResult.opening).not.toBeNull(); // a name is exposed once in book
   });
 
-  it("same seed gives the same build", () => {
+  it("same seed gives the same build", async () => {
     const pool = nflPool();
     const [whitePlayer, ...blackPool] = pool;
     const result = playWhiteMove(new BuildState(), uci("e2e4"), whitePlayer, NFL, CONTEST, BOOK);
 
-    const r1 = playBlackMove(result.state, BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(99));
-    const r2 = playBlackMove(result.state, BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(99));
+    const r1 = await playBlackMove(result.state, BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(99));
+    const r2 = await playBlackMove(result.state, BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(99));
 
     expect(lastOf(r1.state.blackMoves).san).toBe(lastOf(r2.state.blackMoves).san);
     expect(lastOf(r1.state.blackMoves).player.id).toBe(lastOf(r2.state.blackMoves).player.id);
   });
 
-  it("different seeds can give different builds", () => {
+  it("different seeds can give different builds", async () => {
     // Sanity check for the determinism test above: confirm the seed is
     // actually doing something, not just that nothing varies by chance.
     const pool = nflPool();
@@ -134,7 +135,7 @@ describe("Black's book play", () => {
 
     const sans = new Set<string>();
     for (let seed = 0; seed < 20; seed++) {
-      const r = playBlackMove(result.state, BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(seed));
+      const r = await playBlackMove(result.state, BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(seed));
       sans.add(lastOf(r.state.blackMoves).san);
     }
     expect(sans.size).toBeGreaterThan(1);
@@ -196,7 +197,7 @@ const LINE_B = new BookLine({ eco: "X2", name: "Line B", moves: ["e4", "e5", "Nf
 const SYNTH_BOOK = [LINE_A, LINE_B];
 
 describe("Black's book-line commitment outside a template (Task 13)", () => {
-  it("commits to a book line and keeps it while White stays in it", () => {
+  it("commits to a book line and keeps it while White stays in it", async () => {
     const whitePawn = makePlayer("w_pawn", "WR", 3000);
     const whiteKnight = makePlayer("w_knight", "TE", 5200);
     const blackPool = [
@@ -205,7 +206,7 @@ describe("Black's book-line commitment outside a template (Task 13)", () => {
     ];
 
     const state = playWhiteMove(new BuildState(), uci("e2e4"), whitePawn, NFL, CONTEST, SYNTH_BOOK).state;
-    const black1 = playBlackMove(state, SYNTH_BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(7));
+    const black1 = await playBlackMove(state, SYNTH_BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(7));
     expect(lastOf(black1.state.blackMoves).san).toBe("e5");
     const committed = black1.state.blackCommittedLine;
     expect([LINE_A.moves, LINE_B.moves]).toContainEqual(committed);
@@ -217,13 +218,13 @@ describe("Black's book-line commitment outside a template (Task 13)", () => {
     // sibling line's move (Nc6 vs Nf6) instead.
     const sans = new Set<string>();
     for (let seed = 0; seed < 30; seed++) {
-      const r = playBlackMove(state2, SYNTH_BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(seed));
+      const r = await playBlackMove(state2, SYNTH_BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(seed));
       sans.add(lastOf(r.state.blackMoves).san);
     }
     expect(sans).toEqual(new Set([committed![3]]));
   });
 
-  it("picks the closest-rank line", () => {
+  it("picks the closest-rank line", async () => {
     // Line A's family rank (1) is closer to the target rank (1) than Line
     // B's (90) -- Black must pick A regardless of seed.
     const whitePawn = makePlayer("w_pawn", "WR", 3000);
@@ -237,12 +238,12 @@ describe("Black's book-line commitment outside a template (Task 13)", () => {
     const state = playWhiteMove(new BuildState(), uci("e2e4"), whitePawn, NFL, CONTEST, SYNTH_BOOK).state;
 
     for (let seed = 0; seed < 10; seed++) {
-      const result = playBlackMove(state, SYNTH_BOOK, familyRanks, targetRank, NFL, CONTEST, blackPool, new SeededRandom(seed));
+      const result = await playBlackMove(state, SYNTH_BOOK, familyRanks, targetRank, NFL, CONTEST, blackPool, new SeededRandom(seed));
       expect(result.state.blackCommittedLine).toEqual(LINE_A.moves);
     }
   });
 
-  it("prefers a ranked line over an unranked one", () => {
+  it("prefers a ranked line over an unranked one", async () => {
     // An unranked family (missing from familyRanks) counts as farthest --
     // Line B (unranked) must lose to Line A even though A's own rank (50)
     // is numerically far from the target (1); "farthest" beats any real,
@@ -258,12 +259,12 @@ describe("Black's book-line commitment outside a template (Task 13)", () => {
     const state = playWhiteMove(new BuildState(), uci("e2e4"), whitePawn, NFL, CONTEST, SYNTH_BOOK).state;
 
     for (let seed = 0; seed < 10; seed++) {
-      const result = playBlackMove(state, SYNTH_BOOK, familyRanks, targetRank, NFL, CONTEST, blackPool, new SeededRandom(seed));
+      const result = await playBlackMove(state, SYNTH_BOOK, familyRanks, targetRank, NFL, CONTEST, blackPool, new SeededRandom(seed));
       expect(result.state.blackCommittedLine).toEqual(LINE_A.moves);
     }
   });
 
-  it("ties between lines are broken by the seed", () => {
+  it("ties between lines are broken by the seed", async () => {
     // Both families unranked (missing from familyRanks) -> both count as
     // farthest -> tied -> the seed decides.
     const whitePawn = makePlayer("w_pawn", "WR", 3000);
@@ -275,13 +276,13 @@ describe("Black's book-line commitment outside a template (Task 13)", () => {
 
     const committed = new Set<string>();
     for (let seed = 0; seed < 30; seed++) {
-      const r = playBlackMove(state, SYNTH_BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(seed));
+      const r = await playBlackMove(state, SYNTH_BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(seed));
       committed.add(JSON.stringify(r.state.blackCommittedLine));
     }
     expect(committed.size).toBeGreaterThan(1); // both lines turn up across enough seeds
   });
 
-  it("re-chooses when White deviates from the line", () => {
+  it("re-chooses when White deviates from the line", async () => {
     const whitePawn = makePlayer("w_pawn", "WR", 3000);
     const whiteKnight = makePlayer("w_knight", "TE", 5200);
     const blackPool = [
@@ -290,12 +291,12 @@ describe("Black's book-line commitment outside a template (Task 13)", () => {
     ];
 
     const state = playWhiteMove(new BuildState(), uci("e2e4"), whitePawn, NFL, CONTEST, SYNTH_BOOK).state;
-    const black1 = playBlackMove(state, SYNTH_BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(7));
+    const black1 = await playBlackMove(state, SYNTH_BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(7));
     expect(black1.state.blackCommittedLine).not.toBeNull();
 
     // White deviates: Nc3 instead of either line's Nf3.
     const state2 = playWhiteMove(black1.state, uci("b1c3"), whiteKnight, NFL, CONTEST, SYNTH_BOOK).state;
-    const black2 = playBlackMove(state2, SYNTH_BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(7));
+    const black2 = await playBlackMove(state2, SYNTH_BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(7));
 
     expect(black2.state.blackCommittedLine).toBeNull(); // nothing in the synthetic book matches "e4 e5 Nc3"
   });
@@ -303,7 +304,7 @@ describe("Black's book-line commitment outside a template (Task 13)", () => {
 
 const WHITE_LINE: readonly ChessMove[] = [uci("e2e4"), uci("g1f3")]; // real book moves, always legal here regardless of Black's own replies
 
-function driveMultiPly(seed: number): { blackSans: string[]; committedLine: readonly string[] | null } {
+async function driveMultiPly(seed: number): Promise<{ blackSans: string[]; committedLine: readonly string[] | null }> {
   const whitePool = [makePlayer("w_pawn", "WR", 3000), makePlayer("w_knight", "TE", 5200)];
   const blackPool = [
     ...Array.from({ length: 8 }, (_, i) => makePlayer(`b_pawn${i}`, "WR", 3000 + i)),
@@ -316,7 +317,7 @@ function driveMultiPly(seed: number): { blackSans: string[]; committedLine: read
     const piece = pieceForChessType(state.board.get(move.from)!.type);
     const player = whitePool.find((p) => !state.lockedPlayerIds.has(p.id) && classify(p, NFL).has(piece))!;
     state = playWhiteMove(state, move, player, NFL, CONTEST, BOOK).state;
-    const blackResult = playBlackMove(state, BOOK, {}, 0, NFL, CONTEST, blackPool, rng);
+    const blackResult = await playBlackMove(state, BOOK, {}, 0, NFL, CONTEST, blackPool, rng);
     state = blackResult.state;
     blackSans.push(lastOf(state.blackMoves).san);
   }
@@ -324,8 +325,8 @@ function driveMultiPly(seed: number): { blackSans: string[]; committedLine: read
 }
 
 describe("Black's book-line commitment across multiple plies", () => {
-  it("same seed gives the same build across multiple plies", () => {
-    expect(driveMultiPly(99)).toEqual(driveMultiPly(99));
+  it("same seed gives the same build across multiple plies", async () => {
+    expect(await driveMultiPly(99)).toEqual(await driveMultiPly(99));
   });
 
   // 20 seeds x multiple real plies each -- observed at 5698ms under full-
@@ -336,10 +337,10 @@ describe("Black's book-line commitment across multiple plies", () => {
   // timed tests elsewhere in this project.
   it(
     "different seeds can give different multi-ply builds",
-    () => {
+    async () => {
       const results = new Set<string>();
       for (let seed = 0; seed < 20; seed++) {
-        results.add(JSON.stringify(driveMultiPly(seed).blackSans));
+        results.add(JSON.stringify((await driveMultiPly(seed)).blackSans));
       }
       expect(results.size).toBeGreaterThan(1);
     },
@@ -531,7 +532,7 @@ describe("end condition", () => {
     expect(result.state.blackMoves).toEqual([]); // Black never got a turn, let alone finished
   });
 
-  it("Black with a full lineup still moves without locking", () => {
+  it("Black with a full lineup still moves without locking", async () => {
     // Hand-built: Black already has its one slot filled (full under
     // TOY_SPORT) while White still has none locked -- an edge case that
     // wouldn't arise through normal alternating play with equal roster
@@ -549,7 +550,7 @@ describe("end condition", () => {
     });
     const movesBefore = board.history().length;
 
-    const result = playBlackMove(state, [], {}, 0, TOY_SPORT, CONTEST, [], new SeededRandom(3));
+    const result = await playBlackMove(state, [], {}, 0, TOY_SPORT, CONTEST, [], new SeededRandom(3));
 
     expect(result.state.blackMoves).toEqual(state.blackMoves); // unchanged -- no one new locked
     expect(result.state.lockedPlayerIds).toEqual(state.lockedPlayerIds);
@@ -561,7 +562,7 @@ describe("end condition", () => {
 // --- capture transfer pre-check (Task 11c) -----------------------------------
 
 describe("capture transfer pre-check (Task 11c)", () => {
-  it("no error escapes playBlackMove for an infeasible capture", () => {
+  it("no error escapes playBlackMove for an infeasible capture", async () => {
     // Black already has one DST locked. White's e4 pawn is also a DST
     // pick, and dxe4 would transfer it over as Black's pick for this move
     // -- giving Black two DSTs, which DST's single slot can't hold.
@@ -587,7 +588,7 @@ describe("capture transfer pre-check (Task 11c)", () => {
     ];
 
     for (let seed = 0; seed < 50; seed++) {
-      const result = playBlackMove(state, [], {}, 0, NFL, CONTEST, pool, new SeededRandom(seed));
+      const result = await playBlackMove(state, [], {}, 0, NFL, CONTEST, pool, new SeededRandom(seed));
       const positions = result.state.blackMoves.map((m) => m.player.positions[0]);
       expect(positions.filter((p) => p === "DST").length).toBeLessThanOrEqual(1); // the overflowing transfer never went through
       expect(result.state.blackMoves.some((m) => m.player.id === "w_dst_captured")).toBe(false);
@@ -668,7 +669,7 @@ describe("id-collision regression (bug fix)", () => {
     'Test Player F,DST,AAA,BBB,"$2,500",5.5,10.00%,10.00%,1006',
   ].join("\n");
 
-  it("Black can still reply once White locks a player loaded from an \"id\"-only CSV", () => {
+  it("Black can still reply once White locks a player loaded from an \"id\"-only CSV", async () => {
     const pool = loadEtrCsv(ID_ONLY_CSV);
     expect(new Set(pool.map((p) => p.id)).size).toBe(pool.length); // distinct ids -- the fix itself
 
@@ -676,7 +677,7 @@ describe("id-collision regression (bug fix)", () => {
     const result = playWhiteMove(new BuildState(), uci("d2d4"), whitePlayer, NFL, CONTEST, BOOK);
     expect(result.state.lockedPlayerIds).toEqual(new Set([whitePlayer.id]));
 
-    expect(() => playBlackMove(result.state, BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(1))).not.toThrow();
+    await playBlackMove(result.state, BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(1)); // must not throw/reject
   });
 });
 
@@ -712,5 +713,128 @@ describe("lineup complete (Task 41)", () => {
     });
 
     expect(isLineupComplete(state.whiteMoves.map((m) => m.player), NFL)).toBe(true);
+  });
+});
+
+// --- Black's out-of-book engine assist (Stockfish task) ----------------------
+// playBlackMove's `engine` param is a `BlackEngine` (see blackEngine.ts);
+// these tests never touch the real Stockfish worker (stockfishEngine.ts, not
+// imported here at all) -- only hand-built fakes, per the task's own "Tests
+// (mocked engine)" ask.
+
+function fakeEngine(candidates: EngineCandidate[]): BlackEngine {
+  return { analyze: vi.fn(async () => candidates) };
+}
+
+function engineCandidate(move: string, cp: number): EngineCandidate {
+  return { move: uci(move), cp };
+}
+
+describe("Black's out-of-book engine assist", () => {
+  it("picks within the 50cp window, never the engine's out-of-window suggestion", async () => {
+    // No book at all ([]) -- straight to the engine-assisted branch on
+    // Black's very first move. nflPool() stocks both PAWN (WR) and KNIGHT
+    // (TE) bands, so every one of Black's legal first replies (pawn moves
+    // and knight moves -- the only two kinds on ply 1) is DFS-sound.
+    const pool = nflPool();
+    const [whitePlayer, ...blackPool] = pool;
+    const state = playWhiteMove(new BuildState(), uci("e2e4"), whitePlayer, NFL, CONTEST, []).state;
+
+    const candidates = [
+      engineCandidate("e7e5", 30), // best
+      engineCandidate("c7c5", 25),
+      engineCandidate("d7d5", 0),
+      engineCandidate("b8c6", 10),
+      engineCandidate("g8f6", -40), // 70cp behind the best -- outside the 50cp window
+    ];
+
+    const sans = new Set<string>();
+    for (let seed = 0; seed < 30; seed++) {
+      const result = await playBlackMove(state, [], {}, 0, NFL, CONTEST, blackPool, new SeededRandom(seed), KingMode.EMERGE, fakeEngine(candidates));
+      sans.add(lastOf(result.state.blackMoves).san);
+    }
+    expect(sans).not.toContain("Nf6"); // outside the window -- never chosen
+    for (const san of sans) {
+      expect(["e5", "c5", "d5", "Nc6"]).toContain(san);
+    }
+  });
+
+  it("drops candidates that fail the DFS rules for Black even when they're the engine's best", async () => {
+    // Pawns only -- no TE/Knight players at all, so every Knight move is
+    // DFS-illegal (not completable) here even though chess-legal.
+    const pawnOnlyPool = Array.from({ length: 8 }, (_, i) => makePlayer(`pawn${i}`, "WR", 3000 + i));
+    const whitePlayer = makePlayer("w1", "WR", 2900);
+    const state = playWhiteMove(new BuildState(), uci("e2e4"), whitePlayer, NFL, CONTEST, []).state;
+
+    const candidates = [
+      engineCandidate("g8f6", 500), // best by far, but DFS-illegal (no Knight player)
+      engineCandidate("e7e5", 10),
+      engineCandidate("c7c5", 5),
+      engineCandidate("d7d5", 0),
+      engineCandidate("b7b5", -5),
+    ];
+
+    const sans = new Set<string>();
+    for (let seed = 0; seed < 30; seed++) {
+      const result = await playBlackMove(
+        state, [], {}, 0, NFL, CONTEST, pawnOnlyPool, new SeededRandom(seed), KingMode.EMERGE, fakeEngine(candidates),
+      );
+      sans.add(lastOf(result.state.blackMoves).san);
+    }
+    expect(sans).not.toContain("Nf6"); // DFS-illegal -- dropped before the 50cp window is even applied
+    for (const san of sans) {
+      expect(["e5", "c5", "d5", "b5"]).toContain(san);
+    }
+  });
+
+  it("falls back to the uniform-random legal move when none of the engine's candidates pass", async () => {
+    // Same pawn-only pool, but now EVERY engine candidate is a Knight move
+    // -- none DFS-sound -- so nothing survives filtering at all.
+    const pawnOnlyPool = Array.from({ length: 8 }, (_, i) => makePlayer(`pawn${i}`, "WR", 3000 + i));
+    const whitePlayer = makePlayer("w1", "WR", 2900);
+    const state = playWhiteMove(new BuildState(), uci("e2e4"), whitePlayer, NFL, CONTEST, []).state;
+
+    const candidates = [
+      engineCandidate("g8f6", 500),
+      engineCandidate("b8c6", 400),
+      engineCandidate("b8a6", 300),
+      engineCandidate("g8h6", 200),
+    ];
+
+    const sans = new Set<string>();
+    for (let seed = 0; seed < 30; seed++) {
+      const result = await playBlackMove(
+        state, [], {}, 0, NFL, CONTEST, pawnOnlyPool, new SeededRandom(seed), KingMode.EMERGE, fakeEngine(candidates),
+      );
+      sans.add(lastOf(result.state.blackMoves).san);
+    }
+    expect(sans.size).toBeGreaterThan(1); // the uniform-random fallback really ran, not one fixed pick
+    for (const san of sans) {
+      expect(san.startsWith("N")).toBe(false); // every engine candidate was a Knight move -- none ever chosen
+    }
+  });
+
+  it("never calls the engine while a book line still matches", async () => {
+    const pool = nflPool();
+    const [whitePlayer, ...blackPool] = pool;
+    const state = playWhiteMove(new BuildState(), uci("e2e4"), whitePlayer, NFL, CONTEST, BOOK).state;
+
+    const engine = fakeEngine([engineCandidate("g8f6", 999)]);
+    const result = await playBlackMove(state, BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(1), KingMode.EMERGE, engine);
+
+    expect(engine.analyze).not.toHaveBeenCalled();
+    expect(bookContinuations(["e4"], BOOK).has(lastOf(result.state.blackMoves).san)).toBe(true);
+  });
+
+  it("same seed gives the same engine-assisted move", async () => {
+    const pool = nflPool();
+    const [whitePlayer, ...blackPool] = pool;
+    const state = playWhiteMove(new BuildState(), uci("e2e4"), whitePlayer, NFL, CONTEST, []).state;
+    const candidates = [engineCandidate("e7e5", 30), engineCandidate("c7c5", 25), engineCandidate("d7d5", 10)];
+
+    const r1 = await playBlackMove(state, [], {}, 0, NFL, CONTEST, blackPool, new SeededRandom(42), KingMode.EMERGE, fakeEngine(candidates));
+    const r2 = await playBlackMove(state, [], {}, 0, NFL, CONTEST, blackPool, new SeededRandom(42), KingMode.EMERGE, fakeEngine(candidates));
+
+    expect(lastOf(r1.state.blackMoves).san).toBe(lastOf(r2.state.blackMoves).san);
   });
 });

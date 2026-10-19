@@ -15,6 +15,9 @@ dist-ssr
 # synced from ../data and ../config by `npm run sync-data` — originals are the source of truth
 src/data
 
+# synced from node_modules/stockfish by `npm run sync-stockfish` — the npm package is the source of truth
+public/stockfish
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -17,9 +17,14 @@ element) rank is closest to the contest's target rank (Task 20:
 family counts as farthest), ties broken by a seeded random choice --
 and plays that line exactly for as long as it keeps matching (see
 `play_black_move`, `BuildState.black_committed_line`). Once no book
-line matches, or there's nothing
-left to commit to, Black plays any legal move, chosen uniformly. A
-capture is its own category now (Task 18): the captured player IS the
+line matches, or there's nothing left to commit to, Black plays any
+legal move, chosen uniformly -- no engine dependency here by design
+(keep this engine pure); the TS port's `playBlackMove` instead prefers a
+Stockfish-backed choice in that same situation (see
+web/src/engine/build.ts's own header), a deliberate, TS-only divergence
+that's out of scope for parity.test.ts (which never exercises either
+engine's free-play branch at all). A capture is its own category now
+(Task 18): the captured player IS the
 move's pick. If the captured piece has no lock history -- it never
 moved -- there's nothing to transfer, so Black instead picks the same
 TEMPORARY placeholder (highest `proj` among legal, unlocked candidates)

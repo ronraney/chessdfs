@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "sync-data": "node scripts/sync-data.mjs",
-    "dev": "npm run sync-data && vite",
-    "build": "npm run sync-data && tsc -b && vite build",
-    "test": "npm run sync-data && vitest run",
+    "sync-stockfish": "node scripts/sync-stockfish.mjs",
+    "dev": "npm run sync-data && npm run sync-stockfish && vite",
+    "build": "npm run sync-data && npm run sync-stockfish && tsc -b && vite build",
+    "test": "npm run sync-data && npm run sync-stockfish && vitest run",
     "lint": "oxlint",
     "preview": "vite preview"
   },
@@ -17,6 +18,7 @@
     "papaparse": "^5.7.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "stockfish": "^11.0.0",
     "yalps": "^0.6.4"
   },
   "devDependencies": {

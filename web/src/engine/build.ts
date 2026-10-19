@@ -17,7 +17,19 @@
 // farthest), ties broken by a seeded random choice -- and plays that line
 // exactly for as long as it keeps matching (see playBlackMove,
 // BuildState.blackCommittedLine). Once no book line matches, or there's
-// nothing left to commit to, Black plays any legal move, chosen uniformly.
+// nothing left to commit to, Black asks its injected `BlackEngine` (see
+// blackEngine.ts) for its top candidates, drops any that fail the DFS rules
+// for Black (not completable), and plays a seeded choice among whatever's
+// left within 50cp of the best of those (chooseAmongSound) -- falling back
+// to any legal move, chosen uniformly, if the engine has no opinion (the
+// default `noEngine`) or none of its candidates survive filtering. This is
+// a deliberate TS-only divergence from the Python engine, which has no
+// engine dependency and always falls back to the uniform-random choice --
+// parity.test.ts's fixture harness never exercises playBlackMove's
+// free-play branch at all (every scenario there is constructed to be
+// deterministic), so there's nothing to reconcile there; this is simply out
+// of scope for parity by construction.
+//
 // A capture is its own category: the captured player IS the move's pick.
 // If the captured piece has no lock history -- it never moved -- there's
 // nothing to transfer, so Black instead picks the same TEMPORARY
@@ -33,6 +45,14 @@
 // unlocked candidates -- until the Monte Carlo sim is ported.
 
 import type { Move as ChessJsMove } from "chess.js";
+import {
+  chooseAmongSound,
+  ENGINE_MOVE_TIME_MS,
+  ENGINE_MULTIPV,
+  noEngine,
+  type BlackEngine,
+  type EngineCandidate,
+} from "./blackEngine";
 import type { ContestConfig } from "./config";
 import { BuildState, KingMode, Piece, Player, Side } from "./models";
 import type { BookLine } from "./openings";
@@ -457,17 +477,54 @@ export function playWhiteMove(
   return new MoveResult({ state: newState, opening, message });
 }
 
+function moveKey(move: { from: string; to: string; promotion?: string }): string {
+  return `${move.from}${move.to}${move.promotion ?? ""}`;
+}
+
+// Asks `engine` for Black's out-of-book move among `dfsLegalCandidates`
+// (already filtered to whatever's both chess-legal and DFS-sound for Black
+// right now -- see playBlackMove). Engine candidates outside that allow-list
+// (the engine knows nothing about DFS/roster rules) are dropped before
+// chooseAmongSound ever sees them. Returns null -- the caller's cue to fall
+// back to a uniform-random choice among `dfsLegalCandidates` -- if the
+// engine has no opinion at all (the default `noEngine`), it fails outright
+// (a real Stockfish worker that errors or never responds), or none of its
+// candidates survive the allow-list filter.
+async function chooseEngineMove(
+  state: BuildState,
+  dfsLegalCandidates: readonly ChessJsMove[],
+  rng: SeededRandom,
+  engine: BlackEngine,
+): Promise<ChessMove | null> {
+  let engineCandidates: readonly EngineCandidate[];
+  try {
+    engineCandidates = await engine.analyze(state.board.fen(), ENGINE_MULTIPV, ENGINE_MOVE_TIME_MS);
+  } catch {
+    return null;
+  }
+
+  const legalKeys = new Set(dfsLegalCandidates.map(moveKey));
+  const sound = engineCandidates.filter((c) => legalKeys.has(moveKey(c.move)));
+  return chooseAmongSound(sound, rng)?.move ?? null;
+}
+
 // Generates and applies Black's move. Outside an explicit template
 // (RULES.md "Opening templates"), Black commits to one full book line at a
 // time -- chosen among every line matching the moves so far, the one whose
 // family rank is closest to `targetRank`, excluding any whose next move
 // Black can't actually play -- and plays that line exactly for as long as
 // it keeps matching (state.blackCommittedLine). Black re-chooses only once
-// that line runs out or White's own move no longer matches it; with no
-// line to commit to at all, any legal move is played, chosen uniformly.
-// Locks a player normally, unless Black's lineup is already full, in which
-// case the move is pushed silently (see module comment above).
-export function playBlackMove(
+// that line runs out or White's own move no longer matches it; with no line
+// to commit to at all, `engine` (see blackEngine.ts; defaults to `noEngine`,
+// i.e. no engine at all) is asked for its top candidates, any that aren't
+// DFS-sound for Black are dropped, and a seeded choice is made among
+// whatever's left within 50cp of the best of those -- or, failing all of
+// that, any legal move, chosen uniformly, exactly as before this had an
+// engine at all. Locks a player normally, unless Black's lineup is already
+// full, in which case the move is pushed silently (see module comment
+// above). Async solely because `engine.analyze` is -- every other branch
+// resolves synchronously underneath the returned promise.
+export async function playBlackMove(
   state: BuildState,
   book: readonly BookLine[],
   familyRanks: Readonly<Record<string, number>>,
@@ -477,7 +534,8 @@ export function playBlackMove(
   playersPool: readonly Player[],
   rng: SeededRandom,
   kingMode: KingMode = KingMode.EMERGE,
-): MoveResult {
+  engine: BlackEngine = noEngine,
+): Promise<MoveResult> {
   if (state.board.turn() !== "b") {
     throw new Error("it is not Black's turn");
   }
@@ -528,8 +586,9 @@ export function playBlackMove(
   }
 
   if (chessMove === null) {
-    // No book line to commit to at all: any legal move, chosen uniformly --
-    // RULES.md gives no other weighting signal for free play.
+    // No book line to commit to at all: every DFS-sound legal move -- the
+    // same allow-list the engine's own candidates get checked against
+    // below, and the uniform-random fallback if none of those pass either.
     const legalMoves = state.board.moves({ verbose: true });
     let candidates: ChessJsMove[];
     if (blackIsFull) {
@@ -543,8 +602,13 @@ export function playBlackMove(
     if (candidates.length === 0) {
       throw new NoLegalBlackMoveError();
     }
-    const chosen = rng.choice(candidates);
-    chessMove = { from: chosen.from, to: chosen.to, promotion: chosen.promotion };
+
+    chessMove = await chooseEngineMove(state, candidates, rng, engine);
+    if (chessMove === null) {
+      // RULES.md gives no other weighting signal for free play.
+      const chosen = rng.choice(candidates);
+      chessMove = { from: chosen.from, to: chosen.to, promotion: chosen.promotion };
+    }
   }
 
   let newState: BuildState;

@@ -74,6 +74,7 @@ import {
   switchKing,
   type ChessMove,
 } from "./engine/rules";
+import { stockfishEngine } from "./stockfishEngine";
 import PickPanel, { type PickMoveContext } from "./PickPanel";
 import type { ChosenOpening } from "./SetupScreen";
 import ThemeToggle from "./ThemeToggle";
@@ -571,7 +572,13 @@ export default function BuildScreen({
         ? { orig: lastRealMove.from, dest: lastRealMove.to }
         : null;
 
-  // Starts (or restarts) Black's reply timer for `newState`.
+  // Starts (or restarts) Black's reply timer for `newState`. The callback
+  // itself is async: out of book, playBlackMove awaits a real Stockfish
+  // move (stockfishEngine.ts, a Web Worker) before resolving -- this is what
+  // keeps that think time off the UI thread. The existing "The Field is
+  // moving…" status line (see statusLine below) already covers the whole
+  // wait regardless of its source (the fixed BLACK_REPLY_DELAY_MS pause, or
+  // the engine itself), so no new status text is needed for it.
   function scheduleBlackReply(newState: BuildState): void {
     if (blackTimerRef.current !== null) clearTimeout(blackTimerRef.current);
     if (newState.board.turn() !== "b") {
@@ -579,9 +586,11 @@ export default function BuildScreen({
       return;
     }
     setBlackMoving(true);
-    blackTimerRef.current = setTimeout(() => {
+    blackTimerRef.current = setTimeout(async () => {
       try {
-        const result = playBlackMove(newState, BOOK, familyRanks, targetRank, NFL, preset.contest, players, rng, kingMode);
+        const result = await playBlackMove(
+          newState, BOOK, familyRanks, targetRank, NFL, preset.contest, players, rng, kingMode, stockfishEngine,
+        );
         setBlackMoveNote(describeBlackMove(newState, result.state));
         setState(result.state);
         // Black's reply just handed the turn back to White -- the one

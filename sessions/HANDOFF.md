@@ -28,7 +28,7 @@ it. The TS port of the engine is complete, with a standing parity harness
 proving it matches Python on real, deterministic scenarios. The UI's player
 flow is upload-free: **contest + King mode + opening (one merged setup
 screen) → build → finish**. A hidden admin screen (`#/admin`) handles the
-one CSV upload instead, now with real slate validation (see below). Secrets
+one CSV upload instead, with real slate validation. Secrets
 (`LICHESS_API_TOKEN`, `VITE_ADMIN_PASSWORD`) live in gitignored `.env`
 files, never printed. Club (light) and Slate (dark) themes exist app-wide,
 CSS-variable driven, with a header toggle.
@@ -41,41 +41,28 @@ first-match winner. A move's **pick list** is `engine/picklist.ts`'s
 unlocked, roster/salary-feasible players, sorted by that piece's own GPP
 metric (`engine/metrics.ts`/`dfs_chess/metrics.py`'s `sortMetric`: King/Rook
 by projection, Queen by ceiling, Bishop by leverage, Knight by floor value,
-Pawn by value — all "per $1,000 salary" except King/Queen/Rook's own
-points), and capped per-piece (`sport.json`'s `list_caps`: 12 for
+Pawn by value), and capped per-piece (`sport.json`'s `list_caps`: 12 for
 Queen/Rook/Bishop/Knight, none for King/Pawn). **The cap is applied after**
-removing taken/infeasible players, not before — so the pick modal's old
-"greyed out, can't be locked" row for an infeasible candidate basically
-never fires anymore; they're filtered out before the list is ever built,
-not shown-and-disabled.
+removing taken/infeasible players, not before.
 
-**Rook is team-based now ("Rook = correlation")**: eligible as RB/WR/TE on
+**Rook is team-based ("Rook = correlation")**: eligible as RB/WR/TE on
 the moving side's own locked QB's team, any salary — or, if that side's QB
-isn't locked yet, any RB/WR/TE regardless of team (`PieceBand.teamRestricted`
-+ `classify`'s `qbTeam` param). Castling's QB step only offers QBs with
-≥1 eligible teammate (`castleQbCandidates`); PLACED king mode's one-time
-"Switch your QB?" offer now resolves **before** the Rook pick, not after,
-since the Rook has to match whichever QB ends up final. Queen/Bishop/Knight
-tightened from "any non-QB" to explicit RB/WR/TE (DST lost Queen
-eligibility at $7,000+ as a result). Once a player is actually locked,
-their displayed/captured piece is whichever one the locking move recorded
-(`Move.piece`), never re-derived from `classify()`. See
-`config/sports/nfl.json` for the current NFL bands and
-`sessions/1026/10192026-pieces-sort-by-gpp-metric.md` for the full design
-rationale (piece-pools itself, prior to sort metrics, is in
-`sessions/1026/10152026-piece-pools-and-board-bug-fixes.md`).
+isn't locked yet, any RB/WR/TE regardless of team. Castling's QB step only
+offers QBs with ≥1 eligible teammate; PLACED king mode's one-time "Switch
+your QB?" offer resolves **before** the Rook pick, not after. Once a
+player is actually locked, their displayed/captured piece is whichever one
+the locking move recorded (`Move.piece`), never re-derived from
+`classify()`. See `config/sports/nfl.json` for the current NFL bands.
 
-**DK roster slots are a separate concept from pieces, computed on demand**
-(this session): `assignRosterSlots`/`assign_roster_slots`
-(`engine/rules.ts`/`dfs_chess/rules.py`) takes a locked roster and returns
-which named DK slot (QB/RB/WR/TE/FLEX/DST) each player occupies, via the
-same Kuhn's-algorithm bipartite matching `maxAssignable`/`openRosterSlots`
-already use internally — just recording the actual assignment instead of
-only a feasibility count. Shown on the finish screen and in "Copy lineup"
-as a "Slot" column before "Piece". Which of several interchangeable
-same-position players draws "FLEX" vs. its own dedicated slot is whatever
-the matching search finds first, not lock order — a cosmetic artifact, not
-a bug (same-named slot instances are indistinguishable on screen).
+**DK roster slots are a separate concept from pieces, computed on demand**:
+`assignRosterSlots`/`assign_roster_slots` (`engine/rules.ts`/
+`dfs_chess/rules.py`) takes a locked roster and returns which named DK slot
+(QB/RB/WR/TE/FLEX/DST) each player occupies, via Kuhn's-algorithm bipartite
+matching. Shown on the finish screen and in "Copy lineup" as a "Slot"
+column. **This session added a second, separate consumer of `sport.
+rosterSlots`**: `engine/optimizer.ts`'s exact lineup solver (see below) —
+`assignRosterSlots` only proves a roster *can* be completed and picks
+*some* valid assignment; it has no notion of "best."
 
 **Environment note**: accessed from Windows via the
 `\\wsl.localhost\Ubuntu\...` UNC path. Every git/npm command needs
@@ -86,201 +73,226 @@ which rejects the UNC working directory). git needed a one-time
 **jsdom (this project's entire test environment) runs no CSS layout
 engine**: `getBoundingClientRect`/`offsetWidth`/`scrollWidth` are always 0
 regardless of the real stylesheet, and `getComputedStyle` never evaluates
-`@media` queries at all. Any future task asking for a rendered-layout/
-viewport-geometry test needs either a real browser (still not launchable
-here — Playwright's cached Chromium fails on missing `libasound.so.2`, no
-sudo to install it) or a mechanism/DOM-structure test instead, clearly
-labeled as such. **A handful of real-chessground/real-engine `userEvent`
-tests sit close to Vitest's 5000ms default timeout under full-suite
-parallel load** (confirmed pre-existing machine-load flakiness, not a code
-inefficiency — see this session's log for the investigation). The known
-offenders in `SetupScreen.test.tsx`, `BuildScreen.secondMove.test.tsx`, and
-`BuildScreen.test.tsx` now carry explicit 15000–20000ms per-test timeouts
-(confirmed via 3 consecutive clean full-suite `npm run test` runs this
-session), but the underlying cause (CPU contention from 20 parallel
-workers, each spawning its own jsdom + real chessground) is environmental,
-not fixed — a new heavy test added without an explicit timeout could still
-flake under load. `npx vitest run --testTimeout=20000` remains the
-belt-and-suspenders form when a clean count absolutely must not flake.
+`@media` queries at all; it also has **no `ResizeObserver` at all**
+(`test-setup.ts` now stubs a no-op one, since `BuildBoard.tsx` constructs a
+real one on mount — see this session's Task below). Any future task asking
+for a rendered-layout/viewport-geometry test needs either a real browser
+(still not launchable here — Playwright's cached Chromium fails on missing
+`libasound.so.2`, no sudo to install it) or a mechanism/DOM-structure test
+instead, clearly labeled as such.
+
+**A growing list of real-chessground/real-engine `userEvent` tests sit
+close to Vitest's 5000ms default timeout under full-suite parallel load**
+(this machine: ~23 vitest workers on 8 cores when running the full suite —
+confirmed via `/proc/loadavg`/`nproc` this session). Each occurrence so far
+has been genuine, not a removable inefficiency — confirmed via isolated
+timing runs — and fixed the same way: an explicit per-test timeout (15000–
+20000ms) matching the test's own real cost. **This session added three more
+occurrences** (see the Lineup Optimizer task below) after a new, small
+per-render computation tipped previously-comfortable tests over the
+default; **one of those three turned out to be a genuine, fixable
+inefficiency instead** (a redundant full book-array rescan on every render,
+in the Template/Continuations task below) — worth checking for an actual
+fix before reaching for a timeout bump, since a bump alone doesn't reduce
+real CPU cost system-wide, it just hides it in one spot. `npx vitest
+run --testTimeout=20000` remains the belt-and-suspenders form when a clean
+count absolutely must not flake.
 
 ## Where We Are
 
-- **377 Vitest tests passing, 233 pytest passing**, `tsc -b` and `oxlint`
-  both clean (full `npm run test`/`pytest` re-confirmed after the
-  commit below).
-- **One commit this session**: `0e860b1` ("Rule change — Pieces sort by
-  GPP metric"), pushed to `origin/main`. Full narrative:
-  `sessions/1026/10192026-pieces-sort-by-gpp-metric.md`. New modules
-  `dfs_chess/metrics.py`/`picklist.py` and `engine/metrics.ts`/
-  `picklist.ts` (+ their own test files) on top of the piece-table/
-  castling/loader/PickPanel changes described in Project Context above.
-  `tools/export_parity.py` regenerated with 4 new scenarios
-  (`pick_list`/`castle_qb_candidates`); `parity.json` is current.
-- **ETR loader now also maps `DK Floor`/`DK Ceiling` → `Player.floor`/
-  `.ceiling`, and strips a leading "@" from `Opp`** (`"@ARI"` → `"ARI"`)
-  — `loaders.py`/`loaders.ts`, mapped there only. Admin upload validation
-  (`validate_etr_csv`/`validateSlateCsv`) now requires both new columns
-  too, alongside the existing six.
-- **Finish screen has a "Copy lineup" button** (Task 42): copies the
-  locked core as tab-separated plain text (Slot/Piece/Player/Pos/Team/
-  Salary per row, then a totals block — salary used/remaining,
-  projection, ownership, opening, moves) to the clipboard, showing
-  "Copied" for 1.5s. `lineupText`/`formatMoveList` in `BuildScreen.tsx`.
-- **DK roster slot assignment exists and is displayed** (Task 43, see
-  Project Context above) — finish-screen table and Copy lineup both show
-  it now.
-- **The pick modal shows the chosen line's own move list under its title**
-  (Task 43), the move being picked highlighted — the line's full fixed
-  moves while still on-book, or the moves actually played so far plus the
-  pending one once off-book. `PickPanel`'s `moveContext` prop, computed in
-  `BuildScreen.tsx`. Its candidate column (this session) now shows the
-  moved piece's own sort metric (e.g. "Lev 2.31") instead of always "Proj",
-  subtitled "sorted by <metric name>".
-- **Opening explorer rows wrap long move lists to 2 lines** instead of
-  truncating with "…" (`.explorer-moves` in `SetupScreen.css`, a
-  `line-clamp`) — CSS-only, unverified in a real browser (standing
-  environment limitation).
-- **The Suggested card shows the opening's piece sequence as icon boxes in
-  actual move order** (White outline glyphs, Black solid), replacing the
-  old "White: P N B / Black: P N B" text — matches
-  `design/1-club-setup.png`. `PieceSequence`/`interleavePieces` in
-  `SetupScreen.tsx`.
-- **The admin slate upload now validates real-world CSV problems before
-  saving**: no ID column, missing/duplicate IDs, missing required columns
-  (named in the error — 8 now, `DK Floor`/`DK Ceiling` added this
-  session), too few players for any DK roster slot. A rejected upload
-  keeps whatever slate was already saved. Success shows player count, a
-  by-position tally, and which column was used as the ID.
-  `validateSlateCsv` (`engine/loaders.ts`) / `validate_etr_csv`
-  (`dfs_chess/loaders.py`) — deliberately separate from
-  `loadEtrCsv`/`load_etr_csv`, which ~20+ other callers (tests, `tools/`,
-  the CLI) still use unvalidated against small/synthetic CSVs.
-- Everything else unchanged from before this session: the board renders
-  correctly (BoardSquares/index.css, Task 38b), endings/Take back/Start
-  again (Task 40), mobile responsiveness (Task 41, still only
-  DOM-structure-tested), `config/contests.json` is still the source for
-  contests, theme toggle untouched, `BuildBoard.tsx`'s turnColor fix
-  (White's 2nd+ move) untouched. TS/Python engines still in parity — this
-  session's own piece-table/castling/metrics changes DID change
-  `parity.json` (regenerated via `tools/export_parity.py`, 47 scenarios
-  now vs. 43 before); re-run both `tools/export_parity.py` and `npm run
-  test` the next time the engine changes.
+- **387 Vitest tests passing, 233 pytest passing**, `tsc -b` and `oxlint`
+  both clean (re-confirmed after each of this session's three commits,
+  full `npm run test` re-run 3+ times per commit to rule out flakes under
+  full-suite parallel load).
+- **Three commits this session**, all pushed to `origin/main`:
+
+  1. **`8121748`** ("Rule change — Board clicks land one square off").
+     Bug: chessground memoizes its own board bounds and only recomputes
+     them from inside `redrawAll()`; a layout shift above/around the board
+     (status line length, banner, Book continues, pick panel width) moved
+     the real board element without chessground finding out, so clicks
+     landed against stale bounds. Fix (`BuildBoard.tsx`): a `ResizeObserver`
+     on the board's own container (catches size changes) plus a second
+     effect with no dependency array that calls `redrawAll()` after every
+     render (catches a pure position shift from a sibling, which a
+     `ResizeObserver` can't see — relies on `BuildBoard` re-rendering
+     whenever `BuildScreen` does, since it isn't memoized). **Finding**:
+     chessground already runs its own internal `ResizeObserver` on the
+     same container (`events.ts`'s `bindDocument`) for a lighter bounds-
+     cache clear — the added one is partly redundant with it for pure size
+     changes, kept anyway since the task named it explicitly; the no-dep
+     effect is what actually closes the real gap. jsdom can't verify real
+     bounds/positioning (only that the wiring fires) — unverified in a
+     real browser, same standing limitation as everything else below.
+  2. **`dfbd7ca`** ("Rule change — Lineup optimizer + points from
+     optimal"). New `engine/optimizer.ts`: the best legal DK Classic
+     lineup by total projection, subject to `sport.rosterSlots` (FLEX
+     handled generically, no special-casing) and a salary cap, with
+     optional locked/excluded players. Modeled as a 0/1 MILP (one binary
+     variable per eligible player/slot pair) and solved exactly by
+     **`yalps`** (new dependency — small, pure TypeScript, no WASM — named
+     per the task's own "you may add one small LP/ILP dependency"
+     allowance). A real ~300-player slate took 2.3s to solve naively; a
+     dominance-pruning pre-pass (provably safe — see the module's own
+     comment for the proof) cut that to ~180ms with an identical answer;
+     a `WeakMap` cache (keyed by the `players` array's own identity, same
+     pattern `rules.ts`'s `findLegalMove` cache uses for a board) then
+     makes "slate optimal" (no locks, no exclusions) a true compute-once-
+     per-slate/contest cost. "Best completion" (locks forced, Black's
+     picks excluded) recomputes in a few ms per pick. **Deviation flagged**:
+     the task suggested dropping 0-projection players as the performance
+     lever; the real sample slate has none, so dominance pruning (strictly
+     more general) was used instead. `BuildScreen.tsx`'s White panel (under
+     Core projection) and the finish screen both show "Pts from optimal"
+     (`buildStats.ts`'s `pointsFromOptimal`), "—" if either solve is ever
+     infeasible. Python engine untouched — display feature, not a rule.
+  3. **`d09e81e`** ("Rule change — Black follows the chosen template;
+     continuations by real popularity"). Two bugs reported together, both
+     traced to Task 38's "line only suggests White's moves" rewrite, which
+     swapped Black's driver to `playBlackMove` but never seeded
+     `BuildState.blackCommittedLine` from the user's chosen opening —
+     Black re-chose by rank-closeness on its very first reply, every
+     build, regardless of what White chose. **Fix 1**: `BuildScreen.tsx`'s
+     initial state now seeds `blackCommittedLine` from `chosenOpening.line.
+     moves` when the user picked a specific "line" (not "own opening") —
+     no engine change needed, `playBlackMove`'s own existing "keep the
+     committed line while it matches, re-choose once it doesn't" logic
+     does the rest. **Fix 2**: "Book continues" sorted by `RANK_BY_FAMILY`
+     alone — a whole-family, whole-corpus popularity rank, not how often a
+     move is actually played *from this position* — letting a real,
+     heavily-played reply (e.g. 2. Nf3 after 1. e4 e5) rank `Infinity`
+     whenever its family was `DEFAULT_EXCLUDED_FAMILIES` or lacked a ≥6-ply
+     representative line, pushing it past the top-8 cut. `data/openings/
+     popularity.json` (real per-position Lichess game counts) was already
+     vendored and loaded by `loaders.ts` but never wired to anything
+     (flagged dead in last session's handoff) — `appData.ts` now exports
+     it as `POPULARITY`; the continuation sort uses it as the primary key,
+     family rank only as a tiebreak. **Hypothesis assessment** (user's own,
+     given with the bug report): partly confirmed — Black's template
+     commitment being dropped, and Black's own choice being ordered by
+     rank-closeness, are both exactly right; "the continuations list
+     ordered by closeness to target rank" is rejected as literally stated
+     (`targetRank` never appears in that sort), though the list's actual
+     bug produces the same visible symptom. No Python changes — the CLI's
+     own template mode already drives Black correctly via
+     `play_black_template_move`; "Book continues" has no CLI equivalent.
 
 ## Where We're Headed
 
-1. **Real-browser verification** — Task 41's mobile checklist, the
-   click-to-move first-move question (see Open Items), the 10/15 session's
-   two CSS-only changes (Explorer row wrapping, the piece-icon boxes), and
-   now also this session's new pick-modal metric column (e.g. "Lev 2.31")
-   and the reordered PLACED-mode switch-then-Rook castling flow. No
-   browser can launch in this environment at all.
+1. **Real-browser verification** — still the standing, unresolved gap: no
+   browser can launch in this environment at all. Growing list of CSS-only
+   and interaction changes that need a real device/browser pass (mobile
+   responsiveness, Explorer row wrapping, piece-icon boxes, the pick-modal
+   metric column, the reordered PLACED-mode castling flow, this session's
+   chessground resize fix, and the "Pts from optimal" display).
 2. Decide on chessground's GPL-3.0 license — long-standing, unchanged.
-3. The Monte Carlo sim port from `rraney/nfl-dfs` — still needed.
+3. The Monte Carlo sim port from `rraney/nfl-dfs` — still needed. (Note:
+   this is NOT the same thing as this session's new lineup optimizer —
+   the optimizer answers "what's the single best legal lineup," the sim
+   answers "what's this lineup's distribution of outcomes.")
 4. Simulated "Top 10%" metric — still a known gap.
 5. Ron needs to create **`web/.env`** with his own `VITE_ADMIN_PASSWORD=...`
    — still not created, deliberately.
 6. `CONTINUATION_LIMIT = 8` (Book continues' cap) is still a guessed
-   number, not spec'd — flag if it needs tuning either direction.
+   number, not spec'd — flag if it needs tuning either direction. Now also
+   worth revisiting alongside this session's popularity-sort fix: with
+   real per-position popularity driving the order, 8 may surface a
+   different, more "obviously right" set of moves than it did before.
 7. PLACED king mode's "silent King move while dragging" path still has no
    dedicated test.
 8. If the engine changes, re-run `tools/export_parity.py` and `npm run
-   test` to keep the parity fixture honest.
-9. If more tests start flaking under full-suite load (new heavy real-
-   engine/real-chessground tests, a slower CI machine, etc.), the same
-   "extend this specific test's timeout to match its real cost" treatment
-   applies — see this session's log for the investigation that ruled out
-   an actual removable inefficiency.
-10. **`tools/sim_builds.py`** (standalone, not covered by `pytest`) still
-    calls `classify(p, sport)` with the old 2-arg signature (default
-    `qbTeam=None`) and assumes Rook is RB-only in a couple of spots — not
-    updated this session (outside the task's scope, and nothing imports
-    it), but it'll give stale-looking Rook numbers if run as-is.
+   test` to keep the parity fixture honest. **Note**: `engine/optimizer.ts`
+   is NOT in the parity harness — it has no Python equivalent at all
+   (display-only), so there's nothing to keep in parity.
+9. If more tests start flaking under full-suite load, the same "extend
+   this specific test's timeout to match its real cost" treatment applies
+   — but check for a genuine fixable inefficiency first (this session
+   found one: a redundant full-book rescan, fixed instead of just padding
+   the timeout).
+10. **`tools/sim_builds.py`** still calls `classify(p, sport)` with the old
+    2-arg signature and assumes Rook is RB-only — unchanged, out of scope,
+    flagged again.
+11. **DEFAULT_EXCLUDED_FAMILIES serves two different purposes now** (see
+    Open Items) — worth deciding whether that's intentional.
 
 ## Open Items
 
+- **`DEFAULT_EXCLUDED_FAMILIES` (openings.ts) is used for two different
+  questions that don't necessarily have the same answer**: "should this
+  family ever be *suggested* as a named opening" (its original purpose —
+  e.g. "King's Knight Opening" is too generic a catch-all to usefully
+  suggest) and, as of this session's fix, "how should this move be
+  *ordered* in Book continues relative to others." The continuation sort
+  now uses real per-position popularity as its PRIMARY key specifically so
+  excluded-family moves (like 2. Nf3) no longer rank last just for being
+  unranked — `rank`/`RANK_BY_FAMILY` is now only a tiebreak. Flagged as a
+  design question, not fixed further: is a family that's "too generic to
+  suggest" also something Ron wants visually de-emphasized in Book
+  continues, or should real popularity be the only signal there now?
+  Unconfirmed either way.
+- **`yalps` (the lineup optimizer's MILP solver) is a new runtime
+  dependency** — small (~15KB unminified, ~280KB on disk with its own
+  package metadata), pure TypeScript, no WASM/native bindings, MIT-
+  licensed per its own `package.json`. Not yet reviewed by Ron beyond this
+  session's own justification in the commit message.
+- **The dominance-pruning pre-pass in `engine/optimizer.ts` is a real,
+  nontrivial piece of logic** (not just a cache) — worth a second pair of
+  eyes given how subtle the first draft's bug was (it initially dropped
+  ALL copies of an exact-tied group needed to fill a multi-count slot,
+  caught and fixed before it shipped via a dedicated regression test:
+  "keeps enough identical RBs to fill RB + FLEX, even though they're all
+  tied").
+- **Points from optimal's display hasn't been seen in a real browser** —
+  same standing limitation as everything else; the stat itself is
+  computed/tested in `engine/optimizer.test.ts`, but its actual on-screen
+  layout (under Core projection, and on the finish screen) is unverified.
 - **DST (and any other non-RB/WR/TE/QB position) lost Queen eligibility**
-  this session — Queen/Bishop/Knight tightened from "any non-QB ≥ their
-  floor" to explicit RB/WR/TE, so a DST priced $7,000+ no longer pools
-  into Queen the way it used to. A hypothetical position that's neither
-  QB/RB/WR/TE/DST, priced ≥ $5,000, would now classify as *no piece at
-  all* (DK has no such real slot, so practically inert, but a genuine gap
-  if one ever gets added). Flagged to Ron when the change shipped;
-  unconfirmed whether it's wanted as a permanent rule or was collateral
-  from the RB/WR/TE tightening.
-- **The pick modal's "greyed out, infeasible, can't be locked" row display
-  is now effectively dead code in practice** — `pickList`/`castleQbCandidates`
-  already filter out infeasible candidates before a list is ever built
-  (RULES.md "List cap": "the cap applies after removing ... players who
-  don't fit"), so nothing `PickPanel` shows is ever actually infeasible
-  anymore. The `reasons`/greyed-out mechanism itself was left in place
-  (harmless, no reason to rip it out), just verified nothing currently
-  triggers it.
-- **Najdorf/Fried Liver no longer "break" in `legal_depth`/`openingPreview`**
-  (`test_openings.py`/`openings.test.ts`, renamed and re-asserted this
-  session) — a correct side effect of Knight/Bishop now pooling RB/WR/TE
-  (7 shared roster slots) instead of one position each (2 slots: TE/WR +
-  FLEX). Not a bug; just a different number now.
+  (prior session) — unchanged, still flagged, still unconfirmed whether
+  wanted as a permanent rule.
+- **The pick modal's "greyed out, infeasible" row display is dead code in
+  practice** (prior session) — unchanged, left in place defensively.
 - **Click-to-move's real root cause for a *first*-move failure is still
-  genuinely unconfirmed.** A prior session's turnColor desync fix only
-  explains White's *second* move onward; a first-move click failure (the
-  original bug report) can't be the same mechanism, since turnColor
-  starts correctly at `'white'` and hasn't desynced yet. No real-browser
-  testing possible here to settle it; needs either a real device or more
-  repro detail from Ron (browser/OS, console output, 100%-reproducible vs.
-  intermittent). Unchanged this session.
-- **Real-browser checklist for Task 41, at 375px, both themes** — see
-  `sessions/1026/10142026-tasks-36-38-themes-and-build-screen-rework.md`
-  (or the prior handoff) for the exact checklist; still unprovable from
-  this environment. Now also covers this session's Explorer-wrap and
-  piece-icon CSS changes.
-- **`assignRosterSlots`/`validate_etr_csv` aren't in
-  `tools/export_parity.py`'s scenario set** — TS/Python parity for these
-  two new functions rests on hand-mirrored unit tests, not the shared
-  JSON fixture (consistent with how `maxAssignable`/`openRosterSlots`
-  were already tested, but worth knowing if the parity harness is ever
-  extended to cover this area).
+  genuinely unconfirmed** (prior session) — unchanged; the *second*-move
+  desync and this session's board-resize bug are both independently
+  fixed, but the original first-move report predates both and can't be
+  explained by either.
+- **`assignRosterSlots`/`validate_etr_csv` aren't in the parity harness**
+  (prior session) — unchanged. `engine/optimizer.ts` is ALSO not in the
+  parity harness, but for a different reason (no Python equivalent exists
+  at all, not "not yet added").
 - **Which interchangeable player draws "FLEX" vs. its own dedicated slot
-  is a cosmetic artifact of the bipartite matching search**, not lock
-  order — see `assignRosterSlots`'s own code comment if a future task
-  wants deterministic "most recently locked → FLEX" behavior specifically
-  (would need a different algorithm than the one reused here).
+  is a cosmetic artifact** of `assignRosterSlots`'s matching search (prior
+  session) — unchanged. Note: `engine/optimizer.ts`'s OWN best-lineup
+  solver has the same kind of tie-break arbitrariness when two candidates
+  are exactly equal on both salary and projection (an explicit, tested,
+  deterministic id tiebreak, not left to chance) — a different mechanism
+  solving a similar-looking problem; don't conflate the two if revisiting
+  either.
 - **`openings.py`'s `_piece_eligible_positions`/TS equivalent had a real
-  bug fixed two sessions ago but with no dedicated new test** — see the
-  piece-pools session log; unchanged.
-- **"Stop with this core" sits in the same place (beside Take back, under
-  the board) at every screen width, not just mobile** — flagged to Ron in
-  an earlier session, not confirmed either way.
-- **Bug 2 (an earlier dead-end mislabeling)'s own root cause was never
-  conclusively found independent of Bug 3 (an earlier id-collision)** —
-  see `sessions/1026/10152026-endings-mobile-pass-bug-fixes.md`;
-  unchanged.
-- **`data/samples/repro-slate.csv`** (a real DK export, Ron's own bug-
-  repro data) **stays on disk, deliberately uncommitted** — confirmed
-  excluded again this session.
-- **`design/`** (PNGs, HTML mockups, `:Zone.Identifier` sidecars) remains
-  uncommitted — Ron's call whether it belongs in version control.
-- **No "Back" navigation to the PREVIOUS screen without discarding
-  progress** — still a known gap, not asked for.
+  bug fixed two sessions ago but with no dedicated new test** (prior
+  session) — unchanged.
+- **"Stop with this core" sits in the same place at every screen width**
+  (prior session) — unchanged, not confirmed either way.
+- **Bug 2/Bug 3's own root cause distinction** (prior session,
+  `10152026-endings-mobile-pass-bug-fixes.md`) — unchanged.
+- **`data/samples/repro-slate.csv`** stays on disk, deliberately
+  uncommitted — confirmed excluded again this session.
+- **`design/`** (PNGs, HTML mockups) remains uncommitted — Ron's call.
+- **No "Back" navigation to the PREVIOUS screen** — still a known gap.
 - **`openingPreview`/`legalDepth` are slow (~49ms/call) and uncached** at
-  the engine level — unchanged, though `appData.ts`'s own `previewFor`
-  memoizes results for the Suggested card's single current selection (not
-  a fix at the engine level, confirmed this session is still the only
-  mitigation in place). `openings.book_weights()`/
-  `loaders.load_popularity()`/`data/openings/popularity.json` still have
-  no engine caller.
-- `cloneBoard`'s PGN-round-trip clone, chess.js's missing APIs
-  (workarounds centralized in `rules.ts`/`openings.ts`/`build.ts`),
+  the engine level (prior session) — unchanged; `appData.ts`'s own
+  `previewFor` memoization is still the only mitigation.
+- `cloneBoard`'s PGN-round-trip clone, chess.js's missing APIs,
   `build.ts`'s generic "illegal move" error — all unchanged.
-- Task-numbering collision ("Task 20c" reused), Scotch Game rank 2 /
-  King's Indian Defense drop confirmation, `excluded_families` and the
-  tier-boundary numbers hardcoded, CLI wording unconfirmed,
-  `contest_type` field, pawn promotion's DFS classification, `logs/` vs
-  `sessions/` doc-process mismatch, `Top_Ten` sim-vs-postmortem
-  distinction, Kings structurally uncapturable (emergent) — all still
-  open, all unchanged, carried forward across several sessions; see
-  `sessions/1026/10132026-pin-top-9-opening-ranks-test.md` and
-  `sessions/1026/10132026-never-moved-captures-field-tiers-and-family-
-  ranking.md` for detail.
+- Task-numbering collision, Scotch Game rank 2 / King's Indian Defense
+  drop confirmation, `excluded_families` and tier-boundary numbers
+  hardcoded, CLI wording unconfirmed, `contest_type` field, pawn
+  promotion's DFS classification, `logs/` vs `sessions/` doc-process
+  mismatch, `Top_Ten` sim-vs-postmortem distinction, Kings structurally
+  uncapturable (emergent) — all still open, all unchanged, carried
+  forward across several sessions; see `sessions/1026/
+  10132026-pin-top-9-opening-ranks-test.md` and `sessions/1026/
+  10132026-never-moved-captures-field-tiers-and-family-ranking.md`.
 - Full narrative for this session: `sessions/1026/
-  10192026-pieces-sort-by-gpp-metric.md`. Prior sessions in `sessions/1026/`
-  for everything predating today.
+  10192026-board-resize-optimizer-template-fix.md`. Prior sessions in
+  `sessions/1026/` for everything predating today.
