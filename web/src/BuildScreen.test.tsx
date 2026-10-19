@@ -104,6 +104,8 @@ function simulateMove(orig: string, dest: string): void {
 const PLAYERS = loadEtrCsv(SAMPLE_CSV);
 const H2H = PRESETS.find((preset) => preset.name === "H2H")!;
 const MORPHY_DEFENSE = BOOK.find((line) => line.eco === "C70" && line.name === "Ruy Lopez: Morphy Defense")!;
+const FRENCH_CLASSICAL = BOOK.find((line) => line.eco === "C12" && line.name === "French Defense, Classical, 4. Bg5")!;
+const VIENNA_GAME = BOOK.find((line) => line.eco === "C25" && line.name === "Vienna Game")!; // 1. e4 e5 2. Nc3
 const WHITE_QB = PLAYERS.find((p) => p.name === "Joe Burrow")!;
 const BLACK_QB = PLAYERS.find((p) => p.name === "Jared Goff")!;
 
@@ -171,19 +173,32 @@ function statusLine(): HTMLElement {
 }
 
 describe("BuildScreen -- move first, then pick", () => {
-  it("shows the chosen line's banner before any move, with Book continues offering it first", () => {
-    renderScreen();
-    expect(document.querySelector(".build-board")).not.toBeNull();
-    expect(screen.queryByRole("dialog")).toBeNull();
+  // Synchronous (no await) but observed timing out at Vitest's 5000ms
+  // default under full-suite parallel load (confirmed via repeated full-
+  // suite runs this session) -- this project's own documented CPU
+  // contention (sessions/HANDOFF.md's Environment note: ~23 workers on this
+  // machine's 8 cores), not a new inefficiency: renderScreen's first real
+  // render is the file's heaviest (real chessground mount + the "Book
+  // continues" build, now also a POPULARITY lookup per candidate). Same
+  // "extend to match real cost" precedent as this file's other explicitly-
+  // timed tests.
+  it(
+    "shows the chosen line's banner before any move, with Book continues offering it first",
+    () => {
+      renderScreen();
+      expect(document.querySelector(".build-board")).not.toBeNull();
+      expect(screen.queryByRole("dialog")).toBeNull();
 
-    expect(screen.getByRole("heading", { level: 1, name: "Ruy Lopez" })).toBeInTheDocument();
-    expect(screen.getByText("C70")).toBeInTheDocument();
-    expect(screen.getByText("Morphy Defense")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Ruy Lopez" })).toBeInTheDocument();
+      expect(screen.getByText("C70")).toBeInTheDocument();
+      expect(screen.getByText("Morphy Defense")).toBeInTheDocument();
 
-    const chosen = chosenContinueButton();
-    expect(chosen).not.toBeNull();
-    expect(chosen.textContent).toContain("1. e4");
-  });
+      const chosen = chosenContinueButton();
+      expect(chosen).not.toBeNull();
+      expect(chosen.textContent).toContain("1. e4");
+    },
+    15000,
+  );
 
   it("Book continues is capped, not a dump of every recorded first move", () => {
     renderScreen();
@@ -347,6 +362,79 @@ describe("BuildScreen -- move first, then pick", () => {
 
     expect(screen.getByText("Left the line after d4")).toBeInTheDocument();
     expect(document.querySelector(".continue-option.chosen")).toBeNull(); // no chosen move left to highlight
+  });
+});
+
+// Bug fix: Black's own committed line (build.playBlackMove's "keep the
+// committed line while it still matches, re-choose by rank-closeness once
+// it doesn't") was never seeded from the chosen opening -- it started null,
+// so Black re-chose by rank-closeness on its very FIRST reply regardless of
+// what White chose, immediately contradicting the chosen line (banner:
+// "Left the line after <Black's own first move>" before White ever
+// deviated at all). See BuildScreen.tsx's state initializer.
+describe("BuildScreen -- the field follows a chosen opening line, not just rank-closeness (bug fix)", () => {
+  it("plays the French Defense Classical's own 1...e6, not whatever rank-closeness would otherwise pick", async () => {
+    const user = userEvent.setup();
+    render(
+      <BuildScreen
+        preset={H2H}
+        players={PLAYERS}
+        kingMode={KingMode.EMERGE}
+        whiteKing={null}
+        blackKing={null}
+        chosenOpening={{ kind: "line", line: FRENCH_CLASSICAL }}
+        onStartAgain={onStartAgain}
+        onNewContest={onNewContest}
+      />,
+    );
+    await user.click(chosenContinueButton()); // the template's own 1. e4
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await selectTopRow(user, dialog);
+    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+
+    await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+
+    expect(statusLine().textContent).toMatch(/^Field played e6 and locked/);
+    expect(document.querySelector(".opening-subtext")?.textContent ?? "").not.toContain("Left the line");
+  });
+
+  // Bug fix: "Book continues" sorted by RANK_BY_FAMILY alone -- a whole-
+  // family, whole-corpus popularity rank, not how often each move is
+  // actually played FROM THIS POSITION. 2. Nf3 (the single most popular
+  // reply to 1. e4 e5 by a wide margin, per data/openings/popularity.json)
+  // ranked dead last (its family, "King's Knight Opening," is deliberately
+  // excluded from RANKED_FAMILIES as too generic to *suggest*), pushing it
+  // past CONTINUATION_LIMIT's top-8 cut entirely. Uses the Vienna Game (1.
+  // e4 e5 2. Nc3) as the chosen line specifically so its own next move
+  // ("Nc3," not Nf3) is what sorts first as "isChosen" -- Nf3's own
+  // position is then driven purely by real per-position popularity
+  // (openings.bookWeights), not by coincidentally being the chosen move.
+  it("ranks 2. Nf3 first or second after 1. e4 e5, by real per-position popularity", async () => {
+    const user = userEvent.setup();
+    render(
+      <BuildScreen
+        preset={H2H}
+        players={PLAYERS}
+        kingMode={KingMode.EMERGE}
+        whiteKing={null}
+        blackKing={null}
+        chosenOpening={{ kind: "line", line: VIENNA_GAME }}
+        onStartAgain={onStartAgain}
+        onNewContest={onNewContest}
+      />,
+    );
+    await user.click(chosenContinueButton()); // the template's own 1. e4
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await selectTopRow(user, dialog);
+    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+
+    await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+    expect(statusLine().textContent).toMatch(/^Field played e5 and locked/); // confirms the position is "1. e4 e5"
+
+    const options = [...document.querySelectorAll(".continue-option")];
+    const nf3Index = options.findIndex((el) => el.querySelector(".continue-move")?.textContent?.includes("Nf3"));
+    expect(nf3Index).toBeGreaterThanOrEqual(0); // present at all (was pushed past the top-8 cut before the fix)
+    expect(nf3Index).toBeLessThanOrEqual(1); // first (index 0) or second (index 1, right after Nc3's own "isChosen" slot)
   });
 });
 

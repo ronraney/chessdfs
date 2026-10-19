@@ -14,8 +14,9 @@ import cTsv from "./data/openings/c.tsv?raw";
 import dTsv from "./data/openings/d.tsv?raw";
 import eTsv from "./data/openings/e.tsv?raw";
 import lineStatsRaw from "./data/openings/line_stats.json?raw";
+import popularityRaw from "./data/openings/popularity.json?raw";
 import { loadContestPresets, type ContestPreset, type RawContestPreset } from "./engine/config";
-import { loadLineStats, loadOpeningBook, type LineStatsEntry } from "./engine/loaders";
+import { loadLineStats, loadOpeningBook, loadPopularity, type LineStatsEntry } from "./engine/loaders";
 import { openingPreview, rankFamilies, splitFamily, type BookLine, type OpeningPreview, type RankedFamily } from "./engine/openings";
 import { loadSportConfig } from "./engine/sport";
 
@@ -24,6 +25,14 @@ export const PRESETS: ContestPreset[] = loadContestPresets(contestsRaw as RawCon
 
 export const BOOK: BookLine[] = loadOpeningBook([aTsv, bTsv, cTsv, dTsv, eTsv]);
 const LINE_STATS: LineStatsEntry[] = loadLineStats(lineStatsRaw);
+// Bug fix: real per-position move popularity (Lichess game counts at the
+// EXACT position reached, from tools/fetch_popularity.py) -- vendored but
+// until now never loaded anywhere (sessions/HANDOFF.md flagged this).
+// openings.bookWeights reads this to rank "Book continues" by how often
+// each move is actually played from here, not by RANKED_FAMILIES' whole-
+// family/whole-corpus popularity rank (see BuildScreen.tsx's continuation
+// sort for why that's the wrong metric for this list).
+export const POPULARITY: Readonly<Record<string, Readonly<Record<string, number>>>> = loadPopularity(popularityRaw);
 
 // cli.py's own "Contest tier" readout (_run_one_build) resolves last_rank
 // from this same rank_families(line_stats) count -- not a fixed number.

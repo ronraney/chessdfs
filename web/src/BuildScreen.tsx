@@ -53,7 +53,7 @@ import { Chess } from "chess.js";
 import type { Dests, Key } from "@lichess-org/chessground/types";
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./BuildScreen.css";
-import { BOOK, LAST_RANK, NFL, RANKED_FAMILIES, RANK_BY_FAMILY } from "./appData";
+import { BOOK, LAST_RANK, NFL, POPULARITY, RANKED_FAMILIES, RANK_BY_FAMILY } from "./appData";
 import BuildBoard from "./BuildBoard";
 import { classifyMove, dfsLegalMoves, type MoveKind } from "./buildFlow";
 import { pickReason, pieceBandLabel, pointsFromOptimal, sideStats, type PointsFromOptimal, type SideStats } from "./buildStats";
@@ -104,9 +104,13 @@ const BLACK_REPLY_DELAY_MS = 600;
 // At the very start of a build, `bookContinuations` returns essentially
 // every first move recorded anywhere in the 3,865-line book -- dozens of
 // options, not a useful menu. Capped to the chosen line's own move (always
-// first, regardless of rank) plus the N next-most-popular by family rank
-// -- the same ranking the Explorer already uses -- rather than every
-// legal continuation; "(Play your own move)" covers anything not shown.
+// first, regardless of popularity) plus the N next-most-popular BY REAL
+// PER-POSITION GAME COUNT (openings.bookWeights -- bug fix: this used to be
+// RANKED_FAMILIES' whole-family rank, the Explorer's own ranking, which
+// answers a different question -- "how played is this family overall,"
+// not "how often is this move actually played from here") -- rather than
+// every legal continuation; "(Play your own move)" covers anything not
+// shown.
 const CONTINUATION_LIMIT = 8;
 
 interface Props {
@@ -184,8 +188,14 @@ interface ContinuationOption {
   openingLabel: string | null;
   lockLabel: string;
   isChosen: boolean;
+  // Bug fix: real per-position popularity (openings.bookWeights, Lichess
+  // game counts AT THIS EXACT POSITION) -- the actual "by popularity" this
+  // list was always meant to sort by. Equal weight (no popularity data for
+  // this position at all, or two moves tied) falls back to `rank` below.
+  weight: number;
   // The resulting opening's family rank (lower = more played), Infinity if
-  // its family isn't ranked at all -- ordering/capping only, never shown.
+  // its family isn't ranked at all -- tiebreak only (for two continuations
+  // with equal `weight`), never shown.
   rank: number;
 }
 
@@ -327,11 +337,27 @@ export default function BuildScreen({
   onStartAgain,
   onNewContest,
 }: Props) {
-  const [state, setState] = useState<BuildState>(() =>
-    kingMode === KingMode.PLACED && whiteKing !== null && blackKing !== null
-      ? placeKings(whiteKing, blackKing, NFL, preset.contest)
-      : new BuildState(),
-  );
+  // Bug fix: a chosen "line" opening was never seeded as Black's own
+  // committed line, so build.playBlackMove's "keep the committed line while
+  // it still matches, re-choose by rank-closeness once it doesn't" (its own
+  // long-standing, correct behavior -- see its header comment) had nothing
+  // to keep: blackCommittedLine started null, so Black re-chose by rank-
+  // closeness on its very FIRST reply regardless of what White chose,
+  // immediately contradicting Task 38's own "Black still follows its line
+  // while White stays on it" (the chosen line's line, not a never-seeded
+  // one). Seeding it here is the whole fix -- playBlackMove's existing
+  // logic already drops it the moment White deviates (isPrefixMatch fails)
+  // or the line runs out, same as it always has for any other committed
+  // line. "own opening" (no chosen line) is unaffected -- stays null,
+  // Black picks by rank-closeness from the first reply, as before.
+  const [state, setState] = useState<BuildState>(() => {
+    const base =
+      kingMode === KingMode.PLACED && whiteKing !== null && blackKing !== null
+        ? placeKings(whiteKing, blackKing, NFL, preset.contest)
+        : new BuildState();
+    if (chosenOpening.kind === "line") base.blackCommittedLine = chosenOpening.line.moves;
+    return base;
+  });
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
   const [pickError, setPickError] = useState<string | null>(null);
   // Task 40: how the build ended (null while still ongoing) -- see the
@@ -456,6 +482,24 @@ export default function BuildScreen({
       : "Your move. Drag any piece — each move locks a player of that piece's type.";
   const lastBlackMove = state.blackMoves.at(-1) ?? null;
 
+  // Bug fix: this used to sort by RANK_BY_FAMILY alone -- a whole-family,
+  // whole-corpus popularity rank (rankFamilies' single most-played line per
+  // family), not how often each candidate move is actually played FROM
+  // THIS POSITION. That let a real, heavily-played reply (e.g. 2. Nf3 after
+  // 1. e4 e5, ~6x more played here than anything else) rank dead last --
+  // worse, Infinity -- whenever its resulting family happened to be
+  // DEFAULT_EXCLUDED_FAMILIES (too generic to *suggest* as an opening) or
+  // lacked a >=6-ply representative line to rank at all, pushing it past
+  // CONTINUATION_LIMIT's slice entirely. `weight` (real per-position
+  // Lichess game counts, POPULARITY[history]) is the actual "by
+  // popularity" this list was always meant to sort by; `rank` now only
+  // breaks a tie. Looked up inline (the same fallback openings.bookWeights
+  // uses: equal weight 1 for every continuation when this position has no
+  // popularity entry at all) rather than calling bookWeights itself, which
+  // would re-scan the whole ~3,865-line book a second time per render --
+  // `bookContinuations(history, BOOK)` right below already did that scan
+  // once.
+  const positionCounts = POPULARITY[history.join(" ")];
   const continuationOptions: ContinuationOption[] =
     turn === "w"
       ? [...bookContinuations(history, BOOK)]
@@ -473,11 +517,13 @@ export default function BuildScreen({
               openingLabel: resultLine?.name ?? null,
               lockLabel: continuationLockLabel(kind, transferredPlayerName),
               isChosen: san === chosenNextMove,
+              weight: positionCounts === undefined ? 1 : (positionCounts[san] ?? 0),
               rank: RANK_BY_FAMILY.get(resultFamily)?.rank ?? Infinity,
             };
           })
           .sort((a, b) => {
             if (a.isChosen !== b.isChosen) return a.isChosen ? -1 : 1;
+            if (a.weight !== b.weight) return b.weight - a.weight;
             if (a.rank !== b.rank) return a.rank - b.rank;
             return a.san.localeCompare(b.san);
           })
