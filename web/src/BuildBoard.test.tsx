@@ -81,3 +81,58 @@ describe("BuildBoard -- click-to-move (real chessground, not the mock)", () => {
     expect(onMove).toHaveBeenCalledWith("g1", "f3");
   });
 });
+
+// Bug fix: "Board clicks land one square off" -- chessground caches its own
+// board bounds and only re-measures them from inside redrawAll; a layout
+// shift above/around the board (banner, status line, Book continues,
+// pick panel width) never told it to. jsdom can't lay out real elements at
+// all (getBoundingClientRect is always zeroed -- see this file's own header
+// comment and sessions/HANDOFF.md's Environment note), so an *actual*
+// resize/reposition can't be produced here; this only proves the wiring --
+// that BuildBoard's own ResizeObserver callback calls the real Api's
+// redrawAll() when the browser reports its container resized. Ron verifies
+// the real-browser behavior.
+//
+// Note: chessground itself also registers its own internal ResizeObserver
+// on this same element (events.ts's bindDocument, for its own lighter
+// bounds-cache invalidation) -- both constructors go through the one global
+// stub below, so this fires every captured callback (exactly what a real
+// resize notification would do -- every observer registered on an element
+// gets its own, independent callback invocation) rather than assuming
+// which one is BuildBoard's own.
+describe("BuildBoard -- re-measures chessground's board bounds on container resize", () => {
+  it("calls the real Api's redrawAll() when the ResizeObserver fires", () => {
+    const callbacks: ResizeObserverCallback[] = [];
+    const disconnect = vi.fn();
+    class FakeResizeObserver {
+      constructor(callback: ResizeObserverCallback) {
+        callbacks.push(callback);
+      }
+      observe() {}
+      unobserve() {}
+      disconnect = disconnect;
+    }
+    vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+
+    const onMove = vi.fn();
+    const dests: Dests = new Map();
+    const { unmount } = render(<BuildBoard fen="start" dests={dests} lastMove={null} onMove={onMove} />);
+
+    expect(callbacks.length).toBeGreaterThan(0);
+
+    const redrawSpy = vi.spyOn(capturedApi!, "redrawAll");
+    // Neither BuildBoard's own callback nor chessground's internal one reads
+    // the second (observer) argument -- a null stand-in avoids constructing
+    // another real FakeResizeObserver here, which would otherwise push a new
+    // entry onto `callbacks` (its constructor's side effect) while this
+    // very loop is iterating over that same array.
+    for (const cb of callbacks) cb([] as unknown as ResizeObserverEntry[], null as unknown as ResizeObserver);
+
+    expect(redrawSpy).toHaveBeenCalled();
+
+    unmount();
+    expect(disconnect).toHaveBeenCalled();
+
+    vi.unstubAllGlobals();
+  });
+});

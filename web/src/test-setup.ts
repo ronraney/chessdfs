@@ -24,3 +24,16 @@ if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
     removeEventListener: () => {},
   })) as unknown as typeof window.matchMedia;
 }
+
+// jsdom doesn't implement ResizeObserver at all -- BuildBoard (board-bounds
+// re-measure bug fix) constructs one on every mount. A no-op default keeps
+// every other test (which doesn't care about resize behavior) from
+// throwing; the one test that does care replaces this global itself to
+// capture the callback.
+if (typeof window !== "undefined" && typeof window.ResizeObserver !== "function") {
+  window.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof window.ResizeObserver;
+}

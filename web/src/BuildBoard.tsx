@@ -89,6 +89,30 @@ export default function BuildBoard({ fen, dests, lastMove, onMove }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Bug fix: chessground memoizes its own board bounds (getBoundingClientRect)
+  // and only recomputes them from inside redrawAll -- a layout shift
+  // anywhere above or around the board (the opening banner's subtext, the
+  // status line's length, Book continues gaining/losing rows, the pick
+  // panel changing the board column's width) moves or resizes the real
+  // board element without chessground ever finding out, so a click/drag
+  // lands against stale bounds (one square off, or on nothing). The
+  // ResizeObserver catches the board's own size changing; it won't fire for
+  // a pure position shift (a sibling growing/shrinking without resizing
+  // this container), so the second effect below -- no dependency array,
+  // meaning it also runs after every render -- covers that case instead,
+  // relying on this component re-rendering whenever BuildScreen does (it
+  // isn't memoized).
+  useEffect(() => {
+    if (containerRef.current === null) return;
+    const observer = new ResizeObserver(() => apiRef.current?.redrawAll());
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    apiRef.current?.redrawAll();
+  });
+
   useEffect(() => {
     apiRef.current?.set({
       fen,

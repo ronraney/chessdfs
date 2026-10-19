@@ -56,6 +56,10 @@ interface FakeApi {
   // exactly like a completed drag's drop does. See BuildBoard.test.tsx for
   // the same two clicks exercised against the REAL chessground library.
   selectSquare(key: string): void;
+  // Bug fix: board-bounds re-measure -- BuildBoard now calls this on every
+  // render and from its ResizeObserver; a no-op here since this fake has no
+  // real bounds to re-measure.
+  redrawAll(): void;
 }
 
 let lastApi: FakeApi | null = null;
@@ -74,6 +78,7 @@ vi.mock("@lichess-org/chessground", () => ({
         };
       },
       destroy() {},
+      redrawAll() {},
       selectSquare(key) {
         const dests = api.config.movable?.dests?.get(selected as never) ?? [];
         if (selected !== null && selected !== key && dests.includes(key as never)) {
