@@ -10,6 +10,7 @@
 import type { Piece } from "./engine/models";
 import type { ContestConfig } from "./engine/config";
 import type { Player } from "./engine/models";
+import type { OptimizerResult } from "./engine/optimizer";
 import { maxAssignable, openRosterSlots } from "./engine/rules";
 import type { PieceBand, SportConfig } from "./engine/sport";
 
@@ -86,4 +87,26 @@ export function pickReason(currentPlayers: readonly Player[], candidate: Player,
   if (spent > cap) return "over the cap";
   if (maxAssignable([...currentPlayers, candidate], sport.rosterSlots) < currentPlayers.length + 1) return "no slot left";
   return null;
+}
+
+export interface PointsFromOptimal {
+  // bestCompletion.total - slateOptimal.total -- never positive (a
+  // completion can never beat the slate's own unconstrained best), shown
+  // negated-at-zero rather than as a stray "-0.0".
+  delta: number;
+  bestCompletion: number;
+  slateOptimal: number;
+}
+
+// Combines the slate's own best possible lineup (no locks, no exclusions --
+// computed once per slate/contest by the caller) with White's current best
+// completion (locks forced, Black's picks excluded -- recomputed after
+// every pick) into the one display value. Null if either solve came back
+// infeasible -- shouldn't happen for a real build (engine/optimizer.ts:
+// the core is always completable), but this is a display feature, not a
+// rule, so it shows "--" rather than asserting it can't.
+export function pointsFromOptimal(slateOptimal: OptimizerResult | null, bestCompletion: OptimizerResult | null): PointsFromOptimal | null {
+  if (slateOptimal === null || bestCompletion === null) return null;
+  const delta = bestCompletion.total - slateOptimal.total;
+  return { delta: delta === 0 ? 0 : delta, bestCompletion: bestCompletion.total, slateOptimal: slateOptimal.total };
 }

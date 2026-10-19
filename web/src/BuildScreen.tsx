@@ -56,11 +56,12 @@ import "./BuildScreen.css";
 import { BOOK, LAST_RANK, NFL, RANKED_FAMILIES, RANK_BY_FAMILY } from "./appData";
 import BuildBoard from "./BuildBoard";
 import { classifyMove, dfsLegalMoves, type MoveKind } from "./buildFlow";
-import { pickReason, pieceBandLabel, sideStats, type SideStats } from "./buildStats";
+import { pickReason, pieceBandLabel, pointsFromOptimal, sideStats, type PointsFromOptimal, type SideStats } from "./buildStats";
 import { HAPPY_HUNTING, NoLegalBlackMoveError, checkWhiteDeadEnd, playBlackMove, playWhiteMove } from "./engine/build";
 import type { ContestConfig, ContestPreset } from "./engine/config";
 import { BuildState, KingMode, Piece, Side, type Move, type Player } from "./engine/models";
 import { bookContinuations, openingLine, openingName, splitFamily, type BookLine } from "./engine/openings";
+import { optimalLineup } from "./engine/optimizer";
 import { castleQbCandidates, pickList } from "./engine/picklist";
 import { SeededRandom } from "./engine/rng";
 import {
@@ -780,6 +781,24 @@ export default function BuildScreen({
 
   const whiteStats = sideStats(state.whiteMoves.map((m) => m.player), NFL, preset.contest);
   const blackStats = sideStats(state.blackMoves.map((m) => m.player), NFL, preset.contest);
+
+  // The slate's own best possible lineup never depends on `state` at all --
+  // no locks, no exclusions -- so it's computed once per slate/contest
+  // (`players`/`preset` as deps), not on every pick. White's best
+  // completion (locks forced, Black's picks excluded) DOES change on every
+  // pick -- either side's own `whiteMoves`/`blackMoves` array is a brand
+  // new reference each time a move commits (engine/rules.ts never mutates
+  // in place), so this recomputes exactly when it needs to and no more.
+  const slateOptimal = useMemo(() => optimalLineup(players, NFL, preset.contest.effectiveCap(NFL)), [players, preset]);
+  const bestCompletion = useMemo(
+    () =>
+      optimalLineup(players, NFL, preset.contest.effectiveCap(NFL), {
+        locked: state.whiteMoves.map((m) => m.player),
+        excludeIds: new Set(state.blackMoves.map((m) => m.player.id)),
+      }),
+    [players, preset, state.whiteMoves, state.blackMoves],
+  );
+  const optimalStats = pointsFromOptimal(slateOptimal, bestCompletion);
   const [family, variation] = chosenLine !== null ? splitFamily(chosenLine.name) : ["Your own opening", ""];
   const entryTier = preset.contest.entryTier(LAST_RANK);
   // Task 40 finish screen: the opening actually reached by the end of the
@@ -867,6 +886,7 @@ export default function BuildScreen({
           sideName="White"
           stats={whiteStats}
           moves={state.whiteMoves}
+          optimalStats={optimalStats}
         />
         <div className="board-column">
           {ending !== null ? (
@@ -876,6 +896,7 @@ export default function BuildScreen({
               history={history}
               whiteMoves={state.whiteMoves}
               whiteStats={whiteStats}
+              optimalStats={optimalStats}
               onStartAgain={onStartAgain}
               onNewContest={onNewContest}
             />
@@ -1001,18 +1022,29 @@ function MovesProgress({ moves, playedCount }: { moves: readonly string[]; playe
   );
 }
 
+// A completion can never beat the slate's own unconstrained optimum, so
+// `delta` is never positive -- `(-0).toFixed(1)` would print "-0.0", hence
+// the explicit zero-check (pointsFromOptimal already normalizes an exact
+// -0, but floating-point summation order can still land a hair off zero).
+function formatPtsFromOptimal(delta: number): string {
+  const rounded = Number(delta.toFixed(1));
+  return (rounded === 0 ? 0 : rounded).toFixed(1);
+}
+
 function SideColumn({
   side,
   label,
   sideName,
   stats,
   moves,
+  optimalStats,
 }: {
   side: "you" | "field";
   label: string;
   sideName: string;
   stats: SideStats;
   moves: readonly Move[];
+  optimalStats?: PointsFromOptimal | null;
 }) {
   const openSlots = openSlotLabels(stats);
   return (
@@ -1042,6 +1074,18 @@ function SideColumn({
         <p className="side-eyebrow">Core projection</p>
         <p className="side-projection">{stats.projTotal.toFixed(1)} pts</p>
       </div>
+
+      {side === "you" && optimalStats !== undefined && (
+        <div className="side-stat-block">
+          <p className="side-eyebrow">Pts from optimal</p>
+          <p className="side-pts-from-optimal">{optimalStats === null ? "—" : formatPtsFromOptimal(optimalStats.delta)}</p>
+          {optimalStats !== null && (
+            <p className="side-detail">
+              best finish {optimalStats.bestCompletion.toFixed(1)} · optimal {optimalStats.slateOptimal.toFixed(1)}
+            </p>
+          )}
+        </div>
+      )}
 
       <ul className="locked-players">
         {moves.map((m) => (
@@ -1073,6 +1117,7 @@ function FinishCard({
   history,
   whiteMoves,
   whiteStats,
+  optimalStats,
   onStartAgain,
   onNewContest,
 }: {
@@ -1081,6 +1126,7 @@ function FinishCard({
   history: readonly string[];
   whiteMoves: readonly Move[];
   whiteStats: SideStats;
+  optimalStats: PointsFromOptimal | null;
   onStartAgain: () => void;
   onNewContest: () => void;
 }) {
@@ -1149,6 +1195,16 @@ function FinishCard({
         </p>
         <p>
           Core projection: <strong>{whiteStats.projTotal.toFixed(1)} pts</strong>
+        </p>
+        <p>
+          Pts from optimal:{" "}
+          <strong>{optimalStats === null ? "—" : formatPtsFromOptimal(optimalStats.delta)}</strong>
+          {optimalStats !== null && (
+            <span className="finish-stat-sub">
+              {" "}
+              best finish {optimalStats.bestCompletion.toFixed(1)} · optimal {optimalStats.slateOptimal.toFixed(1)}
+            </span>
+          )}
         </p>
         <p>
           Core ownership: <strong>{(whiteStats.ownershipTotal * 100).toFixed(1)}%</strong>

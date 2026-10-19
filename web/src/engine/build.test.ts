@@ -328,13 +328,23 @@ describe("Black's book-line commitment across multiple plies", () => {
     expect(driveMultiPly(99)).toEqual(driveMultiPly(99));
   });
 
-  it("different seeds can give different multi-ply builds", () => {
-    const results = new Set<string>();
-    for (let seed = 0; seed < 20; seed++) {
-      results.add(JSON.stringify(driveMultiPly(seed).blackSans));
-    }
-    expect(results.size).toBeGreaterThan(1);
-  });
+  // 20 seeds x multiple real plies each -- observed at 5698ms under full-
+  // suite parallel load (this project's own documented CPU-contention
+  // environment, see sessions/HANDOFF.md's Environment note), just over
+  // Vitest's 5000ms default. Pure engine work, no React/jsdom involved;
+  // extended to match its real cost, same precedent as the other explicitly-
+  // timed tests elsewhere in this project.
+  it(
+    "different seeds can give different multi-ply builds",
+    () => {
+      const results = new Set<string>();
+      for (let seed = 0; seed < 20; seed++) {
+        results.add(JSON.stringify(driveMultiPly(seed).blackSans));
+      }
+      expect(results.size).toBeGreaterThan(1);
+    },
+    15000,
+  );
 });
 
 // --- King modes (Task 14) -----------------------------------------------------

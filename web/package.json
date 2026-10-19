@@ -16,7 +16,8 @@
     "chess.js": "^1.4.0",
     "papaparse": "^5.7.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "yalps": "^0.6.4"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",

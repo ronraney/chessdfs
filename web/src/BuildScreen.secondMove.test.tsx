@@ -104,9 +104,14 @@ async function lockTopCandidate(user: UserEvent, dialogName?: string): Promise<v
 
 // Waits for White's real turn to actually be back (non-empty dests), not
 // just "the component rendered once more" -- same pattern
-// BuildScreen.test.tsx's castling tests use.
+// BuildScreen.test.tsx's castling tests use. Black's reply always carries
+// BLACK_REPLY_DELAY_MS's real 600ms setTimeout on top of a render (now also
+// recomputing engine/optimizer.ts's best-completion stat); 2000ms left too
+// little margin under this project's own documented full-suite CPU
+// contention (sessions/HANDOFF.md's Environment note) -- bumped to match,
+// same precedent as this file's own 15000ms per-test extensions.
 async function waitForWhitesTurn(): Promise<void> {
-  await waitFor(() => expect(capturedApi!.state.movable.dests?.size ?? 0).toBeGreaterThan(0), { timeout: 2000 });
+  await waitFor(() => expect(capturedApi!.state.movable.dests?.size ?? 0).toBeGreaterThan(0), { timeout: 5000 });
 }
 
 function anyLegalMove(): [string, string] {

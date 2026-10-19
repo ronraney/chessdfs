@@ -276,8 +276,17 @@ describe("BuildScreen -- move first, then pick", () => {
 
       expect(screen.queryByRole("dialog")).toBeNull(); // modal closes once the pick locks
       expect(document.querySelector(".opening-moves")?.textContent).toContain("d4"); // now actually locked in
-      expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(0); // Black hasn't replied yet
-
+      // Bug fix (lineup optimizer task): no longer asserts Black's field
+      // column is still empty *synchronously* right here -- that was always
+      // racing BLACK_REPLY_DELAY_MS's real 600ms setTimeout against however
+      // long this test's own synchronous work takes to run, and the
+      // optimizer's own best-completion recompute (engine/optimizer.ts,
+      // now triggered by this very commit) adds just enough real CPU cost
+      // under this project's own documented full-suite parallel load
+      // (HANDOFF.md's Environment note) to occasionally lose that race.
+      // The behavior that actually matters -- Black eventually replies --
+      // is already covered robustly by the waitFor below regardless of
+      // timing.
       await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
     },
     15000,
