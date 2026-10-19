@@ -55,9 +55,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import "./BuildScreen.css";
 import { BOOK, LAST_RANK, NFL, POPULARITY, RANKED_FAMILIES, RANK_BY_FAMILY } from "./appData";
 import BuildBoard from "./BuildBoard";
-import { classifyMove, dfsLegalMoves, type MoveKind } from "./buildFlow";
+import { blockedMoveReason, classifyMove, type MoveKind } from "./buildFlow";
 import { pickReason, pieceBandLabel, pointsFromOptimal, sideStats, type PointsFromOptimal, type SideStats } from "./buildStats";
-import { HAPPY_HUNTING, NoLegalBlackMoveError, checkWhiteDeadEnd, playBlackMove, playWhiteMove } from "./engine/build";
+import { HAPPY_HUNTING, NoLegalBlackMoveError, checkWhiteDeadEnd, moveIsCompletable, playBlackMove, playWhiteMove } from "./engine/build";
 import type { ContestConfig, ContestPreset } from "./engine/config";
 import { BuildState, KingMode, Piece, Side, type Move, type Player } from "./engine/models";
 import { bookContinuations, openingLine, openingName, splitFamily, type BookLine } from "./engine/openings";
@@ -443,10 +443,23 @@ export default function BuildScreen({
   const history = state.board.history();
   const moveNumber = Math.floor(history.length / 2) + 1;
 
-  const legalMoves = turn === "w" ? dfsLegalMoves(state, NFL, preset.contest, players, kingMode) : [];
+  // Rule change: every real, legal chess move is now offered as a drag
+  // destination, not just the DFS-legal ones -- a drop on a move that's
+  // legal chess but blocked by the DFS rules must still be refusable
+  // with a reason (see handleBoardMove's blockedMoveReason branch below),
+  // which needs chessground to actually complete the drop and fire its
+  // callback in the first place. `allMoves` and `legalMoves` (the DFS-
+  // legal subset) share one chess.js move-generation call rather than
+  // dfsLegalMoves' own (which would otherwise run it a second time every
+  // render -- a real, avoidable cost, not just a style preference).
+  const allMoves = turn === "w" ? state.board.moves({ verbose: true }) : [];
+  const legalMoves = allMoves.filter((move) => {
+    const chessMove: ChessMove = { from: move.from, to: move.to, promotion: move.promotion };
+    return moveIsCompletable(state, chessMove, NFL, preset.contest, players, kingMode);
+  });
   const legalSans = new Set(legalMoves.map((m) => m.san));
   const dests: Dests = new Map();
-  for (const move of legalMoves) {
+  for (const move of allMoves) {
     const arr = dests.get(move.from) ?? [];
     arr.push(move.to);
     dests.set(move.from, arr);
@@ -644,15 +657,24 @@ export default function BuildScreen({
   // move (Black's lineup already full, blackMoves unchanged -- not the
   // move just played at all, so classifying it here would be wrong).
   function describeBlackMove(before: BuildState, after: BuildState): string | null {
-    if (after.blackMoves.length === before.blackMoves.length) return null;
     const lastSan = after.board.history().at(-1)!;
     const matched = before.board.moves({ verbose: true }).find((m) => m.san === lastSan)!;
     const kind = classifyMove(before, matched, kingMode);
-    const lastMoveRecord = after.blackMoves.at(-1)!;
+    const locked = after.blackMoves.length > before.blackMoves.length;
+
     if (kind.kind === "captureTransfer") {
-      return `Field captured your ${PIECE_LABEL[lastMoveRecord.piece].toLowerCase()}: ${lastMoveRecord.player.name} joins the Field.`;
+      const transferred = before.pieceLocks.get(capturedSquare(matched))?.at(-1) ?? null;
+      if (transferred === null) return null; // shouldn't happen -- captureTransfer implies history
+      if (locked) {
+        const lastMoveRecord = after.blackMoves.at(-1)!;
+        return `Field captured your ${PIECE_LABEL[lastMoveRecord.piece].toLowerCase()}: ${lastMoveRecord.player.name} joins the Field.`;
+      }
+      // Rule change: doesn't fit the Field's roster -- still captured,
+      // but returns to the pool instead of joining the Field.
+      return `${matched.san}: ${transferred.name} (${transferred.positions[0]}) doesn't fit the Field's roster. He returns to the pool.`;
     }
-    if (kind.kind === "captureUnmoved") {
+    if (kind.kind === "captureUnmoved" && locked) {
+      const lastMoveRecord = after.blackMoves.at(-1)!;
       return `Field captured an unmoved ${PIECE_LABEL[kind.capturedPiece].toLowerCase()} and picked ${lastMoveRecord.player.name}.`;
     }
     return null;
@@ -668,12 +690,19 @@ export default function BuildScreen({
   }
 
   function handleBoardMove(orig: Key, dest: Key): void {
-    const matched = legalMoves.find((m) => m.from === orig && m.to === dest);
+    const matched = allMoves.find((m) => m.from === orig && m.to === dest);
     if (matched === undefined) {
       // dests only ever offers matched's own from/to pairs, so this
       // shouldn't be reachable in practice -- but a rejected move must
       // never just vanish, so it's reported rather than assumed away.
       setMoveRejected(`${orig}-${dest} isn't a legal move right now.`);
+      return;
+    }
+    if (!legalSans.has(matched.san)) {
+      // Real, legal chess -- just not DFS-legal right now. Refused, same
+      // as the "not a legal move at all" case above, but with the
+      // engine's own reason instead of a generic one.
+      setMoveRejected(blockedMoveReason(state, matched, NFL, preset.contest, players, kingMode));
       return;
     }
     setMoveRejected(null);
@@ -689,12 +718,37 @@ export default function BuildScreen({
       case "captureTransfer": {
         const transferred = state.pieceLocks.get(capturedSquare(matched))?.at(-1) ?? null;
         const result = playWhiteMove(state, chessMove, null, NFL, preset.contest, BOOK, null, kingMode);
-        commit(result.state, { captureNote: transferred !== null ? `You captured ${transferred.name}.` : null });
+        let captureNote: string | null = null;
+        if (transferred !== null) {
+          captureNote = result.state.lockedPlayerIds.has(transferred.id)
+            ? `You captured ${transferred.name}.`
+            : `${matched.san}: ${transferred.name} (${transferred.positions[0]}) doesn't fit your roster. He returns to the pool.`;
+        }
+        commit(result.state, { captureNote });
         return;
       }
-      case "captureUnmoved":
+      case "captureUnmoved": {
+        // Rule change: capturing an unmoved piece is always legal, even
+        // with no fitting replacement -- skip the pick modal entirely
+        // and commit the capture (locking no one) when its own pick
+        // list is empty, same as a captureTransfer's no-modal path.
+        const candidates = pickList(
+          kind.capturedPiece,
+          players,
+          state.lockedPlayerIds,
+          state.whiteMoves.map((m) => m.player),
+          NFL,
+          preset.contest,
+          lockedQbTeam(state, Side.WHITE),
+        );
+        if (candidates.length === 0) {
+          const result = playWhiteMove(state, chessMove, null, NFL, preset.contest, BOOK, null, kingMode);
+          commit(result.state);
+          return;
+        }
         setPendingMove({ kind: "captureUnmoved", chessMove, capturedPiece: kind.capturedPiece, san: matched.san });
         return;
+      }
       case "castleEmerge":
         setPendingMove({ kind: "castleEmergeKing", chessMove, san: matched.san });
         return;

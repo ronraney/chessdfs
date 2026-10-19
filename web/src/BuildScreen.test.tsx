@@ -31,7 +31,7 @@ import { ContestConfig } from "./engine/config";
 import type { ContestPreset } from "./engine/config";
 import { playBlackMove } from "./engine/build";
 import { loadEtrCsv } from "./engine/loaders";
-import { KingMode, Piece } from "./engine/models";
+import { KingMode, Piece, Player } from "./engine/models";
 import { classify } from "./engine/pieces";
 import { SAMPLE_CSV } from "./testFixtures";
 
@@ -476,6 +476,44 @@ describe("BuildScreen -- a rejected move is never dropped silently (bug fix)", (
   });
 });
 
+// Rule change: a move that's legal chess but blocked by the DFS rules is
+// now offered as a drag destination too (not silently excluded) -- the
+// drop still refuses to commit, with the engine's own reason in the
+// status line.
+describe("BuildScreen -- blocked moves (rule change)", () => {
+  it("an ordinary move with no fitting player is refused with a reason, and nothing is actually played", async () => {
+    // A single Knight-band (TE) player, no Pawn-band player at all: White
+    // can still open with a Knight (so the build isn't an immediate dead
+    // end), but a Pawn move like e4 has no fitting player.
+    const onlyKnight = new Player({
+      id: "te1", name: "te1", positions: ["TE"], team: "AAA", opp: "BBB",
+      salary: 5200, proj: 10.0, ownSmall: 0.1, ownLarge: 0.1, floor: 6.0, ceiling: 16.0,
+    });
+    render(
+      <BuildScreen
+        preset={H2H}
+        players={[onlyKnight]}
+        kingMode={KingMode.EMERGE}
+        whiteKing={null}
+        blackKing={null}
+        chosenOpening={{ kind: "own" }}
+        onStartAgain={onStartAgain}
+        onNewContest={onNewContest}
+      />,
+    );
+    const fenBefore = lastApi!.config.fen;
+    expect(lastApi!.config.movable!.dests!.get("e2" as never)).toContain("e4"); // chess-legal, offered despite no fit
+    simulateMove("e2", "e4");
+
+    await waitFor(() =>
+      expect(statusLine().textContent).toBe("e4 blocked: no player in the Pawn list fits your remaining roster and salary."),
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(within(youColumn()).queryAllByRole("listitem")).toHaveLength(0);
+    expect(lastApi!.config.fen).toBe(fenBefore); // the move never actually applied
+  });
+});
+
 describe("BuildScreen -- click-to-move (bug fix)", () => {
   // Reported bug: click-select then click-destination on the build board
   // didn't move the piece (dragging did). The FakeApi's selectSquare (above)
@@ -798,7 +836,12 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
         await selectTopRow(user, dialog);
         await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
       } // else: a transfer capture -- no modal at all.
-      await waitFor(() => expect(lastApi!.config.movable!.dests!.size).toBeGreaterThan(0), { timeout: 2000 });
+      // Bug fix: 2000ms here (one of up to 8 plies, each a real Black
+      // engine reply + chessground mount) was observed timing out under
+      // full-suite parallel load even though the outer it()'s own 15000/
+      // 20000ms budget hadn't run out -- testing-library's waitFor has its
+      // own independent timeout, not governed by the outer one.
+      await waitFor(() => expect(lastApi!.config.movable!.dests!.size).toBeGreaterThan(0), { timeout: 5000 });
     }
     throw new Error("no matching capture became available within 8 plies");
   }

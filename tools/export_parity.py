@@ -452,6 +452,68 @@ def scenario_capture_en_passant() -> dict:
     }
 
 
+# --- captures that don't fit -- the capture is still legal, but locks no --
+# player instead of transferring/picking (RULES.md "Captures") -----------
+
+def scenario_capture_returns_to_pool() -> dict:
+    # White already has one DST locked; Black's d5 pawn is also a DST
+    # pick. Transferring it would overflow DST's single slot, so the
+    # capture still happens but the captured player returns to the pool
+    # (removed from both sides' locked_player_ids) instead of transferring.
+    w_dst1 = make_player("w_dst1", "DST", 2500)
+    b_dst_captured = make_player("b_dst_captured", "DST", 2600)
+    state = apply_move(BuildState(), uci("e2e4"), w_dst1, NFL, CONTEST)
+    state = apply_move(state, uci("d7d5"), b_dst_captured, NFL, CONTEST)
+    capture_move = uci("e4d5")
+    assert is_legal_capture(state, capture_move, NFL, CONTEST) is False  # doesn't fit -- still legal to attempt
+    new_state = apply_capture_move(state, capture_move, NFL, CONTEST)
+
+    return {
+        "name": "capture_returns_to_pool",
+        "kind": "capture_no_lock",
+        "players": [player_dict(w_dst1), player_dict(b_dst_captured)],
+        "setup": [{"move": "e2e4", "player_id": "w_dst1"}, {"move": "d7d5", "player_id": "b_dst_captured"}],
+        "move": "e4d5",
+        "expected": {
+            "white_moves_count": len(new_state.white_moves),
+            "black_moves_count": len(new_state.black_moves),
+            "locked_player_ids": sorted(new_state.locked_player_ids),
+        },
+    }
+
+
+def scenario_capture_unmoved_no_fitting_player() -> dict:
+    # White's bishop captures Black's unmoved f7 pawn, but White's DST
+    # slot is already filled -- no eligible Pawn-band replacement fits,
+    # so the capture still happens but locks nobody.
+    w_dst1 = make_player("w_dst1", "DST", 2500)
+    b_pawn1 = make_player("b_pawn1", "WR", 3000)
+    w_bishop1 = make_player("w_bishop1", "WR", 5000)
+    b_knight1 = make_player("b_knight1", "TE", 5200)
+    state = apply_move(BuildState(), uci("e2e4"), w_dst1, NFL, CONTEST)
+    state = apply_move(state, uci("e7e5"), b_pawn1, NFL, CONTEST)
+    state = apply_move(state, uci("f1c4"), w_bishop1, NFL, CONTEST)
+    state = apply_move(state, uci("b8c6"), b_knight1, NFL, CONTEST)
+    capture_move = uci("c4f7")
+    new_state = apply_capture_move(state, capture_move, NFL, CONTEST, None)
+
+    return {
+        "name": "capture_unmoved_no_fitting_player",
+        "kind": "capture_no_lock",
+        "players": [player_dict(p) for p in (w_dst1, b_pawn1, w_bishop1, b_knight1)],
+        "setup": [
+            {"move": "e2e4", "player_id": "w_dst1"}, {"move": "e7e5", "player_id": "b_pawn1"},
+            {"move": "f1c4", "player_id": "w_bishop1"}, {"move": "b8c6", "player_id": "b_knight1"},
+        ],
+        "move": "c4f7",
+        "expected": {
+            "white_moves_count": len(new_state.white_moves),
+            "black_moves_count": len(new_state.black_moves),
+            "locked_player_ids": sorted(new_state.locked_player_ids),
+        },
+    }
+
+
 # --- ownership by field size -------------------------------------------------
 
 def scenario_field_tier(field_size: int, sample_player: Player) -> dict:
@@ -692,6 +754,8 @@ def main() -> None:
         scenario_capture_with_history(),
         scenario_capture_unmoved_knight(),
         scenario_capture_en_passant(),
+        scenario_capture_returns_to_pool(),
+        scenario_capture_unmoved_no_fitting_player(),
         scenario_field_tier(1999, first_sample_player),
         scenario_field_tier(2000, first_sample_player),
         scenario_field_tier(9999, first_sample_player),

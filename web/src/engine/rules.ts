@@ -560,17 +560,17 @@ export function capturedSquare(move: ChessJsMove): Square {
   return move.to;
 }
 
-// Whether `chessMove` is a legal capture right now. The captured player IS
-// this move's pick when the captured piece has lock history -- then
-// `player` is ignored, and this just checks whether transferring the
-// captured player keeps the capturing side's lineup completable. For a
-// captured piece with NO lock history (it never moved), there's nothing to
-// transfer -- `player` is the capturing side's own pick of that piece's
-// real chess type instead; legal only if `player` classifies as that
-// type, isn't already locked, and keeps the lineup completable. False
-// (not an error) if `player` is required here but missing or doesn't
-// qualify -- same "not playable" convention isLegalMove uses for
-// everything else.
+// Whether capturing right now would keep the capturing side's lineup
+// completable -- NOT whether the capture itself is allowed to happen
+// (every legal, non-castling capture is always allowed; see
+// applyCaptureMove, which transfers/picks a replacement only when this is
+// true and otherwise still applies the capture, locking no one). When the
+// captured piece has lock history, `player` is ignored and this checks the
+// transfer. For a captured piece with NO lock history (it never moved),
+// `player` is the capturing side's own candidate pick of that piece's real
+// chess type instead; this is false (not an error) if `player` is missing,
+// doesn't classify as that type, or is already locked -- same "not a fit"
+// convention isLegalMove uses for everything else.
 export function isLegalCapture(
   state: BuildState,
   chessMove: ChessMove,
@@ -598,17 +598,19 @@ export function isLegalCapture(
   return lineupStillCompletable([...current, player], sport, cap);
 }
 
-// Applies a capturing move: the captured player IS this move's pick -- the
-// capturing piece locks no new player of its own. If the captured piece
-// has lock history, there's nothing for a caller to have prompted for
-// (`player` is ignored). If it never moved, there's no locked player on
-// record to transfer -- `player` is required instead: the capturing
-// side's own pick of that piece's real chess type, taking the captured
-// piece's place as this move's only pick. Throws if `chessMove` isn't a
-// legal, non-castling capture right now, if a never-moved capture's
-// `player` is missing, doesn't classify as the captured piece's type, or
-// is already locked, or if the resulting pick would overflow the
-// capturing side's roster/salary.
+// Applies a capturing move -- always legal, whenever `chessMove` itself is
+// a legal, non-castling capture (RULES.md "Captures"). If the captured
+// piece has lock history, the captured player transfers to the capturing
+// side's pick UNLESS that would overflow its roster/salary, in which case
+// the captured player instead leaves the opposing side and returns to the
+// pool, available to either side -- the capturing piece locks no one. If
+// the captured piece never moved, `player` (the capturing side's own
+// candidate of that piece's real chess type) transfers in the same way if
+// given and it fits; with no `player`, or one that doesn't fit, the
+// capture still happens but locks no one. Throws only for a genuine
+// misuse: `chessMove` isn't a legal, non-castling capture right now, or a
+// never-moved capture's `player` doesn't classify as the captured piece's
+// type or is already locked.
 export function applyCaptureMove(
   state: BuildState,
   chessMove: ChessMove,
@@ -631,7 +633,7 @@ export function applyCaptureMove(
   const san = matched.san;
   const square = capturedSquare(matched);
   const capturedHistory = state.pieceLocks.get(square) ?? [];
-  let captured: Player;
+  let captured: Player | null;
   let lockedPiece: Piece;
   if (capturedHistory.length > 0) {
     // A transfer keeps the captured player's own prior identity -- the
@@ -639,17 +641,16 @@ export function applyCaptureMove(
     // fresh classify() (which, now that pools overlap, could name a
     // DIFFERENT piece than the one they were really picked as).
     captured = capturedHistory[capturedHistory.length - 1];
-    lockedPiece = [...state.whiteMoves, ...state.blackMoves].find((m) => m.player.id === captured.id)!.piece;
+    lockedPiece = [...state.whiteMoves, ...state.blackMoves].find((m) => m.player.id === captured!.id)!.piece;
   } else {
     const capturedType = pieceForChessType(matched.captured!);
-    if (player === null) {
-      throw new Error(`${san} captures an unmoved ${capturedType} -- a player pick is required`);
-    }
-    if (!classify(player, sport, lockedQbTeam(state, side)).has(capturedType)) {
-      throw new Error(`${player.name} does not classify as ${capturedType}`);
-    }
-    if (state.lockedPlayerIds.has(player.id)) {
-      throw new Error(`${player.name} is already locked`);
+    if (player !== null) {
+      if (!classify(player, sport, lockedQbTeam(state, side)).has(capturedType)) {
+        throw new Error(`${player.name} does not classify as ${capturedType}`);
+      }
+      if (state.lockedPlayerIds.has(player.id)) {
+        throw new Error(`${player.name} is already locked`);
+      }
     }
     captured = player;
     lockedPiece = capturedType;
@@ -657,9 +658,7 @@ export function applyCaptureMove(
 
   const cap = contest.effectiveCap(sport);
   const current = movesFor(state, side).map((m) => m.player);
-  if (!lineupStillCompletable([...current, captured], sport, cap)) {
-    throw new Error(`capturing ${captured.name} would make the lineup impossible to complete`);
-  }
+  const fits = captured !== null && lineupStillCompletable([...current, captured], sport, cap);
 
   const newBoard = cloneBoard(state.board);
   newBoard.move({ from: chessMove.from, to: chessMove.to, promotion: chessMove.promotion });
@@ -670,15 +669,30 @@ export function applyCaptureMove(
   if (square !== chessMove.to) {
     newPieceLocks.delete(square);
   }
-  newPieceLocks.set(chessMove.to, [...moverHistory, captured]);
 
-  const moveRecord = new Move({ side, piece: lockedPiece, san, player: captured });
-  const moves = [...movesFor(state, side), moveRecord];
+  let moves: Move[];
+  let locked: Set<string>;
+  if (fits) {
+    newPieceLocks.set(chessMove.to, [...moverHistory, captured!]);
+    const moveRecord = new Move({ side, piece: lockedPiece, san, player: captured! });
+    moves = [...movesFor(state, side), moveRecord];
+    locked = new Set(state.lockedPlayerIds);
+    locked.add(captured!.id);
+  } else {
+    // The capturing piece's own history is unaffected -- it just moved,
+    // locking no one of its own; a historied `captured` leaves the
+    // opposing side's roster and returns to the pool (no longer locked);
+    // an unmoved capture's `captured` (missing, or given but not a fit)
+    // was never locked, so there's nothing to remove.
+    newPieceLocks.set(chessMove.to, moverHistory);
+    moves = movesFor(state, side);
+    locked = new Set(state.lockedPlayerIds);
+    if (captured !== null) locked.delete(captured.id);
+  }
 
   const opposingSide = otherSide(side);
-  const opponentMoves = movesFor(state, opposingSide).filter((m) => m.player.id !== captured.id);
-  const locked = new Set(state.lockedPlayerIds);
-  locked.add(captured.id);
+  const opponentMoves =
+    captured !== null ? movesFor(state, opposingSide).filter((m) => m.player.id !== captured!.id) : movesFor(state, opposingSide);
 
   return new BuildState({
     board: newBoard,

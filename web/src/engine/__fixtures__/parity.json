@@ -1,5 +1,5 @@
 {
-  "scenario_count": 47,
+  "scenario_count": 49,
   "scenarios": [
     {
       "name": "classify_all_sample_players",
@@ -8091,6 +8091,155 @@
         "captured_player_id": "b_d5",
         "white_moves_count": 3,
         "black_moves_count": 1
+      }
+    },
+    {
+      "name": "capture_returns_to_pool",
+      "kind": "capture_no_lock",
+      "players": [
+        {
+          "id": "w_dst1",
+          "name": "w_dst1",
+          "positions": [
+            "DST"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 2500,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
+        },
+        {
+          "id": "b_dst_captured",
+          "name": "b_dst_captured",
+          "positions": [
+            "DST"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 2600,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
+        }
+      ],
+      "setup": [
+        {
+          "move": "e2e4",
+          "player_id": "w_dst1"
+        },
+        {
+          "move": "d7d5",
+          "player_id": "b_dst_captured"
+        }
+      ],
+      "move": "e4d5",
+      "expected": {
+        "white_moves_count": 1,
+        "black_moves_count": 0,
+        "locked_player_ids": [
+          "w_dst1"
+        ]
+      }
+    },
+    {
+      "name": "capture_unmoved_no_fitting_player",
+      "kind": "capture_no_lock",
+      "players": [
+        {
+          "id": "w_dst1",
+          "name": "w_dst1",
+          "positions": [
+            "DST"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 2500,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
+        },
+        {
+          "id": "b_pawn1",
+          "name": "b_pawn1",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 3000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
+        },
+        {
+          "id": "w_bishop1",
+          "name": "w_bishop1",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5000,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
+        },
+        {
+          "id": "b_knight1",
+          "name": "b_knight1",
+          "positions": [
+            "TE"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5200,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
+        }
+      ],
+      "setup": [
+        {
+          "move": "e2e4",
+          "player_id": "w_dst1"
+        },
+        {
+          "move": "e7e5",
+          "player_id": "b_pawn1"
+        },
+        {
+          "move": "f1c4",
+          "player_id": "w_bishop1"
+        },
+        {
+          "move": "b8c6",
+          "player_id": "b_knight1"
+        }
+      ],
+      "move": "c4f7",
+      "expected": {
+        "white_moves_count": 2,
+        "black_moves_count": 2,
+        "locked_player_ids": [
+          "b_knight1",
+          "b_pawn1",
+          "w_bishop1",
+          "w_dst1"
+        ]
       }
     },
     {

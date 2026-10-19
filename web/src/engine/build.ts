@@ -216,9 +216,13 @@ function bestLegalCastlePlayers(
 // (non-capturing, non-castling) King move in PLACED mode (RULES.md "King
 // modes": "later King moves lock no player") -- or null if no legal,
 // unlocked candidate (or no legal capture) exists, i.e. this move isn't
-// playable at all right now. A capture whose captured piece has no lock
-// history -- it never moved -- resolves to the best eligible player of
-// that piece's own real chess type instead of a transfer.
+// playable at all right now. A capture is always resolvable (never null):
+// a captured piece with lock history resolves to the captured player
+// (applyCaptureMove decides whether that's a transfer or a return-to-pool
+// once applied); one with no lock history -- it never moved -- resolves
+// to the best eligible player of that piece's own real chess type, or an
+// empty array if none fits (RULES.md "Captures": still legal, locks no
+// one).
 function resolvePlayers(
   state: BuildState,
   chessMove: ChessMove,
@@ -237,12 +241,11 @@ function resolvePlayers(
     const square = capturedSquare(matched);
     const capturedHistory = state.pieceLocks.get(square) ?? [];
     if (capturedHistory.length > 0) {
-      if (!isLegalCapture(state, chessMove, sport, contest)) return null;
       return [capturedHistory[capturedHistory.length - 1]];
     }
     const capturedType = pieceForChessType(matched.captured!);
     const player = bestLegalCapturePlayer(chessMove, capturedType, state, sport, contest, playersPool);
-    return player === null ? null : [player];
+    return player === null ? [] : [player];
   }
   const piece = pieceForChessType(matched.piece);
   if (kingMode === KingMode.PLACED && piece === Piece.KING) return [];
@@ -254,9 +257,11 @@ function resolvePlayers(
 // for it: castling (1 player in PLACED mode, just the Rook; 2 in EMERGE
 // mode, King + Rook), a capture (`players` holds the captured player when
 // there's lock history to transfer -- applyCaptureMove re-derives that
-// itself and ignores it -- or the chosen replacement player when the
-// captured piece never moved), a silent King move (empty -- PLACED mode
-// only), or an ordinary single-player lock.
+// itself and ignores it -- the chosen replacement player when the
+// captured piece never moved but one fits, or empty when none does;
+// either way applyCaptureMove decides transfer/pick vs.
+// return-to-pool/locks-no-one on its own), a silent King move (empty --
+// PLACED mode only), or an ordinary single-player lock.
 function applyResolvedPlayers(
   state: BuildState,
   chessMove: ChessMove,
@@ -275,7 +280,7 @@ function applyResolvedPlayers(
     return castle(state, chessMove, king, rook, sport, contest, kingMode);
   }
   if (isCaptureMove(matched)) {
-    const [player] = players;
+    const player = players.length > 0 ? players[0] : null;
     return applyCaptureMove(state, chessMove, sport, contest, player);
   }
   if (players.length === 0) {

@@ -681,11 +681,14 @@ def test_capturing_an_unmoved_knight_gives_a_knight_pick():
     assert "te1" in new_state.locked_player_ids  # can't be picked again by either side
 
 
-def test_capturing_an_unmoved_piece_is_illegal_when_no_eligible_player_fits():
-    # White already has its one DST slot filled; a DST-position player
-    # classifies as Pawn (NFL's catch-all band) just like the captured,
-    # never-moved f7 pawn does -- but it can't fit any roster slot a
-    # second time, so no eligible player fits this capture at all.
+def test_capturing_an_unmoved_piece_with_no_fitting_player_locks_nobody():
+    # Rule change: a capture is always legal. White already has its one
+    # DST slot filled; a DST-position player classifies as Pawn (NFL's
+    # catch-all band) just like the captured, never-moved f7 pawn does --
+    # but it can't fit any roster slot a second time, so no eligible
+    # player fits this capture at all. The capture still happens; it
+    # just locks nobody. Covers both calling conventions: no player
+    # supplied at all, and one explicitly supplied that doesn't fit.
     w_dst1 = make_player("w_dst1", "DST", 2500)
     state = apply_move(BuildState(), uci("e2e4"), w_dst1, NFL, CONTEST)
     state = apply_move(state, uci("e7e5"), make_player("b_pawn1", "WR", 3000), NFL, CONTEST)
@@ -697,16 +700,23 @@ def test_capturing_an_unmoved_piece_is_illegal_when_no_eligible_player_fits():
 
     second_dst = make_player("b_dst2", "DST", 2600)
     assert classify(second_dst, NFL) == {Piece.PAWN}  # the right type...
-
     assert is_legal_capture(state, capture_move, NFL, CONTEST, second_dst) is False  # ...but doesn't fit
-    with pytest.raises(ValueError):
-        apply_capture_move(state, capture_move, NFL, CONTEST, second_dst)
+
+    for replacement in (None, second_dst):
+        new_state = apply_capture_move(state, capture_move, NFL, CONTEST, replacement)
+        assert new_state.white_moves == state.white_moves  # no new pick -- the capturing bishop locks nobody
+        assert new_state.black_moves == state.black_moves  # the unmoved f7 pawn was never on Black's roster
+        assert "b_dst2" not in new_state.locked_player_ids
+        assert new_state.board.piece_at(chess.F7).color == chess.WHITE  # the capture itself still happened
 
 
-def test_capture_rejected_when_transfer_would_overflow_the_roster():
-    # White already has one DST locked. Black's d5 pawn is also a DST
-    # pick. Transferring it (Task 18: the capture's only pick) would
-    # give White two DSTs, which DST's single slot can't hold.
+def test_capture_returns_to_pool_when_transfer_would_overflow_the_roster():
+    # Rule change: White already has one DST locked. Black's d5 pawn is
+    # also a DST pick. Transferring it would give White two DSTs, which
+    # DST's single slot can't hold -- the capture is still legal, but
+    # the captured player leaves Black's roster and returns to the pool
+    # (available to either side) instead of transferring; the capturing
+    # pawn locks nobody.
     w_dst1 = make_player("w_dst1", "DST", 2500)
     state = apply_move(BuildState(), uci("e2e4"), w_dst1, NFL, CONTEST)
     b_dst_captured = make_player("b_dst_captured", "DST", 2600)
@@ -714,7 +724,64 @@ def test_capture_rejected_when_transfer_would_overflow_the_roster():
 
     capture_move = uci("e4d5")
     assert state.board.is_capture(capture_move)
+    assert is_legal_capture(state, capture_move, NFL, CONTEST) is False  # doesn't fit -- still legal to attempt
 
+    new_state = apply_capture_move(state, capture_move, NFL, CONTEST)
+
+    assert new_state.white_moves == state.white_moves  # unchanged -- no new pick for the capturing side
+    assert "b_dst_captured" not in {m.player.id for m in new_state.black_moves}  # left Black's roster
+    assert "b_dst_captured" not in new_state.locked_player_ids  # back in the pool
+    assert new_state.board.piece_at(chess.D5).color == chess.WHITE  # the capture itself still happened
+
+    # Available to either side afterward: Black can now lock the very
+    # same player who just returned to the pool (a pawn move, since DST
+    # only classifies as Pawn).
+    after_black_locks_him = apply_move(new_state, uci("c7c6"), b_dst_captured, NFL, CONTEST)
+    assert "b_dst_captured" in {m.player.id for m in after_black_locks_him.black_moves}
+
+
+def test_black_capturing_an_unmoved_piece_with_no_fitting_player_locks_nobody():
+    # Mirrors the White test above, with Black as the capturing side.
+    # Black's DST slot fills via 1...e5 (clearing e7, so the f8 bishop
+    # can reach c5 in one move); the bishop then takes White's unmoved
+    # f2 pawn from c5 (c5-d4-e3-f2, both squares still empty).
+    b_dst1 = make_player("b_dst1", "DST", 2500)
+    state = apply_move(BuildState(), uci("g2g3"), make_player("w_pawn1", "WR", 3000), NFL, CONTEST)
+    state = apply_move(state, uci("e7e5"), b_dst1, NFL, CONTEST)
+    state = apply_move(state, uci("b1c3"), make_player("w_knight1", "TE", 5200), NFL, CONTEST)
+    state = apply_move(state, uci("f8c5"), make_player("b_bishop1", "WR", 5000), NFL, CONTEST)
+    state = apply_move(state, uci("h2h3"), make_player("w_pawn2", "WR", 3100), NFL, CONTEST)
+
+    capture_move = uci("c5f2")  # Black's bishop captures White's unmoved f2 pawn
+    assert state.board.is_capture(capture_move)
+    assert state.board.turn == chess.BLACK
+
+    second_dst = make_player("w_dst2", "DST", 2600)
+    assert classify(second_dst, NFL) == {Piece.PAWN}
+    assert is_legal_capture(state, capture_move, NFL, CONTEST, second_dst) is False  # doesn't fit
+
+    new_state = apply_capture_move(state, capture_move, NFL, CONTEST, None)
+    assert new_state.black_moves == state.black_moves  # the capturing bishop locks nobody
+    assert new_state.white_moves == state.white_moves
+    assert "w_dst2" not in new_state.locked_player_ids
+    assert new_state.board.piece_at(chess.F2).color == chess.BLACK
+
+
+def test_black_capture_returns_to_pool_when_transfer_would_overflow_the_roster():
+    # Mirrors the White test above, with Black as the capturing side.
+    b_dst1 = make_player("b_dst1", "DST", 2500)
+    state = apply_move(BuildState(), uci("d2d4"), make_player("w_pawn1", "WR", 3000), NFL, CONTEST)
+    state = apply_move(state, uci("d7d5"), b_dst1, NFL, CONTEST)
+    w_dst_captured = make_player("w_dst_captured", "DST", 2600)
+    state = apply_move(state, uci("e2e4"), w_dst_captured, NFL, CONTEST)
+
+    capture_move = uci("d5e4")
+    assert state.board.is_capture(capture_move)
+    assert state.board.turn == chess.BLACK
     assert is_legal_capture(state, capture_move, NFL, CONTEST) is False
-    with pytest.raises(ValueError):
-        apply_capture_move(state, capture_move, NFL, CONTEST)
+
+    new_state = apply_capture_move(state, capture_move, NFL, CONTEST)
+
+    assert new_state.black_moves == state.black_moves  # unchanged -- no new pick for Black
+    assert "w_dst_captured" not in {m.player.id for m in new_state.white_moves}  # left White's roster
+    assert "w_dst_captured" not in new_state.locked_player_ids  # back in the pool

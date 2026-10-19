@@ -594,27 +594,38 @@ def _play_capture_move(
 ) -> MoveResult | None:
     """Shared capture handler for both template and free-play White
     turns. If the captured piece has lock history, the captured player
-    IS the pick (Task 18) -- no prompt at all. If it never moved (Task
-    19), there's no player to transfer, so the capturing side picks one
-    instead: an eligible, unlocked player of the captured piece's own
-    real chess type (e.g. an unmoved pawn -> a Pawn pick), via the same
-    pick list (and message) every other pick uses. Returns None only if
-    the user backs out of that prompt (free play) or no eligible player
-    exists at all -- any ValueError from actually applying the move
-    (e.g. an overflow) propagates to the caller, same as every other
-    pick, so each caller's own existing error handling still applies.
+    IS the pick -- no prompt at all (`play_white_move`/`apply_capture_
+    move` transfer them if they fit White's roster, or return them to
+    the pool, locking no one, if they don't -- RULES.md "Captures").
+    If it never moved, there's no player to transfer: with at least one
+    eligible, unlocked player of the captured piece's own real chess
+    type (e.g. an unmoved pawn -> a Pawn pick), the capturing side picks
+    one via the same pick list (and message) every other pick uses;
+    with none, the capture still happens and locks no one. Returns None
+    only if the user backs out of that prompt (free play) -- any
+    ValueError from actually applying the move propagates to the
+    caller, same as every other pick, so each caller's own existing
+    error handling still applies.
     """
     square = captured_square(state.board, chess_move)
     if state.piece_locks.get(square):
         return play_white_move(state, chess_move, None, sport, contest, book)
 
     captured_type = piece_for_chess_type(state.board.piece_type_at(square))
+    candidates = _eligible_sorted(captured_type, state, sport, contest, players_pool)
+    if not candidates:
+        print(
+            f"\nYou play {state.board.san(chess_move)}, capturing an unmoved "
+            f"{captured_type.value.lower()}. No eligible {captured_type.value.title()} fits -- locks no player."
+        )
+        return play_white_move(state, chess_move, None, sport, contest, book)
+
     print(
         f"\nYou play {state.board.san(chess_move)}, capturing an unmoved "
         f"{captured_type.value.lower()}: pick a {captured_type.value.title()}."
     )
     player = _prompt_player_choice(
-        _eligible_sorted(captured_type, state, sport, contest, players_pool),
+        candidates,
         contest,
         proj_total(state, Side.WHITE),
         captured_type.value.title(),
@@ -842,27 +853,35 @@ def _print_dead_end(side: Side, open_slots: dict[str, int]) -> None:
 
 def _capture_message(pre_state: BuildState, post_state: BuildState, side: Side) -> str | None:
     """If the move that took `pre_state` to `post_state` was a capture
-    of a piece WITH lock history, the message for it (Task 18): who was
-    captured and from whom, e.g. "Black plays exd4, capturing your
-    Malik Washington." (same pattern for White's own captures). None if
-    it wasn't a capture, no move was made at all (a book-exit/
-    continuation step between turns), or the captured piece never moved
-    (Task 19) -- that pick was never on either side's roster to begin
-    with, so it isn't a transfer "from" anyone; White's own pick-prompt
-    message already covers it, and Black's falls through to the plain
-    "locking" announcement below instead.
+    of a piece WITH lock history, the message for it: who was captured
+    and from whom, e.g. "Black plays exd4, capturing your Malik
+    Washington." -- or, if transferring them would have overflowed the
+    capturing side's roster, that they returned to the pool instead
+    (RULES.md "Captures"), e.g. "exd4: Malik Washington (RB) doesn't
+    fit your roster. He returns to the pool." None if it wasn't a
+    capture, no move was made at all (a book-exit/continuation step
+    between turns), or the captured piece never moved -- that pick was
+    never on either side's roster to begin with, so it isn't a transfer
+    "from" anyone; White's own pick-prompt message already covers it,
+    and Black's falls through to the plain "locking" announcement below
+    instead.
     """
     if len(post_state.board.move_stack) <= len(pre_state.board.move_stack):
         return None
     last_move = post_state.board.move_stack[-1]
     if not pre_state.board.is_capture(last_move):
         return None
-    if not pre_state.piece_locks.get(captured_square(pre_state.board, last_move)):
+    captured_history = pre_state.piece_locks.get(captured_square(pre_state.board, last_move))
+    if not captured_history:
         return None
 
+    captured = captured_history[-1]
     san = pre_state.board.san(last_move)
     moves = post_state.white_moves if side is Side.WHITE else post_state.black_moves
-    captured = moves[-1].player
+    transferred = any(m.player.id == captured.id for m in moves)
+    if not transferred:
+        whose_roster = "your" if side is Side.WHITE else "the Field's"
+        return f"{san}: {captured.name} ({captured.positions[0]}) doesn't fit {whose_roster} roster. He returns to the pool."
     if side is Side.WHITE:
         return f"You play {san}, capturing the Field's {captured.name}."
     return f"Black plays {san}, capturing your {captured.name}."

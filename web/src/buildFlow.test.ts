@@ -4,12 +4,13 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { Chess } from "chess.js";
 import { describe, expect, it } from "vitest";
 import nflConfig from "./data/config/sports/nfl.json";
-import { chessMoveForSan, classifyMove, dfsLegalMoves, suggestionFor } from "./buildFlow";
+import { blockedMoveReason, chessMoveForSan, classifyMove, dfsLegalMoves, suggestionFor } from "./buildFlow";
 import { ContestConfig } from "./engine/config";
 import { loadOpeningBook } from "./engine/loaders";
-import { BuildState, KingMode, Piece, Player } from "./engine/models";
+import { BuildState, KingMode, Move, Piece, Player, Side } from "./engine/models";
 import { applyMove, placeKings } from "./engine/rules";
 import { loadSportConfig } from "./engine/sport";
 
@@ -224,5 +225,107 @@ describe("suggestionFor", () => {
     const chosen = { kind: "line" as const, line: RUY_LOPEZ_MORPHY }; // doesn't match this prefix at all
     // Verified against the real vendored book: zero lines start this way.
     expect(suggestionFor(["e4", "a6", "a4", "h5"], chosen, BOOK)).toEqual({ kind: "none" });
+  });
+});
+
+// Rule change: a move that's legal chess but blocked by the DFS rules is
+// now offerable as a drag destination in the UI (BuildScreen expands
+// `dests` to every legal chess move, not just the DFS-legal ones) -- this
+// explains why, after the fact, matching the engine's own check order.
+// Captures are never blocked post rule change (every legal capture is
+// always DFS-legal -- see rules.applyCaptureMove), so every reason here
+// is either an ordinary piece move or castling.
+describe("blockedMoveReason", () => {
+  it("an ordinary move: no player in that piece's list fits", () => {
+    const move = chessMoveForSan(new BuildState(), "e4")!;
+    const reason = blockedMoveReason(new BuildState(), move, NFL, CONTEST, [], KingMode.EMERGE);
+    expect(reason).toBe("e4 blocked: no player in the Pawn list fits your remaining roster and salary.");
+  });
+
+  it("castling: already castled", () => {
+    const pool = fullPool();
+    const state = italianPosition(pool);
+    // Synthetic: PLACED mode's own *_castled flags are what the real engine
+    // uses to detect "already castled" (a King lock alone can't, since a
+    // PLACED King is locked from setup, not from a move) -- setting it
+    // directly here, without the board having actually castled, isolates
+    // canCastle's own already-castled check from its other two. A real
+    // castle always moves the king off its home square too, which would
+    // make O-O chess-illegal again -- so this exact combination (already
+    // castled, but O-O still chess-legal) can't arise from genuine play.
+    state.whiteCastled = true;
+    const move = state.board.moves({ verbose: true }).find((m) => m.isKingsideCastle())!;
+    const reason = blockedMoveReason(state, move, NFL, CONTEST, pool, KingMode.EMERGE);
+    expect(reason).toBe("O-O blocked: you've already castled.");
+  });
+
+  it("castling: King already locked blocks further castling (EMERGE mode)", () => {
+    const pool = fullPool();
+    const state = italianPosition(pool);
+    // Synthetic, for the same reason as above: canCastle's EMERGE-mode
+    // check reads only the locked-piece set, which this exercises in
+    // isolation by pushing a King-type Move record without ever actually
+    // moving the board's king (a real King move would also make O-O
+    // chess-illegal).
+    state.whiteMoves.push(
+      new Move({ side: Side.WHITE, piece: Piece.KING, san: "(synthetic)", player: makePlayer("qb_extra", "QB", 6200) }),
+    );
+    const move = state.board.moves({ verbose: true }).find((m) => m.isKingsideCastle())!;
+    const reason = blockedMoveReason(state, move, NFL, CONTEST, pool, KingMode.EMERGE);
+    expect(reason).toBe("O-O blocked: you've already locked your King.");
+  });
+
+  it("castling: needs a Knight and a Bishop locked first", () => {
+    // f1/g1 cleared (so O-O is chess-legal) without White ever having
+    // locked anything there -- as if they'd been captured away rather
+    // than moved by White itself. lockedPlayerIds/pieceLocks/whiteMoves
+    // all stay empty.
+    const board = new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 1");
+    const state = new BuildState({ board });
+    const move = state.board.moves({ verbose: true }).find((m) => m.isKingsideCastle())!;
+    const reason = blockedMoveReason(state, move, NFL, CONTEST, fullPool(), KingMode.EMERGE);
+    expect(reason).toBe("O-O blocked: castling needs a Knight and a Bishop locked first.");
+  });
+
+  it("castling: no player in the King list fits (EMERGE mode)", () => {
+    const pool = fullPool();
+    const state = italianPosition(pool);
+    const move = state.board.moves({ verbose: true }).find((m) => m.isKingsideCastle())!;
+    const reason = blockedMoveReason(state, move, NFL, CONTEST, [], KingMode.EMERGE); // empty pool -- no King fits
+    expect(reason).toBe("O-O blocked: no player in the King list fits your remaining roster and salary.");
+  });
+
+  it("castling: no King candidate has an eligible Rook teammate (EMERGE mode)", () => {
+    const pool = fullPool();
+    const state = italianPosition(pool);
+    const move = state.board.moves({ verbose: true }).find((m) => m.isKingsideCastle())!;
+    // Rook is team-based ("any RB/WR/TE on the QB's own team," regardless
+    // of salary) -- every other player here is on fullPool's default team
+    // ("AAA"), so a plain Rook-band exclusion wouldn't work (they'd still
+    // qualify once a King's team is known). A King on a team nobody else
+    // shares has no eligible teammate at all.
+    const lonelyKing = new Player({
+      id: "king_lonely", name: "king_lonely", positions: ["QB"], team: "ZZZ", opp: "BBB",
+      salary: 6300, proj: 10.0, ownSmall: 0.1, ownLarge: 0.1, floor: 6.0, ceiling: 16.0,
+    });
+    const kingsOnlyPool = [...pool.filter((p) => !p.id.startsWith("king")), lonelyKing];
+    const reason = blockedMoveReason(state, move, NFL, CONTEST, kingsOnlyPool, KingMode.EMERGE);
+    expect(reason).toBe("O-O blocked: no King candidate has an eligible Rook teammate.");
+  });
+
+  it("castling: no player in the Rook list fits (PLACED mode)", () => {
+    const pool = fullPool().filter((p) => !p.id.startsWith("rook")); // no eligible Rook at all
+    let state = placeKings(makePlayer("qb_w", "QB", 6000), makePlayer("qb_b", "QB", 6100), NFL, CONTEST);
+    const used = new Set<string>();
+    for (const san of ["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5"]) {
+      const move = chessMoveForSan(state, san)!;
+      const prefix = san[0] === "N" ? "knight" : san[0] === "B" ? "bishop" : "pawn";
+      const player = pool.find((p) => p.id.startsWith(prefix) && !used.has(p.id))!;
+      used.add(player.id);
+      state = applyMove(state, { from: move.from, to: move.to }, player, NFL, CONTEST);
+    }
+    const move = state.board.moves({ verbose: true }).find((m) => m.isKingsideCastle())!;
+    const reason = blockedMoveReason(state, move, NFL, CONTEST, pool, KingMode.PLACED);
+    expect(reason).toBe("O-O blocked: no player in the Rook list fits your remaining roster and salary.");
   });
 });

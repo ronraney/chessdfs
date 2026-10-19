@@ -447,17 +447,18 @@ def is_legal_capture(
     contest: ContestConfig,
     player: Player | None = None,
 ) -> bool:
-    """Whether `chess_move` is a legal capture right now. The captured
-    player IS this move's pick when the captured piece has lock
-    history -- then `player` is ignored, and this just checks whether
-    transferring the captured player keeps the capturing side's lineup
-    completable. For a captured piece with NO lock history (it never
-    moved), there's nothing to transfer -- `player` is the capturing
-    side's own pick of that piece's real chess type instead; legal only
-    if `player` classifies as that type, isn't already locked, and
-    keeps the lineup completable. False (not an error) if `player` is
-    required here but missing or doesn't qualify -- same "not playable"
-    convention `is_legal_move` uses for everything else.
+    """Whether capturing right now would keep the capturing side's
+    lineup completable -- NOT whether the capture itself is allowed to
+    happen (every legal, non-castling capture is always allowed; see
+    `apply_capture_move`, which transfers/picks a replacement only when
+    this is True and otherwise still applies the capture, locking no
+    one). When the captured piece has lock history, `player` is
+    ignored and this checks the transfer. For a captured piece with NO
+    lock history (it never moved), `player` is the capturing side's own
+    candidate pick of that piece's real chess type instead; this is
+    False (not an error) if `player` is missing, doesn't classify as
+    that type, or is already locked -- same "not a fit" convention
+    `is_legal_move` uses for everything else.
     """
     if chess_move not in state.board.legal_moves:
         return False
@@ -488,18 +489,20 @@ def apply_capture_move(
     contest: ContestConfig,
     player: Player | None = None,
 ) -> BuildState:
-    """Applies a capturing move: the captured player IS this move's
-    pick -- the capturing piece locks no new player of its own. If the
-    captured piece has lock history, there's nothing for a caller to
-    have prompted for (`player` is ignored). If it never moved, there's
-    no locked player on record to transfer -- `player` is required
-    instead: the capturing side's own pick of that piece's real chess
-    type, taking the captured piece's place as this move's only pick.
-    Raises ValueError if `chess_move` isn't a legal, non-castling
-    capture right now, if a never-moved capture's `player` is missing,
-    doesn't classify as the captured piece's type, or is already
-    locked, or if the resulting pick would overflow the capturing
-    side's roster/salary.
+    """Applies a capturing move -- always legal, whenever `chess_move`
+    itself is a legal, non-castling capture (RULES.md "Captures"). If
+    the captured piece has lock history, the captured player transfers
+    to the capturing side's pick UNLESS that would overflow its
+    roster/salary, in which case the captured player instead leaves the
+    opposing side and returns to the pool, available to either side --
+    the capturing piece locks no one. If the captured piece never
+    moved, `player` (the capturing side's own candidate of that piece's
+    real chess type) transfers in the same way if given and it fits;
+    with no `player`, or one that doesn't fit, the capture still
+    happens but locks no one. Raises ValueError only for a genuine
+    misuse: `chess_move` isn't a legal, non-castling capture right now,
+    or a never-moved capture's `player` doesn't classify as the
+    captured piece's type or is already locked.
     """
     if chess_move not in state.board.legal_moves:
         raise ValueError(f"illegal move: {chess_move!r}")
@@ -517,27 +520,23 @@ def apply_capture_move(
         # piece whichever earlier move actually locked them with, not a
         # fresh classify() (which, now that pools overlap, could name a
         # DIFFERENT piece than the one they were really picked as).
-        captured = captured_history[-1]
+        captured: Player | None = captured_history[-1]
         locked_piece = next(
             m.piece for m in (state.white_moves + state.black_moves) if m.player.id == captured.id
         )
     else:
         captured_type = piece_for_chess_type(state.board.piece_type_at(square))
-        if player is None:
-            raise ValueError(
-                f"{san!r} captures an unmoved {captured_type.value.title()} -- a player pick is required"
-            )
-        if captured_type not in classify(player, sport, locked_qb_team(state, side)):
-            raise ValueError(f"{player.name!r} does not classify as {captured_type.value.title()}")
-        if player.id in state.locked_player_ids:
-            raise ValueError(f"{player.name!r} is already locked")
+        if player is not None:
+            if captured_type not in classify(player, sport, locked_qb_team(state, side)):
+                raise ValueError(f"{player.name!r} does not classify as {captured_type.value.title()}")
+            if player.id in state.locked_player_ids:
+                raise ValueError(f"{player.name!r} is already locked")
         captured = player
         locked_piece = captured_type
 
     cap = contest.effective_cap(sport)
     current = [m.player for m in _moves_for(state, side)]
-    if not lineup_still_completable(current + [captured], sport, cap):
-        raise ValueError(f"capturing {captured.name!r} would make the lineup impossible to complete")
+    fits = captured is not None and lineup_still_completable(current + [captured], sport, cap)
 
     new_board = state.board.copy()
     new_board.push(chess_move)
@@ -546,18 +545,29 @@ def apply_capture_move(
     mover_history = new_piece_locks.pop(chess_move.from_square, [])
     if square != chess_move.to_square:
         new_piece_locks.pop(square, None)
-    new_piece_locks[chess_move.to_square] = mover_history + [captured]
 
-    move_record = Move(side=side, piece=locked_piece, san=san, player=captured)
-    moves = _moves_for(state, side) + [move_record]
+    if fits:
+        new_piece_locks[chess_move.to_square] = mover_history + [captured]
+        move_record = Move(side=side, piece=locked_piece, san=san, player=captured)
+        moves = _moves_for(state, side) + [move_record]
+        locked = state.locked_player_ids | {captured.id}
+    else:
+        # The capturing piece's own history is unaffected -- it just
+        # moved, locking no one of its own; a historied `captured`
+        # leaves the opposing side's roster and returns to the pool
+        # (no longer locked); an unmoved capture's `captured` (missing,
+        # or given but not a fit) was never locked, so there's nothing
+        # to remove.
+        new_piece_locks[chess_move.to_square] = mover_history
+        moves = _moves_for(state, side)
+        locked = state.locked_player_ids - ({captured.id} if captured is not None else set())
 
     opposing_side = _other_side(side)
-    opponent_moves = [m for m in _moves_for(state, opposing_side) if m.player.id != captured.id]
-    # A historied transfer's `captured` is already locked, so this is a
-    # no-op there; a never-moved capture's `captured` is the freshly
-    # chosen `player`, who needs adding here (Task 19) -- otherwise
-    # they'd stay "available" for either side to pick again later.
-    locked = state.locked_player_ids | {captured.id}
+    opponent_moves = (
+        [m for m in _moves_for(state, opposing_side) if m.player.id != captured.id]
+        if captured is not None
+        else list(_moves_for(state, opposing_side))
+    )
 
     if side is Side.WHITE:
         return BuildState(

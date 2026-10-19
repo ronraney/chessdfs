@@ -564,13 +564,15 @@ describe("end condition", () => {
 describe("capture transfer pre-check (Task 11c)", () => {
   it("no error escapes playBlackMove for an infeasible capture", async () => {
     // Black already has one DST locked. White's e4 pawn is also a DST
-    // pick, and dxe4 would transfer it over as Black's pick for this move
-    // -- giving Black two DSTs, which DST's single slot can't hold.
-    // Before the fix (under the old two-pick capture rule), this exact
-    // shape escaped playBlackMove as an uncaught error (reproduced on real
-    // data at seeds 17/18 in the Python build, per Task 11b's log). Across
-    // many seeds here, playBlackMove must never raise it, and must never
-    // actually complete that transfer.
+    // pick, so dxe4 transferring it over would give Black two DSTs, which
+    // DST's single slot can't hold. Before the fix (under the old
+    // two-pick capture rule), this exact shape escaped playBlackMove as an
+    // uncaught error (reproduced on real data at seeds 17/18 in the
+    // Python build, per Task 11b's log). Rule change: dxe4 is now always
+    // a candidate (every capture is DFS-legal, fit or not), so it IS
+    // sometimes chosen below -- but applying it must never raise, and
+    // must never actually complete the overflowing transfer (it returns
+    // w_dst_captured to the pool and locks nobody for Black instead).
     const bDst1 = makePlayer("b_dst1", "DST", 2500);
     let state = applyMove(new BuildState(), uci("d2d4"), makePlayer("w_f1", "WR", 3000), NFL, CONTEST);
     state = applyMove(state, uci("d7d5"), bDst1, NFL, CONTEST);

@@ -193,10 +193,13 @@ def _resolve_players(
     zero for a plain (non-capturing, non-castling) King move in PLACED
     mode (RULES.md "King modes": "later King moves lock no player") --
     or None if no legal, unlocked candidate (or no legal capture) exists,
-    i.e. this move isn't playable at all right now. A capture whose
-    captured piece has no lock history -- it never moved -- resolves to
-    the best eligible player of that piece's own real chess type
-    instead of a transfer (Task 19).
+    i.e. this move isn't playable at all right now. A capture is always
+    resolvable (never None): a captured piece with lock history resolves
+    to the captured player (`apply_capture_move` decides whether that's
+    a transfer or a return-to-pool once applied); one with no lock
+    history -- it never moved -- resolves to the best eligible player of
+    that piece's own real chess type, or an empty tuple if none fits
+    (RULES.md "Captures": still legal, locks no one).
     """
     if state.board.is_castling(chess_move):
         pair = _best_legal_castle_players(state, sport, contest, players_pool, king_mode)
@@ -205,12 +208,10 @@ def _resolve_players(
         square = captured_square(state.board, chess_move)
         captured_history = state.piece_locks.get(square, [])
         if captured_history:
-            if not is_legal_capture(state, chess_move, sport, contest):
-                return None
             return (captured_history[-1],)
         captured_type = piece_for_chess_type(state.board.piece_type_at(square))
         player = _best_legal_capture_player(chess_move, captured_type, state, sport, contest, players_pool)
-        return None if player is None else (player,)
+        return () if player is None else (player,)
     piece = piece_for_chess_type(state.board.piece_type_at(chess_move.from_square))
     if king_mode is KingMode.PLACED and piece is Piece.KING:
         return ()
@@ -230,10 +231,12 @@ def _apply_resolved_players(
     already resolved for it: castling (1 player in PLACED mode, just the
     Rook; 2 in EMERGE mode, King + Rook), a capture (`players` holds the
     captured player when there's lock history to transfer -- `apply_
-    capture_move` re-derives that itself and ignores it -- or the
-    chosen replacement player when the captured piece never moved,
-    Task 19), a silent King move (empty -- PLACED mode only, Task 14),
-    or an ordinary single-player lock.
+    capture_move` re-derives that itself and ignores it -- the chosen
+    replacement player when the captured piece never moved but one
+    fits, or empty when none does; either way `apply_capture_move`
+    decides transfer/pick vs. return-to-pool/locks-no-one on its own),
+    a silent King move (empty -- PLACED mode only, Task 14), or an
+    ordinary single-player lock.
     """
     if state.board.is_castling(chess_move):
         if king_mode is KingMode.PLACED:
@@ -242,7 +245,7 @@ def _apply_resolved_players(
         king, rook = players
         return castle(state, chess_move, king, rook, sport, contest, king_mode)
     if state.board.is_capture(chess_move):
-        (player,) = players
+        player = players[0] if players else None
         return apply_capture_move(state, chess_move, sport, contest, player)
     if not players:
         return push_silent_move(state, chess_move)

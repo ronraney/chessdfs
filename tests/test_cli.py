@@ -772,6 +772,46 @@ def test_capture_of_an_unmoved_knight_prompts_a_knight_pick(capsys):
     assert result.state.white_moves[0].piece is Piece.KNIGHT
 
 
+def test_capture_of_an_unmoved_piece_with_no_eligible_player_still_captures_and_locks_no_one(capsys):
+    # Rule change: with no eligible Pawn in the pool, the capture is
+    # still legal -- it just locks no one, instead of backing out of
+    # the move entirely (the pre-rule-change behavior, when there was
+    # nothing to prompt for).
+    board = chess.Board()
+    for san in ("e4", "e5", "Bc4", "Nc6", "Qh5", "Nf6"):
+        board.push_san(san)
+    state = BuildState(board=board)
+    capture_move = board.parse_san("Qxf7+")
+    expected_san = board.san(capture_move)
+
+    fake_input = _scripted_input([])
+    result = cli._play_capture_move(state, capture_move, NFL, CONTEST, [], [], fake_input, allow_cancel=True)
+
+    out = capsys.readouterr().out
+    assert f"You play {expected_san}, capturing an unmoved pawn. No eligible Pawn fits -- locks no player." in out
+
+    assert result is not None
+    assert result.state.white_moves == []  # the queen locked nobody
+    assert result.state.board.piece_at(chess.F7).color == chess.WHITE  # the capture itself still happened
+
+
+def test_capture_message_reports_a_return_to_pool_when_the_transfer_doesnt_fit():
+    # Rule change: White already has one DST locked; Black's d5 pawn is
+    # also a DST pick, so transferring it would overflow White's single
+    # DST slot -- the capture still happens, but the message reports the
+    # return to the pool instead of "capturing the Field's X."
+    w_dst1 = _player("w_dst1", "DST", 2500)
+    b_dst_captured = _player("b_dst_captured", "DST", 2600)
+    pre_state = apply_move(BuildState(), chess.Move.from_uci("e2e4"), w_dst1, NFL, CONTEST)
+    pre_state = apply_move(pre_state, chess.Move.from_uci("d7d5"), b_dst_captured, NFL, CONTEST)
+
+    capture_move = chess.Move.from_uci("e4d5")
+    post_state = apply_capture_move(pre_state, capture_move, NFL, CONTEST)
+
+    message = cli._capture_message(pre_state, post_state, Side.WHITE)
+    assert message == "exd5: b_dst_captured (DST) doesn't fit your roster. He returns to the pool."
+
+
 FOUR_SLOT_TOY_SPORT = {
     "sport": "TOY4",
     "salary_cap": 50000,

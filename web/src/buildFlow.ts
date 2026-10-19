@@ -17,12 +17,22 @@
 import type { Move as ChessJsMove } from "chess.js";
 import { moveIsCompletable } from "./engine/build";
 import type { ContestConfig } from "./engine/config";
-import { KingMode, Piece, type BuildState, type Player } from "./engine/models";
+import { KingMode, Piece, Side, type BuildState, type Player } from "./engine/models";
 import { bookContinuations, openingName, type BookLine } from "./engine/openings";
+import { castleQbCandidates, pickList } from "./engine/picklist";
 import { pieceForChessType } from "./engine/pieces";
-import { capturedSquare, isCaptureMove, type ChessMove } from "./engine/rules";
+import { canCastle, capturedSquare, isCaptureMove, type ChessMove } from "./engine/rules";
 import type { SportConfig } from "./engine/sport";
 import type { ChosenOpening } from "./SetupScreen";
+
+const PIECE_NAME: Record<Piece, string> = {
+  KING: "King",
+  QUEEN: "Queen",
+  ROOK: "Rook",
+  BISHOP: "Bishop",
+  KNIGHT: "Knight",
+  PAWN: "Pawn",
+};
 
 // Every legal chess move for the side to move that's DFS-legal: an
 // eligible, unlocked, roster/salary-feasible player (or player pair, for
@@ -66,6 +76,61 @@ export function classifyMove(state: BuildState, move: ChessJsMove, kingMode: Kin
   const piece = pieceForChessType(move.piece);
   if (kingMode === KingMode.PLACED && piece === Piece.KING) return { kind: "silentKing" };
   return { kind: "ordinary", piece };
+}
+
+// Why `move` -- real, legal chess right now -- is blocked by the DFS
+// rules instead of offerable (UI-only: dfsLegalMoves/moveIsCompletable
+// already say it isn't DFS-legal; this is never consulted for the
+// decision itself, only to explain one after the fact). Captures are
+// never blocked post rule-change (every legal capture is always DFS-
+// legal -- see rules.applyCaptureMove), so this only ever classifies an
+// ordinary piece move or castling; the engine's own check order decides
+// which reason comes first when more than one applies.
+export function blockedMoveReason(
+  state: BuildState,
+  move: ChessJsMove,
+  sport: SportConfig,
+  contest: ContestConfig,
+  players: readonly Player[],
+  kingMode: KingMode,
+): string {
+  const san = move.san;
+  const side = state.board.turn() === "w" ? Side.WHITE : Side.BLACK;
+  const current = (side === Side.WHITE ? state.whiteMoves : state.blackMoves).map((m) => m.player);
+
+  if (move.isKingsideCastle() || move.isQueensideCastle()) {
+    if (!canCastle(state, side, kingMode)) {
+      // canCastle() is false -- find which of its own checks (same order
+      // it runs them in) is the one that failed.
+      const alreadyCastled = side === Side.WHITE ? state.whiteCastled : state.blackCastled;
+      if (alreadyCastled) return `${san} blocked: you've already castled.`;
+
+      const lockedPieces = new Set((side === Side.WHITE ? state.whiteMoves : state.blackMoves).map((m) => m.piece));
+      if (kingMode === KingMode.EMERGE && lockedPieces.has(Piece.KING)) {
+        return `${san} blocked: you've already locked your King.`;
+      }
+      return `${san} blocked: castling needs a Knight and a Bishop locked first.`;
+    }
+
+    // canCastle() is true -- what's missing is an eligible King/Rook pair,
+    // not the castling conditions themselves (RULES.md piece table: "Only
+    // offer QBs with at least one eligible teammate").
+    if (kingMode === KingMode.PLACED) {
+      return `${san} blocked: no player in the ${PIECE_NAME[Piece.ROOK]} list fits your remaining roster and salary.`;
+    }
+    const kings = pickList(Piece.KING, players, state.lockedPlayerIds, current, sport, contest);
+    if (kings.length === 0) {
+      return `${san} blocked: no player in the ${PIECE_NAME[Piece.KING]} list fits your remaining roster and salary.`;
+    }
+    const eligibleKings = castleQbCandidates(players, state.lockedPlayerIds, current, sport, contest);
+    if (eligibleKings.length === 0) {
+      return `${san} blocked: no King candidate has an eligible Rook teammate.`;
+    }
+    return `${san} blocked: castling isn't available right now.`; // unreachable -- the caller only asks here for a move dfsLegalMoves already excluded
+  }
+
+  const piece = pieceForChessType(move.piece);
+  return `${san} blocked: no player in the ${PIECE_NAME[piece]} list fits your remaining roster and salary.`;
 }
 
 // The legal, verbose move matching a book line's SAN token on the current

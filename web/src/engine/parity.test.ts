@@ -140,6 +140,8 @@ function runScenario(scenario: Scenario): void {
       return checkSwitchKing(scenario);
     case "capture":
       return checkCapture(scenario);
+    case "capture_no_lock":
+      return checkCaptureNoLock(scenario);
     case "field_tier":
       return checkFieldTier(scenario);
     case "target_rank":
@@ -309,6 +311,28 @@ function checkCapture(scenario: Scenario): void {
   }
   expect(newState.whiteMoves).toHaveLength(expected.white_moves_count);
   expect(newState.blackMoves).toHaveLength(expected.black_moves_count);
+}
+
+// A capture that doesn't fit -- either a historied transfer that would
+// overflow the capturing side's roster, or an unmoved-piece capture with
+// no fitting replacement -- is still legal, but locks no one (RULES.md
+// "Captures"). Both are represented identically: apply the capture with
+// no replacement player, then check move counts and locked_player_ids
+// against Python's own output.
+function checkCaptureNoLock(scenario: Scenario): void {
+  const byId = playerIndex(scenario.players as RawPlayer[]);
+  const state = replaySetup(scenario.setup as SetupStep[], byId, CONTEST());
+  const move = uci(scenario.move as string);
+  const newState = applyCaptureMove(state, move, NFL, CONTEST(), null);
+
+  const expected = scenario.expected as {
+    white_moves_count: number;
+    black_moves_count: number;
+    locked_player_ids: string[];
+  };
+  expect(newState.whiteMoves).toHaveLength(expected.white_moves_count);
+  expect(newState.blackMoves).toHaveLength(expected.black_moves_count);
+  expect([...newState.lockedPlayerIds].sort()).toEqual(expected.locked_player_ids);
 }
 
 function checkFieldTier(scenario: Scenario): void {

@@ -593,11 +593,14 @@ describe("captures", () => {
     expect(newState.lockedPlayerIds.has("te1")).toBe(true); // can't be picked again by either side
   });
 
-  it("capturing an unmoved piece is illegal when no eligible player fits", () => {
-    // White already has its one DST slot filled; a DST-position player
-    // classifies as Pawn (NFL's catch-all band) just like the captured,
-    // never-moved f7 pawn does -- but it can't fit any roster slot a
-    // second time, so no eligible player fits this capture at all.
+  it("capturing an unmoved piece with no fitting player locks nobody", () => {
+    // Rule change: a capture is always legal. White already has its one
+    // DST slot filled; a DST-position player classifies as Pawn (NFL's
+    // catch-all band) just like the captured, never-moved f7 pawn does
+    // -- but it can't fit any roster slot a second time, so no eligible
+    // player fits this capture at all. The capture still happens; it
+    // just locks nobody. Covers both calling conventions: no player
+    // supplied at all, and one explicitly supplied that doesn't fit.
     const wDst1 = makePlayer("w_dst1", "DST", 2500);
     let state = applyMove(new BuildState(), uci("e2e4"), wDst1, NFL, CONTEST);
     state = applyMove(state, uci("e7e5"), makePlayer("b_pawn1", "WR", 3000), NFL, CONTEST);
@@ -610,15 +613,24 @@ describe("captures", () => {
 
     const secondDst = makePlayer("b_dst2", "DST", 2600);
     expect(classify(secondDst, NFL)).toEqual(new Set([Piece.PAWN])); // the right type...
-
     expect(isLegalCapture(state, captureMove, NFL, CONTEST, secondDst)).toBe(false); // ...but doesn't fit
-    expect(() => applyCaptureMove(state, captureMove, NFL, CONTEST, secondDst)).toThrow();
+
+    for (const replacement of [null, secondDst]) {
+      const newState = applyCaptureMove(state, captureMove, NFL, CONTEST, replacement);
+      expect(newState.whiteMoves).toEqual(state.whiteMoves); // no new pick -- the capturing bishop locks nobody
+      expect(newState.blackMoves).toEqual(state.blackMoves); // the unmoved f7 pawn was never on Black's roster
+      expect(newState.lockedPlayerIds.has("b_dst2")).toBe(false);
+      expect(newState.board.get("f7")?.color).toBe("w"); // the capture itself still happened
+    }
   });
 
-  it("capture is rejected when transfer would overflow the roster", () => {
-    // White already has one DST locked. Black's d5 pawn is also a DST
-    // pick. Transferring it (Task 18: the capture's only pick) would give
-    // White two DSTs, which DST's single slot can't hold.
+  it("capture returns the captured player to the pool when transfer would overflow the roster", () => {
+    // Rule change: White already has one DST locked. Black's d5 pawn is
+    // also a DST pick. Transferring it would give White two DSTs, which
+    // DST's single slot can't hold -- the capture is still legal, but
+    // the captured player leaves Black's roster and returns to the pool
+    // (available to either side) instead of transferring; the capturing
+    // pawn locks nobody.
     const wDst1 = makePlayer("w_dst1", "DST", 2500);
     let state = applyMove(new BuildState(), uci("e2e4"), wDst1, NFL, CONTEST);
     const bDstCaptured = makePlayer("b_dst_captured", "DST", 2600);
@@ -627,9 +639,69 @@ describe("captures", () => {
     const captureMove = uci("e4d5");
     const matched = state.board.moves({ verbose: true }).find((m) => m.from === "e4" && m.to === "d5");
     expect(matched?.isCapture()).toBe(true);
+    expect(isLegalCapture(state, captureMove, NFL, CONTEST)).toBe(false); // doesn't fit -- still legal to attempt
 
+    const newState = applyCaptureMove(state, captureMove, NFL, CONTEST);
+
+    expect(newState.whiteMoves).toEqual(state.whiteMoves); // unchanged -- no new pick for the capturing side
+    expect(newState.blackMoves.some((m) => m.player.id === "b_dst_captured")).toBe(false); // left Black's roster
+    expect(newState.lockedPlayerIds.has("b_dst_captured")).toBe(false); // back in the pool
+    expect(newState.board.get("d5")?.color).toBe("w"); // the capture itself still happened
+
+    // Available to either side afterward: Black can now lock the very
+    // same player who just returned to the pool (a pawn move, since DST
+    // only classifies as Pawn).
+    const afterBlackLocksHim = applyMove(newState, uci("c7c6"), bDstCaptured, NFL, CONTEST);
+    expect(afterBlackLocksHim.blackMoves.some((m) => m.player.id === "b_dst_captured")).toBe(true);
+  });
+
+  it("Black capturing an unmoved piece with no fitting player locks nobody", () => {
+    // Mirrors the White test above, with Black as the capturing side.
+    // Black's DST slot fills via 1...e5 (clearing e7, so the f8 bishop
+    // can reach c5 in one move); the bishop then takes White's unmoved
+    // f2 pawn from c5 (c5-d4-e3-f2, both squares still empty).
+    const bDst1 = makePlayer("b_dst1", "DST", 2500);
+    let state = applyMove(new BuildState(), uci("g2g3"), makePlayer("w_pawn1", "WR", 3000), NFL, CONTEST);
+    state = applyMove(state, uci("e7e5"), bDst1, NFL, CONTEST);
+    state = applyMove(state, uci("b1c3"), makePlayer("w_knight1", "TE", 5200), NFL, CONTEST);
+    state = applyMove(state, uci("f8c5"), makePlayer("b_bishop1", "WR", 5000), NFL, CONTEST);
+    state = applyMove(state, uci("h2h3"), makePlayer("w_pawn2", "WR", 3100), NFL, CONTEST);
+
+    const captureMove = uci("c5f2"); // Black's bishop captures White's unmoved f2 pawn
+    const matched = state.board.moves({ verbose: true }).find((m) => m.from === "c5" && m.to === "f2");
+    expect(matched?.isCapture()).toBe(true);
+    expect(state.board.turn()).toBe("b");
+
+    const secondDst = makePlayer("w_dst2", "DST", 2600);
+    expect(classify(secondDst, NFL)).toEqual(new Set([Piece.PAWN]));
+    expect(isLegalCapture(state, captureMove, NFL, CONTEST, secondDst)).toBe(false); // doesn't fit
+
+    const newState = applyCaptureMove(state, captureMove, NFL, CONTEST, null);
+    expect(newState.blackMoves).toEqual(state.blackMoves); // the capturing bishop locks nobody
+    expect(newState.whiteMoves).toEqual(state.whiteMoves);
+    expect(newState.lockedPlayerIds.has("w_dst2")).toBe(false);
+    expect(newState.board.get("f2")?.color).toBe("b");
+  });
+
+  it("Black's capture returns the captured player to the pool when transfer would overflow the roster", () => {
+    // Mirrors the White test above, with Black as the capturing side.
+    const bDst1 = makePlayer("b_dst1", "DST", 2500);
+    let state = applyMove(new BuildState(), uci("d2d4"), makePlayer("w_pawn1", "WR", 3000), NFL, CONTEST);
+    state = applyMove(state, uci("d7d5"), bDst1, NFL, CONTEST);
+    const wDstCaptured = makePlayer("w_dst_captured", "DST", 2600);
+    state = applyMove(state, uci("e2e4"), wDstCaptured, NFL, CONTEST);
+
+    const captureMove = uci("d5e4");
+    const matched = state.board.moves({ verbose: true }).find((m) => m.from === "d5" && m.to === "e4");
+    expect(matched?.isCapture()).toBe(true);
+    expect(state.board.turn()).toBe("b");
     expect(isLegalCapture(state, captureMove, NFL, CONTEST)).toBe(false);
-    expect(() => applyCaptureMove(state, captureMove, NFL, CONTEST)).toThrow();
+
+    const newState = applyCaptureMove(state, captureMove, NFL, CONTEST);
+
+    expect(newState.blackMoves).toEqual(state.blackMoves); // unchanged -- no new pick for Black
+    expect(newState.whiteMoves.some((m) => m.player.id === "w_dst_captured")).toBe(false); // left White's roster
+    expect(newState.lockedPlayerIds.has("w_dst_captured")).toBe(false); // back in the pool
   });
 });
 
