@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import chess
@@ -32,6 +33,7 @@ from dfs_chess.config import ContestConfig  # noqa: E402
 from dfs_chess.loaders import load_etr_csv, load_line_stats, load_opening_book  # noqa: E402
 from dfs_chess.models import BuildState, KingMode, Piece, Player, Side  # noqa: E402
 from dfs_chess.openings import book_continuations, opening_name, rank_families  # noqa: E402
+from dfs_chess.picklist import castle_qb_candidates, pick_list  # noqa: E402
 from dfs_chess.pieces import classify  # noqa: E402
 from dfs_chess.rules import (  # noqa: E402
     apply_capture_move,
@@ -55,10 +57,11 @@ NFL = load_sport_config(SPORT_PATH)
 CONTEST = ContestConfig(cap=50000, field_size=1000, payouts=[])
 
 
-def make_player(id_: str, pos: str, salary: int, proj: float = 10.0) -> Player:
+def make_player(id_: str, pos: str, salary: int, proj: float = 10.0, team: str = "AAA") -> Player:
     return Player(
-        id=id_, name=id_, positions=(pos,), team="AAA", opp="BBB",
+        id=id_, name=id_, positions=(pos,), team=team, opp="BBB",
         salary=salary, proj=proj, own_small=0.1, own_large=0.1,
+        floor=proj * 0.6, ceiling=proj * 1.6,
     )
 
 
@@ -71,6 +74,7 @@ def player_dict(p: Player) -> dict:
         "id": p.id, "name": p.name, "positions": list(p.positions), "team": p.team,
         "opp": p.opp, "salary": p.salary, "proj": p.proj,
         "own_small": p.own_small, "own_large": p.own_large,
+        "floor": p.floor, "ceiling": p.ceiling,
     }
 
 
@@ -587,6 +591,84 @@ def scenario_template_build_ruy_lopez_morphy() -> dict:
     }
 
 
+# --- pick lists (RULES.md piece table: sort metric + list cap) -------------
+
+def scenario_pick_list_queen_sorts_by_ceiling() -> dict:
+    # Override each one's ceiling independently of proj (make_player's own
+    # default ties ceiling to proj) -- the inverted ranking is the point.
+    pool = [
+        replace(make_player("a", "RB", 7200, proj=25.0), ceiling=20.0),
+        replace(make_player("b", "RB", 7300, proj=20.0), ceiling=45.0),
+    ]
+    result = pick_list(Piece.QUEEN, pool, set(), [], NFL, CONTEST)
+    return {
+        "name": "pick_list_queen_sorts_by_ceiling",
+        "kind": "pick_list",
+        "piece": "QUEEN",
+        "players": [player_dict(p) for p in pool],
+        "locked_player_ids": [],
+        "current_player_ids": [],
+        "qb_team": None,
+        "cap": CONTEST.cap,
+        "field_size": CONTEST.field_size,
+        "expected": {"ids": [p.id for p in result]},
+    }
+
+
+def scenario_pick_list_rook_requires_qb_team() -> dict:
+    teammate = make_player("rb1", "RB", 5200, team="CIN")
+    other_team = make_player("rb2", "RB", 5300, team="DET")
+    pool = [teammate, other_team]
+    result = pick_list(Piece.ROOK, pool, set(), [], NFL, CONTEST, qb_team="CIN")
+    return {
+        "name": "pick_list_rook_requires_qb_team",
+        "kind": "pick_list",
+        "piece": "ROOK",
+        "players": [player_dict(p) for p in pool],
+        "locked_player_ids": [],
+        "current_player_ids": [],
+        "qb_team": "CIN",
+        "cap": CONTEST.cap,
+        "field_size": CONTEST.field_size,
+        "expected": {"ids": [p.id for p in result]},
+    }
+
+
+def scenario_pick_list_caps_bishop_at_12() -> dict:
+    pool = [make_player(f"wr{i}", "WR", 5100 + i, proj=float(i)) for i in range(20)]
+    result = pick_list(Piece.BISHOP, pool, set(), [], NFL, CONTEST)
+    return {
+        "name": "pick_list_caps_bishop_at_12",
+        "kind": "pick_list",
+        "piece": "BISHOP",
+        "players": [player_dict(p) for p in pool],
+        "locked_player_ids": [],
+        "current_player_ids": [],
+        "qb_team": None,
+        "cap": CONTEST.cap,
+        "field_size": CONTEST.field_size,
+        "expected": {"ids": [p.id for p in result]},
+    }
+
+
+def scenario_castle_qb_candidates_excludes_a_lonely_qb() -> dict:
+    lonely_qb = make_player("qb1", "QB", 6000, proj=30.0, team="CIN")  # no CIN teammate below
+    teamed_qb = make_player("qb2", "QB", 6200, proj=10.0, team="DET")
+    teammate = make_player("rb1", "RB", 5200, team="DET")
+    pool = [lonely_qb, teamed_qb, teammate]
+    result = castle_qb_candidates(pool, set(), [], NFL, CONTEST)
+    return {
+        "name": "castle_qb_candidates_excludes_a_lonely_qb",
+        "kind": "castle_qb_candidates",
+        "players": [player_dict(p) for p in pool],
+        "locked_player_ids": [],
+        "current_player_ids": [],
+        "cap": CONTEST.cap,
+        "field_size": CONTEST.field_size,
+        "expected": {"ids": [p.id for p in result]},
+    }
+
+
 def main() -> None:
     sample_players = load_etr_csv(ETR_PATH)
     first_sample_player = sample_players[0]
@@ -636,6 +718,10 @@ def main() -> None:
         scenario_opening_lookup("opening_lookup_sicilian", ["e4", "c5"]),
         scenario_opening_lookup("opening_lookup_no_match", ["Qzz9"]),
         scenario_template_build_ruy_lopez_morphy(),
+        scenario_pick_list_queen_sorts_by_ceiling(),
+        scenario_pick_list_rook_requires_qb_team(),
+        scenario_pick_list_caps_bishop_at_12(),
+        scenario_castle_qb_candidates_excludes_a_lonely_qb(),
     ]
 
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)

@@ -38,13 +38,19 @@ export function pieceForChessType(pieceType: PieceSymbol): Piece {
 // Every piece band `player` qualifies for, by position + salary -- empty
 // only if `sport`'s config is broken (loadSportConfig should have rejected
 // it before this ever runs).
-export function classify(player: Player, sport: SportConfig): ReadonlySet<Piece> {
+//
+// `qbTeam` is the moving side's own currently locked QB's team, if any
+// (RULES.md piece table, Rook: "RB/WR/TE on your QB's team, any
+// salary"). A `teamRestricted` band (Rook) only matches when `qbTeam` is
+// null (no QB locked yet -- "list all RB/WR/TE") or equals
+// `player.team`; every other band ignores `qbTeam` entirely.
+export function classify(player: Player, sport: SportConfig, qbTeam: string | null = null): ReadonlySet<Piece> {
   const positions = new Set(player.positions.map((p) => p.toUpperCase()));
   const pieces = new Set<Piece>();
   for (const band of sport.pieceBands) {
-    if (band.matches(positions, player.salary)) {
-      pieces.add(band.piece);
-    }
+    if (!band.matches(positions, player.salary)) continue;
+    if (band.teamRestricted && qbTeam !== null && player.team !== qbTeam) continue;
+    pieces.add(band.piece);
   }
   return pieces;
 }

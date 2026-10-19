@@ -41,11 +41,14 @@
 //     setup). EMERGE is a genuine two-step pick (PendingMove grows a
 //     `king` field between steps, forcing PickPanel to remount via its
 //     `key` so its own internal selection state doesn't carry over from
-//     the King step to the Rook step); PLACED is one step, followed by a
-//     SEPARATE, already-committed "Switch your QB?" offer (switchOffer
-//     state) -- `commit`'s `deferBlackReply` keeps Black's reply from
-//     firing until that offer is resolved (accepted or declined), since
-//     it's still part of resolving this same turn.
+//     the King step to the Rook step). PLACED is ALSO two steps now
+//     (RULES.md piece table, Rook = correlation): the one-time "Switch
+//     your QB?" offer (Task 14) first, THEN the Rook pick, since the
+//     Rook must be a teammate of whichever QB ends up final -- neither
+//     step commits anything to engine state until the Rook is actually
+//     chosen (castlePlacedRook carries the post-switch-or-not `baseState`
+//     forward), so Black's reply never needs deferring the way the old
+//     (post-commit) switch offer once did.
 import { Chess } from "chess.js";
 import type { Dests, Key } from "@lichess-org/chessground/types";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -53,13 +56,23 @@ import "./BuildScreen.css";
 import { BOOK, LAST_RANK, NFL, RANKED_FAMILIES, RANK_BY_FAMILY } from "./appData";
 import BuildBoard from "./BuildBoard";
 import { classifyMove, dfsLegalMoves, type MoveKind } from "./buildFlow";
-import { eligiblePlayers, pickReason, pieceBandLabel, sideStats, type SideStats } from "./buildStats";
+import { pickReason, pieceBandLabel, sideStats, type SideStats } from "./buildStats";
 import { HAPPY_HUNTING, NoLegalBlackMoveError, checkWhiteDeadEnd, playBlackMove, playWhiteMove } from "./engine/build";
-import type { ContestPreset } from "./engine/config";
+import type { ContestConfig, ContestPreset } from "./engine/config";
 import { BuildState, KingMode, Piece, Side, type Move, type Player } from "./engine/models";
 import { bookContinuations, openingLine, openingName, splitFamily, type BookLine } from "./engine/openings";
+import { castleQbCandidates, pickList } from "./engine/picklist";
 import { SeededRandom } from "./engine/rng";
-import { assignRosterSlots, capturedSquare, isLineupComplete, placeKings, pushSilentMove, switchKing, type ChessMove } from "./engine/rules";
+import {
+  assignRosterSlots,
+  capturedSquare,
+  isLineupComplete,
+  lockedQbTeam,
+  placeKings,
+  pushSilentMove,
+  switchKing,
+  type ChessMove,
+} from "./engine/rules";
 import PickPanel, { type PickMoveContext } from "./PickPanel";
 import type { ChosenOpening } from "./SetupScreen";
 import ThemeToggle from "./ThemeToggle";
@@ -146,25 +159,23 @@ function endingHeadline(ending: Ending): string {
 //   - castleEmergeKing -> castleEmergeRook: two picks in sequence (King,
 //     then Rook); the `king` field only exists on the second step, once
 //     the first is chosen.
-//   - castlePlaced: one pick (the Rook only -- the King is already
-//     locked from setup).
+//   - castlePlacedSwitch -> castlePlacedRook: PLACED mode's own two
+//     steps -- the King is already locked from setup, so this starts
+//     with the one-time "Switch your QB?" offer (Task 14) instead of a
+//     King pick, then the Rook from whichever QB is FINAL (the original,
+//     or the switched-to one). RULES.md piece table: the Rook has to be
+//     a teammate of that final QB, so the switch must resolve before the
+//     Rook step, not after (the old order, back when Rook wasn't
+//     team-dependent) -- `baseState` on the Rook step is `state` itself
+//     (switch declined) or the post-switchKing state (switch accepted),
+//     carried forward since neither is committed to engine state yet.
 type PendingMove =
   | { kind: "ordinary"; chessMove: ChessMove; piece: Piece; san: string }
   | { kind: "captureUnmoved"; chessMove: ChessMove; capturedPiece: Piece; san: string }
   | { kind: "castleEmergeKing"; chessMove: ChessMove; san: string }
   | { kind: "castleEmergeRook"; chessMove: ChessMove; san: string; king: Player }
-  | { kind: "castlePlaced"; chessMove: ChessMove; san: string };
-
-// Task 14's one-time "Switch your QB?" offer, shown right after a PLACED-
-// mode castle commits (see the module comment above) -- a separate,
-// already-committed-board follow-up, not part of the castle's own pick
-// flow. `oldKing` is whoever's currently locked as White's QB (so the
-// offer's own PickPanel can exclude them from `currentPlayers`, matching
-// rules.switchKing's own "every other player" completability check).
-interface SwitchOffer {
-  afterState: BuildState;
-  oldKing: Player;
-}
+  | { kind: "castlePlacedSwitch"; chessMove: ChessMove; san: string }
+  | { kind: "castlePlacedRook"; chessMove: ChessMove; san: string; baseState: BuildState };
 
 interface ContinuationOption {
   san: string;
@@ -218,7 +229,9 @@ function pendingPickText(pendingMove: PendingMove): string {
     case "castleEmergeKing":
     case "castleEmergeRook":
       return "Pick your QB, then your RB (castling).";
-    case "castlePlaced":
+    case "castlePlacedSwitch":
+      return "Switch your QB?";
+    case "castlePlacedRook":
       return `Pick your ${PIECE_LABEL[Piece.ROOK]}.`;
     case "captureUnmoved":
       return `Pick your ${PIECE_LABEL[pendingMove.capturedPiece]}.`;
@@ -237,9 +250,10 @@ function pendingPiece(pendingMove: PendingMove): Piece {
     case "captureUnmoved":
       return pendingMove.capturedPiece;
     case "castleEmergeKing":
+    case "castlePlacedSwitch":
       return Piece.KING;
     case "castleEmergeRook":
-    case "castlePlaced":
+    case "castlePlacedRook":
       return Piece.ROOK;
   }
 }
@@ -247,10 +261,50 @@ function pendingPiece(pendingMove: PendingMove): Piece {
 // The roster `pickReason`/the "After this pick" footer should treat as
 // already locked for this step -- ordinary/castleEmergeRook's own King
 // pick included once chosen, so the Rook step's feasibility check (and
-// footer) reflects both new picks together, not just the Rook alone.
+// footer) reflects both new picks together, not just the Rook alone;
+// castlePlacedSwitch excludes the outgoing QB (a swap, not an addition);
+// castlePlacedRook reads off its own `baseState` (the switch may have
+// already replaced White's QB before this step even started).
 function pendingBaseline(pendingMove: PendingMove, whiteMoves: readonly Move[]): Player[] {
-  const current = whiteMoves.map((m) => m.player);
-  return pendingMove.kind === "castleEmergeRook" ? [...current, pendingMove.king] : current;
+  switch (pendingMove.kind) {
+    case "castleEmergeRook":
+      return [...whiteMoves.map((m) => m.player), pendingMove.king];
+    case "castlePlacedSwitch": {
+      const oldKing = whiteMoves.find((m) => m.piece === Piece.KING)?.player;
+      return whiteMoves.filter((m) => m.player.id !== oldKing?.id).map((m) => m.player);
+    }
+    case "castlePlacedRook":
+      return pendingMove.baseState.whiteMoves.map((m) => m.player);
+    default:
+      return whiteMoves.map((m) => m.player);
+  }
+}
+
+// The pending pick's own candidate list -- RULES.md piece table: each
+// piece's pick list (engine/picklist.ts's pickList, sorted + capped), not
+// a blanket "every eligible player." Rook (direct or castling) needs the
+// moving side's own locked-QB team (lockedQbTeam); castling's King step
+// additionally restricts to QBs with an eligible teammate
+// (castleQbCandidates) -- RULES.md: "If none, castling is illegal."
+function candidatesFor(pendingMove: PendingMove, state: BuildState, players: readonly Player[], contest: ContestConfig): Player[] {
+  const current = state.whiteMoves.map((m) => m.player);
+  switch (pendingMove.kind) {
+    case "castleEmergeKing":
+      return castleQbCandidates(players, state.lockedPlayerIds, current, NFL, contest);
+    case "castleEmergeRook":
+      return pickList(Piece.ROOK, players, state.lockedPlayerIds, [...current, pendingMove.king], NFL, contest, pendingMove.king.team);
+    case "castlePlacedSwitch":
+      return pickList(Piece.KING, players, state.lockedPlayerIds, pendingBaseline(pendingMove, state.whiteMoves), NFL, contest);
+    case "castlePlacedRook": {
+      const base = pendingMove.baseState;
+      const qbTeam = lockedQbTeam(base, Side.WHITE);
+      return pickList(Piece.ROOK, players, base.lockedPlayerIds, base.whiteMoves.map((m) => m.player), NFL, contest, qbTeam);
+    }
+    case "ordinary":
+      return pickList(pendingMove.piece, players, state.lockedPlayerIds, current, NFL, contest, lockedQbTeam(state, Side.WHITE));
+    case "captureUnmoved":
+      return pickList(pendingMove.capturedPiece, players, state.lockedPlayerIds, current, NFL, contest, lockedQbTeam(state, Side.WHITE));
+  }
 }
 
 function openSlotLabels(stats: SideStats): string[] {
@@ -278,7 +332,6 @@ export default function BuildScreen({
       : new BuildState(),
   );
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
-  const [switchOffer, setSwitchOffer] = useState<SwitchOffer | null>(null);
   const [pickError, setPickError] = useState<string | null>(null);
   // Task 40: how the build ended (null while still ongoing) -- see the
   // Ending type above. The only two moments White's own turn can START
@@ -392,10 +445,10 @@ export default function BuildScreen({
   }
 
   // Task 38d: the "what do I do now" status line above the board. Task 39
-  // adds two priority levels above the original chain: switchOffer (a
-  // separate, already-committed follow-up -- turn is already "b" by then,
-  // same as any White move, but Black's reply is deliberately on hold)
-  // and the castling/capture-aware pendingPickText/whiteCaptureNote.
+  // adds a priority level above the original chain: the castling/capture-
+  // aware pendingPickText/whiteCaptureNote (the PLACED-mode "Switch your
+  // QB?" text is just one more pendingPickText case now, not a separate
+  // priority level of its own).
   const whiteToMoveText =
     onChosenLine && chosenNextMove !== null
       ? `Your move. Play ${chosenNextMove} to stay on ${chosenLine!.name}, pick another book move below, or drag any piece.`
@@ -438,17 +491,14 @@ export default function BuildScreen({
   const showBookExitPrompt = turn === "w" && ending === null && continuationOptions.length === 0 && !bookExitDismissed;
 
   // Task 40 adds showBookExitPrompt above the original chain (turn==='w',
-  // out of book, not yet dismissed) -- below switchOffer/pendingMove (both
-  // represent an actively open choice, which still takes priority) but
-  // above the plain "your move"/"Field played X" text, since it replaces
-  // that prompt entirely until dismissed.
+  // out of book, not yet dismissed) -- below pendingMove (an actively open
+  // choice still takes priority) but above the plain "your move"/"Field
+  // played X" text, since it replaces that prompt entirely until dismissed.
   const statusLine: string =
     blackMoveError !== null
       ? `Something went wrong: ${blackMoveError}`
       : moveRejected !== null
         ? moveRejected
-        : switchOffer !== null
-        ? "Switch your QB?"
         : pendingMove !== null
           ? pendingPickText(pendingMove)
           : turn === "b"
@@ -474,11 +524,7 @@ export default function BuildScreen({
         ? { orig: lastRealMove.from, dest: lastRealMove.to }
         : null;
 
-  // Starts (or restarts) Black's reply timer for `newState` -- split out
-  // of commit() so the castlePlaced/switchOffer flow can commit the board
-  // without immediately triggering Black (the switch offer is still part
-  // of resolving White's own turn) and call this itself once that offer
-  // is settled.
+  // Starts (or restarts) Black's reply timer for `newState`.
   function scheduleBlackReply(newState: BuildState): void {
     if (blackTimerRef.current !== null) clearTimeout(blackTimerRef.current);
     if (newState.board.turn() !== "b") {
@@ -526,9 +572,7 @@ export default function BuildScreen({
   // (White's lineup just filled -- RULES.md: "regardless of Black's,"
   // checked the same way after every kind of White lock: ordinary,
   // castling, or a capture transfer) or Black gets its usual delayed
-  // reply. Shared by commit() and finalizeSwitch() (the Switch-QB offer
-  // doesn't change roster size, but castling itself -- right before that
-  // offer even appears -- can).
+  // reply.
   function finishOrScheduleBlack(newState: BuildState): void {
     if (isLineupComplete(newState.whiteMoves.map((m) => m.player), NFL)) {
       setEnding({ kind: "complete" });
@@ -558,13 +602,12 @@ export default function BuildScreen({
     return null;
   }
 
-  function commit(newState: BuildState, opts: { captureNote?: string | null; deferBlackReply?: boolean } = {}): void {
+  function commit(newState: BuildState, opts: { captureNote?: string | null } = {}): void {
     setPastStates((past) => [...past, state]);
     setState(newState);
     setPendingMove(null);
     setWhiteCaptureNote(opts.captureNote ?? null);
     setBlackMoveError(null);
-    if (opts.deferBlackReply) return;
     finishOrScheduleBlack(newState);
   }
 
@@ -600,7 +643,7 @@ export default function BuildScreen({
         setPendingMove({ kind: "castleEmergeKing", chessMove, san: matched.san });
         return;
       case "castlePlaced":
-        setPendingMove({ kind: "castlePlaced", chessMove, san: matched.san });
+        setPendingMove({ kind: "castlePlacedSwitch", chessMove, san: matched.san });
         return;
       case "ordinary":
         setPendingMove({ kind: "ordinary", chessMove, piece: kind.piece, san: matched.san });
@@ -638,11 +681,23 @@ export default function BuildScreen({
           commit(result.state);
           return;
         }
-        case "castlePlaced": {
-          const result = playWhiteMove(state, pendingMove.chessMove, null, NFL, preset.contest, BOOK, player, kingMode);
-          const king = result.state.whiteMoves.find((m) => m.piece === Piece.KING)!.player;
-          commit(result.state, { deferBlackReply: true });
-          setSwitchOffer({ afterState: result.state, oldKing: king });
+        // The one-time "Switch your QB?" offer (Task 14), resolved
+        // BEFORE the Rook pick (RULES.md piece table: the Rook must be a
+        // teammate of whichever QB ends up final) -- `player` here is
+        // the new QB; declining goes through handleCancel instead (its
+        // own "Cancel"/× click), not this pick path. Neither the switch
+        // nor the castle itself commits to engine state yet -- `state`
+        // is still untouched, so Take back later undoes both in one step
+        // once the Rook step actually commits.
+        case "castlePlacedSwitch": {
+          const switched = switchKing(state, Side.WHITE, player, NFL, preset.contest);
+          const baseState = switched ?? state;
+          setPendingMove({ kind: "castlePlacedRook", chessMove: pendingMove.chessMove, san: pendingMove.san, baseState });
+          return;
+        }
+        case "castlePlacedRook": {
+          const result = playWhiteMove(pendingMove.baseState, pendingMove.chessMove, null, NFL, preset.contest, BOOK, player, kingMode);
+          commit(result.state);
           return;
         }
       }
@@ -651,20 +706,14 @@ export default function BuildScreen({
     }
   }
 
-  // The Switch-QB offer's own resolution -- `newKing` null means decline
-  // ("Cancel" on that PickPanel). Either way the castle itself already
-  // stands (committed before this offer even appeared); this only ever
-  // additionally applies switchKing, then finally lets Black's reply fire.
-  function finalizeSwitch(newKing: Player | null): void {
-    if (switchOffer === null) return;
-    const finalState = newKing !== null ? switchKing(switchOffer.afterState, Side.WHITE, newKing, NFL, preset.contest) : null;
-    const resolved = finalState ?? switchOffer.afterState;
-    setState(resolved);
-    setSwitchOffer(null);
-    finishOrScheduleBlack(resolved);
-  }
-
   function handleCancel(): void {
+    // Declining the Switch-QB offer isn't abandoning the castle -- it
+    // just keeps the current QB and moves on to the Rook step, same as
+    // any other "no" on that one-time offer.
+    if (pendingMove !== null && pendingMove.kind === "castlePlacedSwitch") {
+      setPendingMove({ kind: "castlePlacedRook", chessMove: pendingMove.chessMove, san: pendingMove.san, baseState: state });
+      return;
+    }
     setPendingMove(null);
     setPickError(null);
   }
@@ -690,7 +739,7 @@ export default function BuildScreen({
     if (blackTimerRef.current !== null) clearTimeout(blackTimerRef.current);
     setEnding({ kind: "stopped" });
   }
-  const canStop = pendingMove === null && switchOffer === null && !blackMoving && ending === null;
+  const canStop = pendingMove === null && !blackMoving && ending === null;
 
   // Task 40 "Take back": pops the one `pastStates` entry commit() pushed
   // right before White's last move -- restoring it undoes that move AND
@@ -708,7 +757,7 @@ export default function BuildScreen({
     setBlackMoveError(null);
     setMoveRejected(null);
   }
-  const canTakeBack = pastStates.length > 0 && pendingMove === null && switchOffer === null && !blackMoving && ending === null;
+  const canTakeBack = pastStates.length > 0 && pendingMove === null && !blackMoving && ending === null;
 
   // Task 40: the book-exit prompt's own "Continue" -- just dismisses it;
   // nothing about `state` changes (free play was always available, this
@@ -761,22 +810,12 @@ export default function BuildScreen({
       ? { moves: pendingOnChosenLine ? chosenLine!.moves : [...history, pendingMove.san], highlightIndex: history.length }
       : null;
 
-  const pendingCandidates = pendingMove !== null ? eligiblePlayers(pendingPiece(pendingMove), state.lockedPlayerIds, players, NFL) : [];
+  const pendingCandidates = pendingMove !== null ? candidatesFor(pendingMove, state, players, preset.contest) : [];
   const pendingPlayerBaseline = pendingMove !== null ? pendingBaseline(pendingMove, state.whiteMoves) : [];
   const pendingReasons = new Map<string, string>();
   for (const candidate of pendingCandidates) {
     const reason = pendingMove !== null ? pickReason(pendingPlayerBaseline, candidate, NFL, preset.contest) : null;
     if (reason !== null) pendingReasons.set(candidate.id, reason);
-  }
-
-  const switchCandidates =
-    switchOffer !== null ? eligiblePlayers(Piece.KING, switchOffer.afterState.lockedPlayerIds, players, NFL) : [];
-  const switchBaseline =
-    switchOffer !== null ? switchOffer.afterState.whiteMoves.filter((m) => m.player.id !== switchOffer.oldKing.id).map((m) => m.player) : [];
-  const switchReasons = new Map<string, string>();
-  for (const candidate of switchCandidates) {
-    const reason = pickReason(switchBaseline, candidate, NFL, preset.contest);
-    if (reason !== null) switchReasons.set(candidate.id, reason);
   }
 
   return (
@@ -913,23 +952,6 @@ export default function BuildScreen({
           onPick={handlePick}
           onCancel={handleCancel}
           error={pickError}
-        />
-      )}
-
-      {switchOffer !== null && (
-        <PickPanel
-          piece={Piece.KING}
-          moveLabel="Switch your QB?"
-          openingLabel={null}
-          moveContext={null}
-          candidates={switchCandidates}
-          currentPlayers={switchBaseline}
-          sport={NFL}
-          contest={preset.contest}
-          reasons={switchReasons}
-          onPick={(king) => finalizeSwitch(king)}
-          onCancel={() => finalizeSwitch(null)}
-          error={null}
         />
       )}
     </main>

@@ -159,6 +159,8 @@ describe("ownership by contest entries (fieldTier + ownFor)", () => {
       proj: 10.0,
       ownSmall,
       ownLarge,
+      floor: 6.0,
+      ceiling: 16.0,
     });
   }
 

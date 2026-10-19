@@ -1,15 +1,19 @@
 // Task 38b: redrawn as the centered, dimmed-overlay modal shown in
 // design/4-club-build-pick.png and 6-slate-build-pick.png -- replaces Task
-// 38's always-open side panel. Candidates are fixed-sorted by projection
-// (the design shows no interactive sort controls, just "sorted by
-// projection"; no test exercised the old sortable-header behavior, so this
-// is a straight simplification, not a loss of coverage) and the flow is
-// now select-then-confirm: clicking a row only highlights it as the
-// current selection (defaulting to the top projection, i.e. the first
-// row) and updates the "After this pick" footer live; "Lock player" is
-// the one thing that actually calls onPick. Cancel (or the × button)
-// closes without picking -- BuildScreen never committed the move to engine
-// state in the first place, so there's nothing to undo.
+// 38's always-open side panel. Candidates are fixed-sorted (the design
+// shows no interactive sort controls) and the flow is now select-then-
+// confirm: clicking a row only highlights it as the current selection
+// (defaulting to the top of the list, i.e. the first row) and updates the
+// "After this pick" footer live; "Lock player" is the one thing that
+// actually calls onPick. Cancel (or the × button) closes without picking
+// -- BuildScreen never committed the move to engine state in the first
+// place, so there's nothing to undo.
+//
+// RULES.md piece table: each piece sorts by its own metric now, not a
+// blanket "by projection" -- the column that used to always read "Proj"
+// is now whichever metric actually sorted this list (e.g. "Lev 2.31" for
+// a Bishop), via engine/metrics.ts's sortMetric (the same function the
+// engine itself uses to build/cap the list BuildScreen hands in here).
 //
 // Bug fix (post-Task-40): `reasons` greys out (and labels) any candidate
 // buildStats.pickReason flags as infeasible -- those rows can't be
@@ -25,7 +29,8 @@ import { useMemo, useState } from "react";
 import "./PickPanel.css";
 import { pieceBandLabel, sideStats } from "./buildStats";
 import type { ContestConfig } from "./engine/config";
-import type { Piece, Player } from "./engine/models";
+import { sortMetric } from "./engine/metrics";
+import { Piece, type Player } from "./engine/models";
 import type { SportConfig } from "./engine/sport";
 
 const PIECE_LABEL: Record<Piece, string> = {
@@ -36,6 +41,33 @@ const PIECE_LABEL: Record<Piece, string> = {
   KNIGHT: "Knight",
   PAWN: "Pawn",
 };
+
+// RULES.md piece table: King/Rook still sort by projection; Queen by
+// ceiling; Bishop by leverage; Knight by floor (per $1,000 salary); Pawn
+// by value (also per $1,000). Short labels for the pick-row column;
+// `METRIC_NAME` is the longer form for the modal's own subtitle.
+const METRIC_LABEL: Record<Piece, string> = {
+  KING: "Proj",
+  QUEEN: "Ceil",
+  ROOK: "Proj",
+  BISHOP: "Lev",
+  KNIGHT: "Flr",
+  PAWN: "Val",
+};
+const METRIC_NAME: Record<Piece, string> = {
+  KING: "projection",
+  QUEEN: "ceiling",
+  ROOK: "projection",
+  BISHOP: "leverage",
+  KNIGHT: "floor",
+  PAWN: "value",
+};
+// Points-based metrics (Proj/Ceil) read naturally at 1 decimal, matching
+// every other points display on this screen; the rate-based ones
+// (leverage/floor/value, all "per $1,000 salary") read better at 2.
+function metricDecimals(piece: Piece): number {
+  return piece === Piece.QUEEN || piece === Piece.BISHOP || piece === Piece.KNIGHT || piece === Piece.PAWN ? 2 : 1;
+}
 
 const NO_REASONS: ReadonlyMap<string, string> = new Map();
 
@@ -107,7 +139,10 @@ export default function PickPanel({
   onCancel,
   error,
 }: Props) {
-  const sorted = useMemo(() => [...candidates].sort((a, b) => b.proj - a.proj), [candidates]);
+  const sorted = useMemo(
+    () => [...candidates].sort((a, b) => sortMetric(piece, b, contest) - sortMetric(piece, a, contest)),
+    [candidates, piece, contest],
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = sorted.find((p) => p.id === selectedId) ?? null;
   const selectedReason = selected !== null ? (reasons.get(selected.id) ?? null) : null;
@@ -132,7 +167,7 @@ export default function PickPanel({
             {moveContext !== null && <PickMoveList moves={moveContext.moves} highlightIndex={moveContext.highlightIndex} />}
             <p className="pick-subtitle">
               {band !== null && `${band} · `}
-              sorted by projection
+              sorted by {METRIC_NAME[piece]}
             </p>
           </div>
           <button type="button" className="pick-modal-close" aria-label="Close" onClick={onCancel}>
@@ -153,7 +188,7 @@ export default function PickPanel({
             <div className="pick-column-header">
               <span>Player</span>
               <span>Salary</span>
-              <span>Proj</span>
+              <span>{METRIC_LABEL[piece]}</span>
               <span>Own</span>
             </div>
             <div className="pick-row-list">
@@ -175,7 +210,7 @@ export default function PickPanel({
                       {reason !== null && <span className="pick-row-reason"> · {reason}</span>}
                     </span>
                     <span>${player.salary.toLocaleString()}</span>
-                    <span>{player.proj.toFixed(1)}</span>
+                    <span>{sortMetric(piece, player, contest).toFixed(metricDecimals(piece))}</span>
                     <span>{(player.ownFor(tier) * 100).toFixed(1)}%</span>
                   </button>
                 );

@@ -6,7 +6,7 @@
 // bands the Morphy Defense line happens to touch.
 import { describe, expect, it } from "vitest";
 import nflConfig from "./data/config/sports/nfl.json";
-import { eligiblePlayers, pickReason, pieceBandLabel, sideStats } from "./buildStats";
+import { pickReason, pieceBandLabel, sideStats } from "./buildStats";
 import { ContestConfig } from "./engine/config";
 import { Piece, Player } from "./engine/models";
 import { loadSportConfig } from "./engine/sport";
@@ -14,8 +14,13 @@ import { loadSportConfig } from "./engine/sport";
 const NFL = loadSportConfig(nflConfig);
 const CONTEST = new ContestConfig({ fieldSize: 1000, payouts: [] }); // Mid tier -> FieldTier.MID -> ownFor averages small/large
 
-function player(id: string, pos: string, salary: number, proj: number, ownSmall = 0.1, ownLarge = 0.3): Player {
-  return new Player({ id, name: id, positions: [pos], team: "AAA", opp: "BBB", salary, proj, ownSmall, ownLarge });
+function player(
+  id: string, pos: string, salary: number, proj: number, ownSmall = 0.1, ownLarge = 0.3,
+): Player {
+  return new Player({
+    id, name: id, positions: [pos], team: "AAA", opp: "BBB", salary, proj, ownSmall, ownLarge,
+    floor: proj * 0.6, ceiling: proj * 1.6,
+  });
 }
 
 // Task "piece pools": PAWN is now two bands (RB/TE/WR under $5,000, and
@@ -27,14 +32,14 @@ describe("pieceBandLabel", () => {
     expect(pieceBandLabel(Piece.KING, NFL)).toBe("QB");
   });
 
-  it("Queen still reads as having no position restriction (excludes QB, not an allow-list)", () => {
-    expect(pieceBandLabel(Piece.QUEEN, NFL)).toBe("$7,000+");
+  it("Queen, Bishop, and Knight are all RB/WR/TE now, differing only by salary floor", () => {
+    expect(pieceBandLabel(Piece.QUEEN, NFL)).toBe("RB/TE/WR · $7,000+");
+    expect(pieceBandLabel(Piece.BISHOP, NFL)).toBe("RB/TE/WR · $5,000+");
+    expect(pieceBandLabel(Piece.KNIGHT, NFL)).toBe("RB/TE/WR · $4,500+");
   });
 
-  it("Rook/Bishop/Knight have no ceiling -- just a floor (Knight's own is lower)", () => {
-    expect(pieceBandLabel(Piece.ROOK, NFL)).toBe("RB · $5,000+");
-    expect(pieceBandLabel(Piece.BISHOP, NFL)).toBe("WR · $5,000+");
-    expect(pieceBandLabel(Piece.KNIGHT, NFL)).toBe("TE · $4,500+");
+  it("Rook is RB/WR/TE with no salary bound at all (team-restricted instead)", () => {
+    expect(pieceBandLabel(Piece.ROOK, NFL)).toBe("RB/TE/WR");
   });
 
   it("Pawn joins both its bands", () => {
@@ -80,33 +85,6 @@ describe("sideStats", () => {
 
     expect(after.salaryRemaining).toBe(before.salaryRemaining - candidate.salary);
     expect(after.openSlotCount).toBe(before.openSlotCount - 1);
-  });
-});
-
-describe("eligiblePlayers", () => {
-  const wr1 = player("wr1", "WR", 6000, 18.0); // BISHOP band (WR, 5000-7000)
-  const wr2 = player("wr2", "WR", 5500, 12.0); // BISHOP band
-  const te1 = player("te1", "TE", 5000, 9.0); // KNIGHT band (TE >= 4500, no ceiling)
-  const cheapWr = player("wr3", "WR", 4000, 6.0); // below BISHOP's floor -> PAWN catch-all
-
-  it("filters to the moved piece's band only", () => {
-    const pool = [wr1, wr2, te1, cheapWr];
-    expect(eligiblePlayers(Piece.BISHOP, new Set(), pool, NFL)).toEqual([wr1, wr2]); // sorted by proj desc
-    expect(eligiblePlayers(Piece.KNIGHT, new Set(), pool, NFL)).toEqual([te1]);
-    expect(eligiblePlayers(Piece.PAWN, new Set(), pool, NFL)).toEqual([cheapWr]);
-  });
-
-  it("sorts by projection, descending", () => {
-    const result = eligiblePlayers(Piece.BISHOP, new Set(), [wr2, wr1], NFL);
-    expect(result.map((p) => p.id)).toEqual(["wr1", "wr2"]); // wr1's 18.0 > wr2's 12.0
-  });
-
-  it("a player locked by either side never appears again", () => {
-    const pool = [wr1, wr2, te1];
-    const lockedByBlack = new Set([wr1.id]); // simulates Black already having taken wr1
-    const result = eligiblePlayers(Piece.BISHOP, lockedByBlack, pool, NFL);
-    expect(result.some((p) => p.id === wr1.id)).toBe(false);
-    expect(result.map((p) => p.id)).toEqual([wr2.id]);
   });
 });
 

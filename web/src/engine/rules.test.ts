@@ -32,17 +32,19 @@ const CONTEST = new ContestConfig({ cap: 50000, fieldSize: 1000, payouts: [] });
 const CONTEST_CAP = 50000;
 const NFL = loadSportConfig(nflConfig);
 
-function makePlayer(id: string, pos: string, salary: number): Player {
+function makePlayer(id: string, pos: string, salary: number, team = "AAA"): Player {
   return new Player({
     id,
     name: id,
     positions: [pos],
-    team: "AAA",
+    team,
     opp: "BBB",
     salary,
     proj: 10.0,
     ownSmall: 0.1,
     ownLarge: 0.1,
+    floor: 6.0,
+    ceiling: 16.0,
   });
 }
 
@@ -70,8 +72,8 @@ function stateReadyToCastleQueenside(): BuildState {
 
 // Like stateReadyToCastleQueenside, but White's QB is already locked from
 // setup (Task 14 PLACED king mode) before any move is played.
-function stateReadyToCastleQueensidePlaced(): BuildState {
-  let state = placeKings(makePlayer("qb_w", "QB", 6500), makePlayer("qb_b", "QB", 6200), NFL, CONTEST);
+function stateReadyToCastleQueensidePlaced(whiteQbTeam = "AAA"): BuildState {
+  let state = placeKings(makePlayer("qb_w", "QB", 6500, whiteQbTeam), makePlayer("qb_b", "QB", 6200), NFL, CONTEST);
   state = applyMove(state, uci("d2d4"), makePlayer("w_pawn", "WR", 3000), NFL, CONTEST);
   state = applyMove(state, uci("a7a6"), makePlayer("b1", "WR", 3000), NFL, CONTEST);
   state = applyMove(state, uci("b1c3"), makePlayer("te1", "TE", 5200), NFL, CONTEST);
@@ -109,9 +111,9 @@ describe("isLegalMove / applyMove", () => {
   });
 
   it("rejects a move whose piece doesn't match the player's classification", () => {
-    const rb = makePlayer("rb1", "RB", 5200); // pools as Rook only, not Knight
-    expect(classify(rb, NFL)).toEqual(new Set([Piece.ROOK]));
-    expect(isLegalMove(new BuildState(), uci("b1c3"), rb, NFL, CONTEST)).toBe(false);
+    const qb = makePlayer("qb1", "QB", 6000); // pools as King only, never Knight
+    expect(classify(qb, NFL)).toEqual(new Set([Piece.KING]));
+    expect(isLegalMove(new BuildState(), uci("b1c3"), qb, NFL, CONTEST)).toBe(false);
   });
 
   it("turn alternates", () => {
@@ -132,6 +134,38 @@ describe("isLegalMove / applyMove", () => {
     const state = applyMove(new BuildState(), uci("b1c3"), knight, NFL, CONTEST);
     expect(state.whiteMoves[0].san).toBe("Nc3");
     expect(state.whiteMoves[0].piece).toBe(Piece.KNIGHT);
+  });
+
+  // --- direct Rook move: team-restricted (RULES.md piece table) --------
+
+  it("direct Rook move without a locked QB accepts any RB/WR/TE team", () => {
+    // RULES.md "Direct Rook move": "if not [locked], list all RB/WR/TE."
+    let state = applyMove(new BuildState(), uci("a2a4"), makePlayer("w1", "WR", 3000), NFL, CONTEST);
+    state = applyMove(state, uci("a7a5"), makePlayer("b1", "WR", 3000), NFL, CONTEST);
+
+    const teammate = makePlayer("rb1", "RB", 5200, "CIN");
+    expect(isLegalMove(state, uci("a1a3"), teammate, NFL, CONTEST)).toBe(true);
+
+    const otherTeam = makePlayer("rb2", "RB", 5300, "DET");
+    expect(isLegalMove(state, uci("a1a3"), otherTeam, NFL, CONTEST)).toBe(true);
+  });
+
+  it("direct Rook move with a locked QB requires a teammate", () => {
+    // RULES.md "Direct Rook move": "if the side's QB is locked, list
+    // his teammates."
+    const qb = makePlayer("qb1", "QB", 6000, "CIN");
+    let state = applyMove(new BuildState(), uci("e2e4"), makePlayer("w1", "WR", 3000), NFL, CONTEST);
+    state = applyMove(state, uci("e7e5"), makePlayer("b1", "WR", 3000), NFL, CONTEST);
+    state = applyMove(state, uci("a2a4"), makePlayer("w2", "WR", 3000), NFL, CONTEST);
+    state = applyMove(state, uci("a7a5"), makePlayer("b2", "WR", 3000), NFL, CONTEST);
+    state = applyMove(state, uci("e1e2"), qb, NFL, CONTEST); // King move locks the QB (CIN)
+    state = applyMove(state, uci("h7h6"), makePlayer("b3", "WR", 3000), NFL, CONTEST);
+
+    const teammate = makePlayer("rb1", "RB", 5200, "CIN");
+    expect(isLegalMove(state, uci("a1a3"), teammate, NFL, CONTEST)).toBe(true);
+
+    const otherTeam = makePlayer("rb2", "RB", 5300, "DET");
+    expect(isLegalMove(state, uci("a1a3"), otherTeam, NFL, CONTEST)).toBe(false);
   });
 
   // --- exclusivity ------------------------------------------------------
@@ -267,6 +301,24 @@ describe("castling", () => {
     expect(() => castle(state, uci("e1c1"), notAKing, rook, NFL, CONTEST)).toThrow();
   });
 
+  // --- Rook = correlation: castling's Rook must be the King's teammate --
+
+  it("castle rejects a Rook not on the King's team", () => {
+    const state = stateReadyToCastleQueenside();
+    const king = makePlayer("qb1", "QB", 6000, "CIN");
+    const rook = makePlayer("rb1", "RB", 5200, "DET"); // not a teammate
+    expect(() => castle(state, uci("e1c1"), king, rook, NFL, CONTEST)).toThrow();
+  });
+
+  it("castle accepts a Rook on the King's team", () => {
+    const state = stateReadyToCastleQueenside();
+    const king = makePlayer("qb1", "QB", 6000, "CIN");
+    const rook = makePlayer("rb1", "RB", 5200, "CIN");
+    const newState = castle(state, uci("e1c1"), king, rook, NFL, CONTEST);
+    expect(newState.lockedPlayerIds.has("qb1")).toBe(true);
+    expect(newState.lockedPlayerIds.has("rb1")).toBe(true);
+  });
+
   it("castle respects exclusivity", () => {
     // A board built directly from a FEN (not played out through
     // applyMove): King and Rook both still home (castling rights intact),
@@ -356,6 +408,19 @@ describe("King modes (Task 14)", () => {
     expect(newState.board.get("c1")?.type).toBe("k");
     expect(newState.board.get("d1")?.type).toBe("r");
     expect(newState.whiteCastled).toBe(true);
+  });
+
+  it("castle in PLACED mode rejects a Rook not on the placed QB's team", () => {
+    const state = stateReadyToCastleQueensidePlaced("CIN");
+    const rook = makePlayer("rb1", "RB", 5200, "DET"); // not a teammate of the placed QB
+    expect(() => castle(state, uci("e1c1"), null, rook, NFL, CONTEST, KingMode.PLACED)).toThrow();
+  });
+
+  it("castle in PLACED mode accepts a Rook on the placed QB's team", () => {
+    const state = stateReadyToCastleQueensidePlaced("CIN");
+    const rook = makePlayer("rb1", "RB", 5200, "CIN");
+    const newState = castle(state, uci("e1c1"), null, rook, NFL, CONTEST, KingMode.PLACED);
+    expect(newState.lockedPlayerIds.has("rb1")).toBe(true);
   });
 
   it("castle twice is illegal in PLACED mode", () => {
@@ -485,7 +550,7 @@ describe("captures", () => {
     expect(matched?.isCapture()).toBe(true);
 
     const pawnPick = makePlayer("wr_new", "WR", 3200);
-    expect(classify(pawnPick, NFL)).toEqual(new Set([Piece.PAWN]));
+    expect(classify(pawnPick, NFL)).toEqual(new Set([Piece.PAWN, Piece.ROOK])); // Rook too: no QB locked yet
 
     expect(isLegalCapture(state, captureMove, NFL, CONTEST)).toBe(false); // no player supplied
     expect(isLegalCapture(state, captureMove, NFL, CONTEST, pawnPick)).toBe(true);
@@ -515,7 +580,7 @@ describe("captures", () => {
     expect(matched?.isCapture()).toBe(true);
 
     const knightPick = makePlayer("te1", "TE", 5200);
-    expect(classify(knightPick, NFL)).toEqual(new Set([Piece.KNIGHT]));
+    expect(classify(knightPick, NFL)).toEqual(new Set([Piece.KNIGHT, Piece.BISHOP, Piece.ROOK]));
 
     expect(isLegalCapture(state, captureMove, NFL, CONTEST)).toBe(false);
     expect(isLegalCapture(state, captureMove, NFL, CONTEST, knightPick)).toBe(true);
@@ -629,6 +694,8 @@ describe("lineupStillCompletable", () => {
       proj: 10.0,
       ownSmall: 0.1,
       ownLarge: 0.1,
+      floor: 6.0,
+      ceiling: 16.0,
     });
     const threeRbs = [0, 1, 2].map((i) => makePlayer(`rb${i}`, "RB", 5200)); // fills RB(2) + FLEX(1)
     const roster = [...threeRbs, hybrid];
@@ -685,6 +752,8 @@ describe("assignRosterSlots", () => {
       proj: 10.0,
       ownSmall: 0.1,
       ownLarge: 0.1,
+      floor: 6.0,
+      ceiling: 16.0,
     });
     const threeRbs = [0, 1, 2].map((i) => makePlayer(`rb${i}`, "RB", 5200));
     const roster = [...threeRbs, hybrid];

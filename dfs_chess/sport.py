@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from .models import Piece
@@ -21,6 +21,11 @@ class PieceBand:
     exclude_positions: frozenset[str] | None  # None = no exclusions
     min_salary: int | None  # None = no floor
     max_salary: int | None  # None = no ceiling (exclusive)
+    # RULES.md piece table, Rook: eligibility is relative to the moving
+    # side's own locked QB (if any), not a fixed salary/position band --
+    # `matches` itself stays position/salary-only; `pieces.classify` is
+    # what applies the team filter for a band with this set.
+    team_restricted: bool = False
 
     def matches(self, positions: set[str], salary: int) -> bool:
         if self.positions is not None and not (self.positions & positions):
@@ -47,10 +52,18 @@ class SportConfig:
     salary_cap: int
     piece_bands: list[PieceBand]
     roster_slots: list[RosterSlot]
+    # Per-piece cap on how many candidates a pick list ever shows -- a
+    # piece missing here has no cap (RULES.md "List cap": default 12 for
+    # Queen/Rook/Bishop/Knight, none for King/Pawn -- but that default
+    # lives in each sport's own config data, not hardcoded here).
+    list_caps: dict[Piece, int] = field(default_factory=dict)
 
     @property
     def roster_size(self) -> int:
         return sum(slot.count for slot in self.roster_slots)
+
+    def list_cap_for(self, piece: Piece) -> int | None:
+        return self.list_caps.get(piece)
 
 
 def _position_fully_covered(position: str, piece_bands: list[PieceBand]) -> bool:
@@ -93,6 +106,7 @@ def load_sport_config(path: str | Path) -> SportConfig:
             ),
             min_salary=band.get("min_salary"),
             max_salary=band.get("max_salary"),
+            team_restricted=band.get("team_restricted", False),
         )
         for band in data["piece_bands"]
     ]
@@ -110,9 +124,12 @@ def load_sport_config(path: str | Path) -> SportConfig:
             "some player at that position would classify as no piece at all"
         )
 
+    list_caps = {Piece[name]: cap for name, cap in data.get("list_caps", {}).items()}
+
     return SportConfig(
         sport=data["sport"],
         salary_cap=data["salary_cap"],
         piece_bands=piece_bands,
         roster_slots=roster_slots,
+        list_caps=list_caps,
     )

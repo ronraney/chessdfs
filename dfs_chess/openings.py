@@ -190,6 +190,8 @@ def _proxy_player(piece: Piece, eligible: dict[Piece, frozenset[str]]) -> Player
         proj=0.0,
         own_small=0.0,
         own_large=0.0,
+        floor=0.0,
+        ceiling=0.0,
     )
 
 

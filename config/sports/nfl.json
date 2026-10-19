@@ -3,13 +3,14 @@
   "salary_cap": 50000,
   "piece_bands": [
     {"piece": "KING", "positions": ["QB"], "exclude_positions": null, "min_salary": null, "max_salary": null},
-    {"piece": "QUEEN", "positions": null, "exclude_positions": ["QB"], "min_salary": 7000, "max_salary": null},
-    {"piece": "ROOK", "positions": ["RB"], "exclude_positions": null, "min_salary": 5000, "max_salary": null},
-    {"piece": "BISHOP", "positions": ["WR"], "exclude_positions": null, "min_salary": 5000, "max_salary": null},
-    {"piece": "KNIGHT", "positions": ["TE"], "exclude_positions": null, "min_salary": 4500, "max_salary": null},
+    {"piece": "QUEEN", "positions": ["RB", "WR", "TE"], "exclude_positions": null, "min_salary": 7000, "max_salary": null},
+    {"piece": "ROOK", "positions": ["RB", "WR", "TE"], "exclude_positions": null, "min_salary": null, "max_salary": null, "team_restricted": true},
+    {"piece": "BISHOP", "positions": ["RB", "WR", "TE"], "exclude_positions": null, "min_salary": 5000, "max_salary": null},
+    {"piece": "KNIGHT", "positions": ["RB", "WR", "TE"], "exclude_positions": null, "min_salary": 4500, "max_salary": null},
     {"piece": "PAWN", "positions": null, "exclude_positions": ["QB"], "min_salary": null, "max_salary": 5000},
     {"piece": "PAWN", "positions": ["DST"], "exclude_positions": null, "min_salary": null, "max_salary": null}
   ],
+  "list_caps": {"QUEEN": 12, "ROOK": 12, "BISHOP": 12, "KNIGHT": 12},
   "roster_slots": [
     {"name": "QB", "positions": ["QB"], "count": 1},
     {"name": "RB", "positions": ["RB"], "count": 2},

@@ -38,10 +38,21 @@ def piece_for_chess_type(piece_type: chess.PieceType) -> Piece:
     return _CHESS_PIECE_TYPES[piece_type]
 
 
-def classify(player: Player, sport: SportConfig) -> frozenset[Piece]:
+def classify(player: Player, sport: SportConfig, qb_team: str | None = None) -> frozenset[Piece]:
     """Every piece band `player` qualifies for, by position + salary --
     empty only if `sport`'s config is broken (load_sport_config should have
     rejected it before this ever runs).
+
+    `qb_team` is the moving side's own currently locked QB's team, if any
+    (RULES.md piece table, Rook: "RB/WR/TE on your QB's team, any
+    salary"). A `team_restricted` band (Rook) only matches when `qb_team`
+    is None (no QB locked yet -- "list all RB/WR/TE") or equals
+    `player.team`; every other band ignores `qb_team` entirely.
     """
     positions = {p.upper() for p in player.positions}
-    return frozenset(band.piece for band in sport.piece_bands if band.matches(positions, player.salary))
+    return frozenset(
+        band.piece
+        for band in sport.piece_bands
+        if band.matches(positions, player.salary)
+        and (not band.team_restricted or qb_team is None or player.team == qb_team)
+    )

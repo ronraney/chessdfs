@@ -31,6 +31,8 @@ ETR_COLUMN_MAP: dict[str, str] = {
     "proj": "DK Proj",
     "own_small": "Small Field",
     "own_large": "Large Field",
+    "floor": "DK Floor",
+    "ceiling": "DK Ceiling",
 }
 
 
@@ -41,6 +43,11 @@ def _parse_salary(raw: str) -> int:
 def _parse_percent(raw: str) -> float:
     """"40.20%" -> 0.402 (stored as a 0-1 fraction; shown as a percent in the UI)."""
     return float(raw.rstrip("%")) / 100
+
+
+def _strip_opp(raw: str) -> str:
+    """"@ARI" (away) -> "ARI"; "SF" (home) is unchanged."""
+    return raw[1:] if raw.startswith("@") else raw
 
 
 def _resolve_id_column(column_map: dict[str, str], fieldnames: list[str] | None) -> str:
@@ -75,11 +82,13 @@ def load_etr_csv(
                     name=row[column_map["name"]].strip(),
                     positions=(row[column_map["pos"]],),
                     team=row[column_map["team"]],
-                    opp=row[column_map["opp"]],
+                    opp=_strip_opp(row[column_map["opp"]]),
                     salary=_parse_salary(row[column_map["salary"]]),
                     proj=float(row[column_map["proj"]]),
                     own_small=_parse_percent(row[column_map["own_small"]]),
                     own_large=_parse_percent(row[column_map["own_large"]]),
+                    floor=float(row[column_map["floor"]]),
+                    ceiling=float(row[column_map["ceiling"]]),
                 )
             )
     return players
@@ -111,7 +120,7 @@ def validate_etr_csv(
         fields = reader.fieldnames or []
         rows = list(reader)
 
-    required_keys = ["name", "pos", "team", "opp", "salary", "proj", "own_small", "own_large"]
+    required_keys = ["name", "pos", "team", "opp", "salary", "proj", "own_small", "own_large", "floor", "ceiling"]
     missing_columns = [key for key in required_keys if column_map[key] not in fields]
     if missing_columns:
         names = ", ".join(column_map[key] for key in missing_columns)

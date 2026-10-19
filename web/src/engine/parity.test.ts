@@ -17,6 +17,7 @@ import { BuildState, KingMode, Piece, Player, Side } from "./models";
 import { bookContinuations, openingName, rankFamilies, suggestOpening, type RankableLine } from "./openings";
 import { classify, pieceForChessType } from "./pieces";
 import type { ChessMove } from "./rules";
+import { castleQbCandidates, pickList } from "./picklist";
 import {
   applyCaptureMove,
   applyMove,
@@ -51,6 +52,8 @@ interface RawPlayer {
   proj: number;
   own_small: number;
   own_large: number;
+  floor: number;
+  ceiling: number;
 }
 
 function toPlayer(raw: RawPlayer): Player {
@@ -64,6 +67,8 @@ function toPlayer(raw: RawPlayer): Player {
     proj: raw.proj,
     ownSmall: raw.own_small,
     ownLarge: raw.own_large,
+    floor: raw.floor,
+    ceiling: raw.ceiling,
   });
 }
 
@@ -141,6 +146,10 @@ function runScenario(scenario: Scenario): void {
       return checkOpeningLookup(scenario);
     case "template_build":
       return checkTemplateBuild(scenario);
+    case "pick_list":
+      return checkPickList(scenario);
+    case "castle_qb_candidates":
+      return checkCastleQbCandidates(scenario);
     default:
       throw new Error(`unknown parity scenario kind: ${scenario.kind}`);
   }
@@ -380,4 +389,30 @@ function checkTemplateBuild(scenario: Scenario): void {
   expect(picks.filter((p) => p.side === "WHITE")).toEqual(expected.white_moves);
   expect(picks.filter((p) => p.side === "BLACK")).toEqual(expected.black_moves);
   expect(openingName(templateMoves, BOOK)).toBe(expected.opening_name_at_end);
+}
+
+function checkPickList(scenario: Scenario): void {
+  const players = (scenario.players as RawPlayer[]).map(toPlayer);
+  const byId = new Map(players.map((p) => [p.id, p]));
+  const locked = new Set(scenario.locked_player_ids as string[]);
+  const current = (scenario.current_player_ids as string[]).map((id) => byId.get(id)!);
+  const contest = new ContestConfig({ cap: scenario.cap as number, fieldSize: scenario.field_size as number, payouts: [] });
+  const piece = Piece[scenario.piece as keyof typeof Piece];
+  const qbTeam = (scenario.qb_team as string | null) ?? null;
+
+  const result = pickList(piece, players, locked, current, NFL, contest, qbTeam);
+  const expected = scenario.expected as { ids: string[] };
+  expect(result.map((p) => p.id)).toEqual(expected.ids);
+}
+
+function checkCastleQbCandidates(scenario: Scenario): void {
+  const players = (scenario.players as RawPlayer[]).map(toPlayer);
+  const byId = new Map(players.map((p) => [p.id, p]));
+  const locked = new Set(scenario.locked_player_ids as string[]);
+  const current = (scenario.current_player_ids as string[]).map((id) => byId.get(id)!);
+  const contest = new ContestConfig({ cap: scenario.cap as number, fieldSize: scenario.field_size as number, payouts: [] });
+
+  const result = castleQbCandidates(players, locked, current, NFL, contest);
+  const expected = scenario.expected as { ids: string[] };
+  expect(result.map((p) => p.id)).toEqual(expected.ids);
 }

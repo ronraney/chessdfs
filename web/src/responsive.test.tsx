@@ -96,7 +96,7 @@ describe("Build screen -- responsive CSS mechanism present (stylesheet-source ch
 describe("Pick modal -- bottom sheet (DOM structure, real render -- see file header for what this does and doesn't prove)", () => {
   const contest = new ContestConfig({ fieldSize: 1000, payouts: [] });
   function makePlayer(id: string): Player {
-    return new Player({ id, name: `Player ${id}`, positions: ["WR"], team: "AAA", opp: "BBB", salary: 5000, proj: 10, ownSmall: 0.1, ownLarge: 0.1 });
+    return new Player({ id, name: `Player ${id}`, positions: ["WR"], team: "AAA", opp: "BBB", salary: 5000, proj: 10, ownSmall: 0.1, ownLarge: 0.1, floor: 6, ceiling: 16 });
   }
   const candidates = Array.from({ length: 3 }, (_, i) => makePlayer(`p${i}`));
 

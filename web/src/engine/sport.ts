@@ -19,6 +19,11 @@ export interface PieceBandFields {
   excludePositions: ReadonlySet<string> | null; // null = no exclusions
   minSalary: number | null; // null = no floor
   maxSalary: number | null; // null = no ceiling (exclusive)
+  // RULES.md piece table, Rook: eligibility is relative to the moving
+  // side's own locked QB (if any), not a fixed salary/position band --
+  // `matches` itself stays position/salary-only; `pieces.classify` is
+  // what applies the team filter for a band with this set.
+  teamRestricted?: boolean;
 }
 
 export class PieceBand {
@@ -27,6 +32,7 @@ export class PieceBand {
   readonly excludePositions: ReadonlySet<string> | null;
   readonly minSalary: number | null;
   readonly maxSalary: number | null;
+  readonly teamRestricted: boolean;
 
   constructor(fields: PieceBandFields) {
     this.piece = fields.piece;
@@ -34,6 +40,7 @@ export class PieceBand {
     this.excludePositions = fields.excludePositions;
     this.minSalary = fields.minSalary;
     this.maxSalary = fields.maxSalary;
+    this.teamRestricted = fields.teamRestricted ?? false;
   }
 
   matches(positions: ReadonlySet<string>, salary: number): boolean {
@@ -75,6 +82,11 @@ export interface SportConfigFields {
   salaryCap: number;
   pieceBands: readonly PieceBand[];
   rosterSlots: readonly RosterSlot[];
+  // Per-piece cap on how many candidates a pick list ever shows -- a
+  // piece missing here has no cap (RULES.md "List cap": default 12 for
+  // Queen/Rook/Bishop/Knight, none for King/Pawn -- but that default
+  // lives in each sport's own config data, not hardcoded here).
+  listCaps?: ReadonlyMap<Piece, number>;
 }
 
 export class SportConfig {
@@ -82,16 +94,22 @@ export class SportConfig {
   readonly salaryCap: number;
   readonly pieceBands: readonly PieceBand[];
   readonly rosterSlots: readonly RosterSlot[];
+  readonly listCaps: ReadonlyMap<Piece, number>;
 
   constructor(fields: SportConfigFields) {
     this.sport = fields.sport;
     this.salaryCap = fields.salaryCap;
     this.pieceBands = fields.pieceBands;
     this.rosterSlots = fields.rosterSlots;
+    this.listCaps = fields.listCaps ?? new Map();
   }
 
   get rosterSize(): number {
     return this.rosterSlots.reduce((sum, slot) => sum + slot.count, 0);
+  }
+
+  listCapFor(piece: Piece): number | null {
+    return this.listCaps.get(piece) ?? null;
   }
 }
 
@@ -101,6 +119,7 @@ interface RawPieceBand {
   exclude_positions?: string[] | null;
   min_salary: number | null;
   max_salary: number | null;
+  team_restricted?: boolean;
 }
 
 interface RawRosterSlot {
@@ -114,6 +133,7 @@ export interface RawSportConfig {
   salary_cap: number;
   piece_bands: RawPieceBand[];
   roster_slots: RawRosterSlot[];
+  list_caps?: Record<string, number>;
 }
 
 function pieceFromName(name: string): Piece {
@@ -154,6 +174,7 @@ export function loadSportConfig(data: RawSportConfig): SportConfig {
         excludePositions: band.exclude_positions != null ? new Set(band.exclude_positions) : null,
         minSalary: band.min_salary,
         maxSalary: band.max_salary,
+        teamRestricted: band.team_restricted ?? false,
       }),
   );
 
@@ -175,10 +196,15 @@ export function loadSportConfig(data: RawSportConfig): SportConfig {
     );
   }
 
+  const listCaps = new Map<Piece, number>(
+    Object.entries(data.list_caps ?? {}).map(([name, cap]) => [pieceFromName(name), cap]),
+  );
+
   return new SportConfig({
     sport: data.sport,
     salaryCap: data.salary_cap,
     pieceBands,
     rosterSlots,
+    listCaps,
   });
 }

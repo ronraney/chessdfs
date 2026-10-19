@@ -91,12 +91,19 @@ describe("bookContinuations", () => {
 });
 
 describe("legalDepth", () => {
-  it("Najdorf breaks at ply 9", () => {
-    expect(legalDepth(NAJDORF, NFL)).toBe(9);
+  it("Najdorf never breaks now that Knight pools RB/WR/TE", () => {
+    // Piece table: Knight's own eligible positions are RB/WR/TE now, not
+    // TE alone -- the Najdorf's 3 Knight-type picks for White (Nf3, Nxd4,
+    // Nc3) used to overflow TE(1)+FLEX(1)'s 2 slots (breaking at ply 9);
+    // now they fit easily within RB/WR/TE's 7 slots, so the line never
+    // breaks at all.
+    expect(legalDepth(NAJDORF, NFL)).toBeNull();
   });
 
-  it("Fried Liver breaks at ply 10", () => {
-    expect(legalDepth(FRIED_LIVER, NFL)).toBe(10);
+  it("Fried Liver never breaks now that Knight pools RB/WR/TE", () => {
+    // Same root cause as the Najdorf case above, for Black's 3
+    // Knight-type picks (Nc6, Nf6, Nxd5).
+    expect(legalDepth(FRIED_LIVER, NFL)).toBeNull();
   });
 
   it("null when the line never breaks", () => {
@@ -229,11 +236,15 @@ describe("openingPreview", () => {
     ]);
   });
 
-  it("Najdorf reports White's break at ply 9", () => {
+  it("Najdorf's break_ply matches legalDepth", () => {
+    // Piece table: Knight now pools RB/WR/TE (see the legalDepth test
+    // above) -- the Najdorf no longer breaks at all, but openingPreview's
+    // own breakPly must still track legalDepth's answer exactly,
+    // whatever it is.
     const line = new BookLine({ eco: "B90", name: "Najdorf", moves: NAJDORF });
     const preview = openingPreview(line, NFL);
-    expect(preview.breakPly).toBe(9);
-    expect(preview.breakPly).toBe(legalDepth(NAJDORF, NFL));
+    expect(preview.breakPly).toBeNull();
+    expect(legalDepth(NAJDORF, NFL)).toBeNull();
   });
 });
 

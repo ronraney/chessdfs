@@ -46,12 +46,19 @@ def test_book_continuations_after_e4():
     assert {"e5", "c5", "e6", "c6"} <= continuations
 
 
-def test_legal_depth_najdorf_breaks_at_ply_9():
-    assert legal_depth(NAJDORF, NFL) == 9
+def test_legal_depth_najdorf_never_breaks_now_that_knight_pools_rbwrte():
+    # Piece table: Knight's own eligible positions are RB/WR/TE now, not
+    # TE alone -- the Najdorf's 3 Knight-type picks for White (Nf3, Nxd4,
+    # Nc3) used to overflow TE(1)+FLEX(1)'s 2 slots (breaking at ply 9);
+    # now they fit easily within RB/WR/TE's 7 slots, so the line never
+    # breaks at all.
+    assert legal_depth(NAJDORF, NFL) is None
 
 
-def test_legal_depth_fried_liver_breaks_at_ply_10():
-    assert legal_depth(FRIED_LIVER, NFL) == 10
+def test_legal_depth_fried_liver_never_breaks_now_that_knight_pools_rbwrte():
+    # Same root cause as the Najdorf case above, for Black's 3 Knight-type
+    # picks (Nc6, Nf6, Nxd5).
+    assert legal_depth(FRIED_LIVER, NFL) is None
 
 
 def test_legal_depth_none_when_line_never_breaks():
@@ -93,10 +100,15 @@ def test_opening_preview_castling_line_lists_king_and_rook():
     )
 
 
-def test_opening_preview_najdorf_reports_whites_break_at_ply_9():
+def test_opening_preview_najdorf_break_ply_matches_legal_depth():
+    # Piece table: Knight now pools RB/WR/TE (see the legal_depth test
+    # above) -- the Najdorf no longer breaks at all, but opening_preview's
+    # own break_ply must still track legal_depth's answer exactly,
+    # whatever it is.
     line = BookLine(eco="B90", name="Najdorf", moves=NAJDORF)
     preview = opening_preview(line, NFL)
-    assert preview.break_ply == 9 == legal_depth(NAJDORF, NFL)
+    assert preview.break_ply is None
+    assert legal_depth(NAJDORF, NFL) is None
 
 
 def _board_after(moves: tuple[str, ...]) -> chess.Board:

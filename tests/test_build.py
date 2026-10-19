@@ -38,17 +38,22 @@ TOY_SPORT = SportConfig(
 )
 
 
-def make_player(id_: str, pos: str, salary: int, proj: float = 10.0) -> Player:
+def make_player(
+    id_: str, pos: str, salary: int, proj: float = 10.0, team: str = "AAA",
+    floor: float | None = None, ceiling: float | None = None,
+) -> Player:
     return Player(
         id=id_,
         name=id_,
         positions=(pos,),
-        team="AAA",
+        team=team,
         opp="BBB",
         salary=salary,
         proj=proj,
         own_small=0.1,
         own_large=0.1,
+        floor=proj * 0.6 if floor is None else floor,
+        ceiling=proj * 1.6 if ceiling is None else ceiling,
     )
 
 
@@ -125,6 +130,25 @@ def test_play_black_template_move_plays_exactly_with_highest_projection():
     expected = next(p for p in black_pool if Piece.PAWN in classify(p, NFL))  # highest proj, tie-break stable
     assert result.state.black_moves[-1].player.id == expected.id
     assert result.opening is not None
+
+
+def test_play_black_template_move_picks_by_the_pieces_own_metric_not_projection():
+    # RULES.md piece table: Queen sorts by ceiling, not projection --
+    # Black's placeholder pick must follow suit, not a blanket "highest
+    # proj" (the opposite ranking here proves it's really using ceiling).
+    state = apply_move(BuildState(), uci("d2d4"), make_player("w1", "WR", 3000), NFL, CONTEST)
+    state = apply_move(state, uci("d7d5"), make_player("b1", "WR", 3000), NFL, CONTEST)
+    state = apply_move(state, uci("g1f3"), make_player("w2", "TE", 5200), NFL, CONTEST)
+
+    high_proj_low_ceiling = make_player("a", "RB", 7200, proj=30.0, ceiling=20.0)
+    low_proj_high_ceiling = make_player("b", "RB", 7300, proj=10.0, ceiling=50.0)
+    pool = [high_proj_low_ceiling, low_proj_high_ceiling]
+
+    result = play_black_template_move(state, uci("d8d6"), NFL, CONTEST, pool, BOOK)
+
+    assert result is not None
+    assert result.state.black_moves[-1].piece is Piece.QUEEN
+    assert result.state.black_moves[-1].player.id == "b"  # higher ceiling, not higher proj
 
 
 def test_play_black_template_move_returns_none_when_dfs_illegal():
@@ -381,6 +405,69 @@ def test_black_can_capture_an_unmoved_knight_and_gets_a_knight_pick():
     assert result.state.white_moves == []  # nothing removed -- there was nothing to remove
 
 
+# --- Black's own castling (RULES.md "Rook = correlation") -------------------
+# Develops Black's kingside Knight and Bishop (via harmless White a-pawn
+# fillers in between) so Black is ready to play O-O -- can_castle(BLACK)
+# requires exactly that, same shape as rules.py's own
+# `_state_ready_to_castle_queenside`, mirrored for the other side.
+
+
+def _state_ready_for_black_kingside_castle() -> BuildState:
+    state = apply_move(BuildState(), uci("a2a3"), make_player("w1", "WR", 3000), NFL, CONTEST)
+    state = apply_move(state, uci("g8f6"), make_player("bk1", "TE", 5200), NFL, CONTEST)
+    state = apply_move(state, uci("a3a4"), make_player("w2", "WR", 3000), NFL, CONTEST)
+    state = apply_move(state, uci("g7g6"), make_player("bp1", "WR", 3000), NFL, CONTEST)
+    state = apply_move(state, uci("a4a5"), make_player("w3", "WR", 3000), NFL, CONTEST)
+    state = apply_move(state, uci("f8g7"), make_player("bb1", "WR", 5000), NFL, CONTEST)
+    state = apply_move(state, uci("a5a6"), make_player("w4", "WR", 3000), NFL, CONTEST)
+    return state
+
+
+def test_black_castling_only_offers_a_qb_with_an_eligible_teammate():
+    state = _state_ready_for_black_kingside_castle()
+    lonely_qb = make_player("qb_lonely", "QB", 6500, proj=30.0, team="CIN")  # no CIN teammate below
+    teamed_qb = make_player("qb_teamed", "QB", 6200, proj=10.0, team="DET")
+    teammate = make_player("rb_teammate", "RB", 5200, team="DET")
+    pool = [lonely_qb, teamed_qb, teammate]
+
+    result = play_black_template_move(state, uci("e8g8"), NFL, CONTEST, pool, BOOK)
+
+    assert result is not None
+    king_record = next(m for m in result.state.black_moves if m.piece is Piece.KING)
+    rook_record = next(m for m in result.state.black_moves if m.piece is Piece.ROOK)
+    # The higher-proj lonely_qb is skipped entirely (no eligible teammate);
+    # teamed_qb is the top of what's left, and its own teammate is the Rook.
+    assert king_record.player.id == "qb_teamed"
+    assert rook_record.player.id == "rb_teammate"
+
+
+def test_black_castling_is_illegal_when_no_qb_has_an_eligible_teammate():
+    state = _state_ready_for_black_kingside_castle()
+    pool = [make_player("qb1", "QB", 6500, team="CIN"), make_player("qb2", "QB", 6200, team="DET")]
+
+    result = play_black_template_move(state, uci("e8g8"), NFL, CONTEST, pool, BOOK)
+
+    assert result is None  # RULES.md: "If none, castling is illegal."
+
+
+def test_black_castling_picks_top_of_each_piece_list_not_highest_projection():
+    # Rook sorts by projection (unchanged), but this still proves Black's
+    # castling resolution goes through the real pick lists rather than a
+    # simple "highest proj overall" scan: among CIN's own two teammates,
+    # the higher-PROJECTION one must win even though the other is cheaper.
+    state = _state_ready_for_black_kingside_castle()
+    qb = make_player("qb1", "QB", 6500, team="CIN")
+    low_proj_teammate = make_player("rb_low", "RB", 5200, proj=8.0, team="CIN")
+    high_proj_teammate = make_player("rb_high", "RB", 5300, proj=22.0, team="CIN")
+    pool = [qb, low_proj_teammate, high_proj_teammate]
+
+    result = play_black_template_move(state, uci("e8g8"), NFL, CONTEST, pool, BOOK)
+
+    assert result is not None
+    rook_record = next(m for m in result.state.black_moves if m.piece is Piece.ROOK)
+    assert rook_record.player.id == "rb_high"
+
+
 # --- end condition -------------------------------------------------------------
 
 def test_build_ends_on_whites_completion_with_black_incomplete():
@@ -514,13 +601,13 @@ def test_black_can_still_reply_once_white_locks_a_player_loaded_from_an_id_only_
     """
     csv_path = tmp_path / "id_only.csv"
     csv_path.write_text(
-        "Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field,id\n"
-        'Test Player A,DST,AAA,BBB,"$2,000",5.0,10.00%,10.00%,1001\n'
-        'Test Player B,DST,AAA,BBB,"$2,100",5.1,10.00%,10.00%,1002\n'
-        'Test Player C,DST,AAA,BBB,"$2,200",5.2,10.00%,10.00%,1003\n'
-        'Test Player D,DST,AAA,BBB,"$2,300",5.3,10.00%,10.00%,1004\n'
-        'Test Player E,DST,AAA,BBB,"$2,400",5.4,10.00%,10.00%,1005\n'
-        'Test Player F,DST,AAA,BBB,"$2,500",5.5,10.00%,10.00%,1006\n'
+        "Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field,DK Floor,DK Ceiling,id\n"
+        'Test Player A,DST,AAA,BBB,"$2,000",5.0,10.00%,10.00%,2.0,8.0,1001\n'
+        'Test Player B,DST,AAA,BBB,"$2,100",5.1,10.00%,10.00%,2.1,8.1,1002\n'
+        'Test Player C,DST,AAA,BBB,"$2,200",5.2,10.00%,10.00%,2.2,8.2,1003\n'
+        'Test Player D,DST,AAA,BBB,"$2,300",5.3,10.00%,10.00%,2.3,8.3,1004\n'
+        'Test Player E,DST,AAA,BBB,"$2,400",5.4,10.00%,10.00%,2.4,8.4,1005\n'
+        'Test Player F,DST,AAA,BBB,"$2,500",5.5,10.00%,10.00%,2.5,8.5,1006\n'
     )
     pool = load_etr_csv(csv_path)
     assert len({p.id for p in pool}) == len(pool)  # distinct ids -- the fix itself

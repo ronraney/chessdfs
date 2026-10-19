@@ -25,6 +25,18 @@ def _moves_for(state: BuildState, side: Side) -> list[Move]:
     return state.white_moves if side is Side.WHITE else state.black_moves
 
 
+def locked_qb_team(state: BuildState, side: Side) -> str | None:
+    """The team of `side`'s currently locked QB (King), or None if no
+    King is locked yet for that side -- Rook's own eligibility (RULES.md
+    piece table: "RB/WR/TE on your QB's team, any salary") is relative to
+    this, not a fixed band. `pieces.classify` reads None as "no team
+    filter" (RULES.md "Direct Rook move": "if not [locked], list all
+    RB/WR/TE").
+    """
+    king_move = next((m for m in _moves_for(state, side) if m.piece is Piece.KING), None)
+    return king_move.player.team if king_move is not None else None
+
+
 def _with_board_state(
     state: BuildState,
     side: Side,
@@ -219,7 +231,7 @@ def is_legal_move(
 
     if player.id in state.locked_player_ids:
         return False
-    if piece not in classify(player, sport):
+    if piece not in classify(player, sport, locked_qb_team(state, side)):
         return False
 
     cap = contest.effective_cap(sport)
@@ -309,7 +321,10 @@ def castle(
         if king.id in state.locked_player_ids:
             raise ValueError(f"{king.name!r} is already locked")
 
-    if Piece.ROOK not in classify(rook, sport):
+    # RULES.md piece table: the Rook must be a teammate of the FINAL QB --
+    # the one just chosen (EMERGE) or already locked from setup (PLACED).
+    qb_team = king.team if king_mode is KingMode.EMERGE else locked_qb_team(state, side)
+    if Piece.ROOK not in classify(rook, sport, qb_team):
         raise ValueError(f"{rook.name!r} does not classify as Rook")
     if rook.id in state.locked_player_ids:
         raise ValueError(f"{rook.name!r} is already locked")
@@ -461,7 +476,7 @@ def is_legal_capture(
     if player is None or player.id in state.locked_player_ids:
         return False
     captured_type = piece_for_chess_type(state.board.piece_type_at(square))
-    if captured_type not in classify(player, sport):
+    if captured_type not in classify(player, sport, locked_qb_team(state, side)):
         return False
     return lineup_still_completable(current + [player], sport, cap)
 
@@ -512,7 +527,7 @@ def apply_capture_move(
             raise ValueError(
                 f"{san!r} captures an unmoved {captured_type.value.title()} -- a player pick is required"
             )
-        if captured_type not in classify(player, sport):
+        if captured_type not in classify(player, sport, locked_qb_team(state, side)):
             raise ValueError(f"{player.name!r} does not classify as {captured_type.value.title()}")
         if player.id in state.locked_player_ids:
             raise ValueError(f"{player.name!r} is already locked")

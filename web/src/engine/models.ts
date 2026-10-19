@@ -50,6 +50,8 @@ export interface PlayerFields {
   proj: number;
   ownSmall: number;
   ownLarge: number;
+  floor: number;
+  ceiling: number;
 }
 
 export class Player {
@@ -62,6 +64,8 @@ export class Player {
   readonly proj: number;
   readonly ownSmall: number;
   readonly ownLarge: number;
+  readonly floor: number;
+  readonly ceiling: number;
 
   constructor(fields: PlayerFields) {
     this.id = fields.id;
@@ -73,6 +77,8 @@ export class Player {
     this.proj = fields.proj;
     this.ownSmall = fields.ownSmall;
     this.ownLarge = fields.ownLarge;
+    this.floor = fields.floor;
+    this.ceiling = fields.ceiling;
   }
 
   ownFor(tier: FieldTier): number {

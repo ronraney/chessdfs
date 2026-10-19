@@ -45,6 +45,8 @@ class Player:
     proj: float
     own_small: float
     own_large: float
+    floor: float
+    ceiling: float
 
     def own_for(self, tier: FieldTier) -> float:
         if tier is FieldTier.SMALL:

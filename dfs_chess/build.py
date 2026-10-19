@@ -44,7 +44,8 @@ import chess
 from .config import ContestConfig
 from .models import BuildState, KingMode, Piece, Player, Side
 from .openings import BookLine, book_continuations, opening_name, split_family
-from .pieces import classify, piece_for_chess_type
+from .picklist import castle_qb_candidates, pick_list
+from .pieces import piece_for_chess_type
 from .rules import (
     apply_capture_move,
     apply_move,
@@ -55,6 +56,7 @@ from .rules import (
     is_legal_move,
     is_lineup_complete,
     lineup_still_completable,
+    locked_qb_team,
     open_roster_slots,
     push_silent_move,
 )
@@ -89,16 +91,6 @@ def is_build_over(state: BuildState, sport: SportConfig) -> bool:
     return is_lineup_complete([m.player for m in state.white_moves], sport)
 
 
-def _eligible_unlocked(
-    piece: Piece, state: BuildState, sport: SportConfig, players_pool: list[Player]
-) -> list[Player]:
-    return [
-        p
-        for p in players_pool
-        if p.id not in state.locked_player_ids and piece in classify(p, sport)
-    ]
-
-
 def _best_legal_player(
     chess_move: chess.Move,
     piece: Piece,
@@ -107,14 +99,15 @@ def _best_legal_player(
     contest: ContestConfig,
     players_pool: list[Player],
 ) -> Player | None:
-    """Highest-projection eligible player for which `chess_move` is
-    actually legal -- the TEMPORARY placeholder pick (see module docstring).
+    """The top of `piece`'s own pick list for which `chess_move` is
+    actually legal -- the TEMPORARY placeholder pick (see module
+    docstring; RULES.md: "Black ... picks the top of the moved piece's
+    (capped) list").
     """
-    candidates = sorted(
-        _eligible_unlocked(piece, state, sport, players_pool),
-        key=lambda p: p.proj,
-        reverse=True,
-    )
+    side = Side.WHITE if state.board.turn == chess.WHITE else Side.BLACK
+    current = [m.player for m in (state.white_moves if side is Side.WHITE else state.black_moves)]
+    qb_team = locked_qb_team(state, side)
+    candidates = pick_list(piece, players_pool, state.locked_player_ids, current, sport, contest, qb_team)
     for player in candidates:
         if is_legal_move(state, chess_move, player, sport, contest):
             return player
@@ -129,16 +122,15 @@ def _best_legal_capture_player(
     contest: ContestConfig,
     players_pool: list[Player],
 ) -> Player | None:
-    """Highest-projection eligible player of `captured_type` for which
-    `chess_move` -- a capture of a piece with no lock history, i.e. it
-    never moved (Task 19) -- is actually legal right now. The TEMPORARY
-    placeholder pick, same convention as `_best_legal_player`.
+    """The top of `captured_type`'s own pick list for which `chess_move`
+    -- a capture of a piece with no lock history, i.e. it never moved
+    (Task 19) -- is actually legal right now. Same placeholder
+    convention as `_best_legal_player`.
     """
-    candidates = sorted(
-        _eligible_unlocked(captured_type, state, sport, players_pool),
-        key=lambda p: p.proj,
-        reverse=True,
-    )
+    side = Side.WHITE if state.board.turn == chess.WHITE else Side.BLACK
+    current = [m.player for m in (state.white_moves if side is Side.WHITE else state.black_moves)]
+    qb_team = locked_qb_team(state, side)
+    candidates = pick_list(captured_type, players_pool, state.locked_player_ids, current, sport, contest, qb_team)
     for player in candidates:
         if is_legal_capture(state, chess_move, sport, contest, player):
             return player
@@ -153,30 +145,28 @@ def _best_legal_castle_players(
     king_mode: KingMode = KingMode.EMERGE,
 ) -> tuple[Player, ...] | None:
     """A 2-tuple (King, Rook) in EMERGE mode, or a 1-tuple (Rook) in
-    PLACED mode (Task 14: castling locks only the Rook there)."""
+    PLACED mode (Task 14: castling locks only the Rook there) -- the top
+    of each piece's own pick list (RULES.md: "Only offer QBs with at
+    least one eligible teammate ... If none, castling is illegal").
+    """
     side = Side.WHITE if state.board.turn == chess.WHITE else Side.BLACK
     if not can_castle(state, side, king_mode):
         return None
 
     current = [m.player for m in (state.white_moves if side is Side.WHITE else state.black_moves)]
-    cap = contest.effective_cap(sport)
-    rooks = sorted(
-        _eligible_unlocked(Piece.ROOK, state, sport, players_pool), key=lambda p: p.proj, reverse=True
-    )
-    if king_mode is KingMode.PLACED:
-        for rook in rooks:
-            if lineup_still_completable(current + [rook], sport, cap):
-                return (rook,)
-        return None
+    locked = state.locked_player_ids
 
-    kings = sorted(
-        _eligible_unlocked(Piece.KING, state, sport, players_pool), key=lambda p: p.proj, reverse=True
-    )
-    for king in kings:
-        for rook in rooks:
-            if lineup_still_completable(current + [king, rook], sport, cap):
-                return king, rook
-    return None
+    if king_mode is KingMode.PLACED:
+        qb_team = locked_qb_team(state, side)
+        rooks = pick_list(Piece.ROOK, players_pool, locked, current, sport, contest, qb_team)
+        return (rooks[0],) if rooks else None
+
+    kings = castle_qb_candidates(players_pool, locked, current, sport, contest)
+    if not kings:
+        return None
+    king = kings[0]
+    rooks = pick_list(Piece.ROOK, players_pool, locked | {king.id}, current + [king], sport, contest, king.team)
+    return (king, rooks[0]) if rooks else None
 
 
 def _resolve_players(

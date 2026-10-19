@@ -20,6 +20,7 @@ def _player(id_: str, pos: str, salary: int, proj: float = 10.0) -> Player:
     return Player(
         id=id_, name=id_, positions=(pos,), team="AAA", opp="BBB",
         salary=salary, proj=proj, own_small=0.2, own_large=0.2,
+        floor=proj * 0.6, ceiling=proj * 1.6,
     )
 
 # A tiny 2-slot sport (any one position, "ANY") so a build completes in
@@ -41,11 +42,11 @@ def _write_fixtures(tmp_path):
 
     etr_path = tmp_path / "etr.csv"
     etr_path.write_text(
-        "DK_ID,Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field\n"
-        'p0,Player A,ANY,AAA,BBB,"$1,000",10.0,10.00%,10.00%\n'
-        'p1,Player B,ANY,AAA,BBB,"$1,000",9.0,10.00%,10.00%\n'
-        'p2,Player C,ANY,AAA,BBB,"$1,000",8.0,10.00%,10.00%\n'
-        'p3,Player D,ANY,AAA,BBB,"$1,000",7.0,10.00%,10.00%\n'
+        "DK_ID,Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field,DK Floor,DK Ceiling\n"
+        'p0,Player A,ANY,AAA,BBB,"$1,000",10.0,10.00%,10.00%,6.0,16.0\n'
+        'p1,Player B,ANY,AAA,BBB,"$1,000",9.0,10.00%,10.00%,5.4,14.4\n'
+        'p2,Player C,ANY,AAA,BBB,"$1,000",8.0,10.00%,10.00%,4.8,12.8\n'
+        'p3,Player D,ANY,AAA,BBB,"$1,000",7.0,10.00%,10.00%,4.2,11.2\n'
     )
 
     contest_path = tmp_path / "contest.json"
@@ -392,8 +393,8 @@ def test_dead_end_is_reported_and_build_stops_without_crashing(tmp_path, monkeyp
     # all, on the very first turn.
     etr_path = tmp_path / "etr_no_fits.csv"
     etr_path.write_text(
-        "DK_ID,Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field\n"
-        'p0,Player X,OTHER,AAA,BBB,"$1,000",10.0,10.00%,10.00%\n'
+        "DK_ID,Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field,DK Floor,DK Ceiling\n"
+        'p0,Player X,OTHER,AAA,BBB,"$1,000",10.0,10.00%,10.00%,6.0,16.0\n'
     )
 
     # The King-mode prompt (Task 14) and the opening-template search
@@ -792,9 +793,10 @@ def _write_never_moved_capture_fixtures(tmp_path):
 
     etr_path = tmp_path / "etr.csv"
     etr_path.write_text(
-        "DK_ID,Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field\n"
+        "DK_ID,Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field,DK Floor,DK Ceiling\n"
         + "".join(
-            f'p{i},Player {chr(65 + i)},ANY,AAA,BBB,"$1,000",{20 - i}.0,10.00%,10.00%\n' for i in range(8)
+            f'p{i},Player {chr(65 + i)},ANY,AAA,BBB,"$1,000",{20 - i}.0,10.00%,10.00%,{(20 - i) * 0.6},{(20 - i) * 1.6}\n'
+            for i in range(8)
         )
     )
 

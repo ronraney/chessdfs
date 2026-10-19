@@ -12,6 +12,8 @@ def make_player(own_small: float, own_large: float) -> Player:
         proj=10.0,
         own_small=own_small,
         own_large=own_large,
+        floor=5.0,
+        ceiling=15.0,
     )
 
 

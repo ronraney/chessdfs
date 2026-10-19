@@ -15,6 +15,8 @@ function makePlayer(ownSmall: number, ownLarge: number): Player {
     proj: 10.0,
     ownSmall,
     ownLarge,
+    floor: 6.0,
+    ceiling: 16.0,
   });
 }
 

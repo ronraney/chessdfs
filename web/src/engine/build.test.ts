@@ -57,17 +57,22 @@ const TOY_SPORT = new SportConfig({
   rosterSlots: [new RosterSlot({ name: "ANY", positions: new Set(["ANY"]), count: 1 })],
 });
 
-function makePlayer(id: string, pos: string, salary: number, proj = 10.0): Player {
+function makePlayer(
+  id: string, pos: string, salary: number, proj = 10.0, team = "AAA",
+  floor?: number, ceiling?: number,
+): Player {
   return new Player({
     id,
     name: id,
     positions: [pos],
-    team: "AAA",
+    team,
     opp: "BBB",
     salary,
     proj,
     ownSmall: 0.1,
     ownLarge: 0.1,
+    floor: floor ?? proj * 0.6,
+    ceiling: ceiling ?? proj * 1.6,
   });
 }
 
@@ -160,6 +165,25 @@ describe("template mode (Task 13)", () => {
     const result = playBlackTemplateMove(state, uci("e7e5"), NFL, CONTEST, [], BOOK); // no candidates at all
 
     expect(result).toBeNull();
+  });
+
+  it("picks by the piece's own metric, not projection", () => {
+    // RULES.md piece table: Queen sorts by ceiling, not projection --
+    // Black's placeholder pick must follow suit, not a blanket "highest
+    // proj" (the opposite ranking here proves it's really using ceiling).
+    let state = applyMove(new BuildState(), uci("d2d4"), makePlayer("w1", "WR", 3000), NFL, CONTEST);
+    state = applyMove(state, uci("d7d5"), makePlayer("b1", "WR", 3000), NFL, CONTEST);
+    state = applyMove(state, uci("g1f3"), makePlayer("w2", "TE", 5200), NFL, CONTEST);
+
+    const highProjLowCeiling = makePlayer("a", "RB", 7200, 30.0, "AAA", undefined, 20.0);
+    const lowProjHighCeiling = makePlayer("b", "RB", 7300, 10.0, "AAA", undefined, 50.0);
+    const pool = [highProjLowCeiling, lowProjHighCeiling];
+
+    const result = playBlackTemplateMove(state, uci("d8d6"), NFL, CONTEST, pool, BOOK);
+
+    expect(result).not.toBeNull();
+    expect(lastOf(result!.state.blackMoves).piece).toBe(Piece.QUEEN);
+    expect(lastOf(result!.state.blackMoves).player.id).toBe("b"); // higher ceiling, not higher proj
   });
 });
 
@@ -416,6 +440,71 @@ describe("capturing a piece that never moved (Task 19)", () => {
     expect(record.piece).toBe(Piece.KNIGHT);
     expect(record.player.id).toBe("knight0"); // highest-proj eligible Knight in nflPool()
     expect(result!.state.whiteMoves).toEqual([]); // nothing removed -- there was nothing to remove
+  });
+});
+
+// --- Black's own castling (RULES.md "Rook = correlation") -------------------
+// Develops Black's kingside Knight and Bishop (via harmless White a-pawn
+// fillers in between) so Black is ready to play O-O -- canCastle(BLACK)
+// requires exactly that.
+
+function stateReadyForBlackKingsideCastle(): BuildState {
+  let state = applyMove(new BuildState(), uci("a2a3"), makePlayer("w1", "WR", 3000), NFL, CONTEST);
+  state = applyMove(state, uci("g8f6"), makePlayer("bk1", "TE", 5200), NFL, CONTEST);
+  state = applyMove(state, uci("a3a4"), makePlayer("w2", "WR", 3000), NFL, CONTEST);
+  state = applyMove(state, uci("g7g6"), makePlayer("bp1", "WR", 3000), NFL, CONTEST);
+  state = applyMove(state, uci("a4a5"), makePlayer("w3", "WR", 3000), NFL, CONTEST);
+  state = applyMove(state, uci("f8g7"), makePlayer("bb1", "WR", 5000), NFL, CONTEST);
+  state = applyMove(state, uci("a5a6"), makePlayer("w4", "WR", 3000), NFL, CONTEST);
+  return state;
+}
+
+describe("Black's own castling (RULES.md \"Rook = correlation\")", () => {
+  it("only offers a QB with an eligible teammate", () => {
+    const state = stateReadyForBlackKingsideCastle();
+    const lonelyQb = makePlayer("qb_lonely", "QB", 6500, 30.0, "CIN"); // no CIN teammate below
+    const teamedQb = makePlayer("qb_teamed", "QB", 6200, 10.0, "DET");
+    const teammate = makePlayer("rb_teammate", "RB", 5200, 10.0, "DET");
+    const pool = [lonelyQb, teamedQb, teammate];
+
+    const result = playBlackTemplateMove(state, uci("e8g8"), NFL, CONTEST, pool, BOOK);
+
+    expect(result).not.toBeNull();
+    const kingRecord = result!.state.blackMoves.find((m) => m.piece === Piece.KING)!;
+    const rookRecord = result!.state.blackMoves.find((m) => m.piece === Piece.ROOK)!;
+    // The higher-proj lonelyQb is skipped entirely (no eligible
+    // teammate); teamedQb is the top of what's left, and its own
+    // teammate is the Rook.
+    expect(kingRecord.player.id).toBe("qb_teamed");
+    expect(rookRecord.player.id).toBe("rb_teammate");
+  });
+
+  it("is illegal when no QB has an eligible teammate", () => {
+    const state = stateReadyForBlackKingsideCastle();
+    const pool = [makePlayer("qb1", "QB", 6500, 10.0, "CIN"), makePlayer("qb2", "QB", 6200, 10.0, "DET")];
+
+    const result = playBlackTemplateMove(state, uci("e8g8"), NFL, CONTEST, pool, BOOK);
+
+    expect(result).toBeNull(); // RULES.md: "If none, castling is illegal."
+  });
+
+  it("picks the top of each piece's own list, not highest projection overall", () => {
+    // Rook sorts by projection (unchanged), but this still proves
+    // Black's castling resolution goes through the real pick lists
+    // rather than a simple "highest proj overall" scan: among CIN's own
+    // two teammates, the higher-projection one must win even though the
+    // other is cheaper.
+    const state = stateReadyForBlackKingsideCastle();
+    const qb = makePlayer("qb1", "QB", 6500, 10.0, "CIN");
+    const lowProjTeammate = makePlayer("rb_low", "RB", 5200, 8.0, "CIN");
+    const highProjTeammate = makePlayer("rb_high", "RB", 5300, 22.0, "CIN");
+    const pool = [qb, lowProjTeammate, highProjTeammate];
+
+    const result = playBlackTemplateMove(state, uci("e8g8"), NFL, CONTEST, pool, BOOK);
+
+    expect(result).not.toBeNull();
+    const rookRecord = result!.state.blackMoves.find((m) => m.piece === Piece.ROOK)!;
+    expect(rookRecord.player.id).toBe("rb_high");
   });
 });
 

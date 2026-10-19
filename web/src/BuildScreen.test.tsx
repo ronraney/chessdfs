@@ -138,9 +138,9 @@ function chosenContinueButton(): HTMLElement {
 
 // Bug fix (post-Task-40): the pick modal no longer pre-selects a row --
 // every test that used to go straight to "Lock player" now has to select
-// a row first. Rows are sorted by projection descending, so the first one
-// is always "the top candidate" every pre-existing test's own name/intent
-// already assumed.
+// a row first. Rows are sorted by the moved piece's own metric (RULES.md
+// piece table), descending, so the first one is always "the top
+// candidate" every pre-existing test's own name/intent already assumed.
 // Piece pools: with far more candidates sharing a piece's pool now (e.g.
 // every sub-$5,000 RB/WR/TE is Pawn-eligible, not just a narrow catch-all),
 // the single top-projection candidate is more often one Black's own
@@ -587,17 +587,22 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
       );
       await developKnightAndBishop(user);
 
+      // RULES.md piece table ("Rook = correlation"): the switch offer now
+      // comes BEFORE the Rook pick, not after -- the Rook has to be a
+      // teammate of whichever QB ends up final, so the switch must
+      // resolve first.
       simulateMove("e1", "g1"); // O-O -- the King is already locked from setup
+      const switchDialog = await screen.findByRole("dialog", { name: "Choose your King" });
+      expect(statusLine().textContent).toBe("Switch your QB?");
+      expect(within(switchDialog).queryByText(WHITE_QB.name)).toBeNull(); // the current QB isn't offered as a switch target
+
+      await user.click(within(switchDialog).getByRole("button", { name: "Cancel" })); // decline -- keep the current QB
+
       const rookDialog = await screen.findByRole("dialog", { name: "Choose your Rook" });
       expect(within(rookDialog).queryByText(WHITE_QB.name)).toBeNull(); // not re-offered as a Rook candidate
       await selectTopRow(user, rookDialog);
       await user.click(within(rookDialog).getByRole("button", { name: "Lock player" }));
 
-      expect(statusLine().textContent).toBe("Switch your QB?");
-      const switchDialog = await screen.findByRole("dialog", { name: "Choose your King" });
-      expect(within(switchDialog).queryByText(WHITE_QB.name)).toBeNull(); // the current QB isn't offered as a switch target
-
-      await user.click(within(switchDialog).getByRole("button", { name: "Cancel" })); // decline -- keep the current QB
       expect(screen.queryByRole("dialog")).toBeNull();
       expect(within(youColumn()).getByText(new RegExp(WHITE_QB.name))).toBeInTheDocument();
 
@@ -729,7 +734,11 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
     20000, // observed as high as ~13.8s under full-suite load -- the heaviest test in this file (up to 8 plies of real engine + chessground interaction)
   );
 
-  it("an over-cap player is greyed out and can't be locked", async () => {
+  it("an over-cap player never appears in the pick list at all", async () => {
+    // RULES.md "List cap": the cap applies after removing taken players
+    // and players who don't fit roster/salary -- an unaffordable
+    // candidate is filtered out of the list entirely, not shown greyed
+    // out the way it used to be.
     const tinyCapPreset: ContestPreset = { name: "Tiny Cap", buyIn: 1, contest: new ContestConfig({ fieldSize: 2, payouts: [], cap: 5000 }) };
     render(
       <BuildScreen
@@ -747,13 +756,10 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
 
     const dialog = await screen.findByRole("dialog", { name: "Choose your Knight" });
     // Trey McBride ($6,700) is over a $5,000 cap with nothing else locked yet.
-    const mcbrideRow = within(dialog).getByText(/Trey McBride/).closest("button")!;
-    expect(mcbrideRow).toHaveClass("infeasible");
-    expect(within(mcbrideRow).getByText(/over the cap/)).toBeInTheDocument();
-
-    const user = userEvent.setup();
-    await user.click(mcbrideRow);
-    expect(within(dialog).getByRole("button", { name: "Lock player" })).toBeDisabled();
+    expect(within(dialog).queryByText(/Trey McBride/)).toBeNull();
+    const rows = [...dialog.querySelectorAll<HTMLButtonElement>(".pick-row")];
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every((row) => !row.disabled)).toBe(true);
   });
 });
 

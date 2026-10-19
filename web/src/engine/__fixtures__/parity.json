@@ -1,5 +1,5 @@
 {
-  "scenario_count": 43,
+  "scenario_count": 47,
   "scenarios": [
     {
       "name": "classify_all_sample_players",
@@ -13,11 +13,13 @@
             "RB"
           ],
           "team": "DET",
-          "opp": "@ARI",
+          "opp": "ARI",
           "salary": 9800,
           "proj": 29.5,
           "own_small": 0.402,
-          "own_large": 0.342
+          "own_large": 0.342,
+          "floor": 13.7,
+          "ceiling": 46.4
         },
         {
           "id": "44392166",
@@ -30,7 +32,9 @@
           "salary": 8800,
           "proj": 22.6,
           "own_small": 0.152,
-          "own_large": 0.138
+          "own_large": 0.138,
+          "floor": 9.5,
+          "ceiling": 37.4
         },
         {
           "id": "44391898",
@@ -39,11 +43,13 @@
             "RB"
           ],
           "team": "SF",
-          "opp": "@SEA",
+          "opp": "SEA",
           "salary": 8200,
           "proj": 20.5,
           "own_small": 0.049,
-          "own_large": 0.083
+          "own_large": 0.083,
+          "floor": 9.3,
+          "ceiling": 33.6
         },
         {
           "id": "44392168",
@@ -52,11 +58,13 @@
             "WR"
           ],
           "team": "CIN",
-          "opp": "@MIA",
+          "opp": "MIA",
           "salary": 8100,
           "proj": 19.4,
           "own_small": 0.081,
-          "own_large": 0.09
+          "own_large": 0.09,
+          "floor": 7.9,
+          "ceiling": 33.7
         },
         {
           "id": "44392170",
@@ -65,11 +73,13 @@
             "WR"
           ],
           "team": "DET",
-          "opp": "@ARI",
+          "opp": "ARI",
           "salary": 7900,
           "proj": 21.4,
           "own_small": 0.267,
-          "own_large": 0.239
+          "own_large": 0.239,
+          "floor": 8.8,
+          "ceiling": 36.2
         },
         {
           "id": "44391900",
@@ -78,11 +88,13 @@
             "RB"
           ],
           "team": "IND",
-          "opp": "@PIT",
+          "opp": "PIT",
           "salary": 7800,
           "proj": 19.7,
           "own_small": 0.105,
-          "own_large": 0.133
+          "own_large": 0.133,
+          "floor": 8.7,
+          "ceiling": 33.6
         },
         {
           "id": "44392172",
@@ -95,7 +107,9 @@
           "salary": 7700,
           "proj": 17.6,
           "own_small": 0.068,
-          "own_large": 0.075
+          "own_large": 0.075,
+          "floor": 6.8,
+          "ceiling": 31.1
         },
         {
           "id": "44392174",
@@ -104,11 +118,13 @@
             "WR"
           ],
           "team": "HOU",
-          "opp": "@TEN",
+          "opp": "TEN",
           "salary": 7500,
           "proj": 17.3,
           "own_small": 0.095,
-          "own_large": 0.106
+          "own_large": 0.106,
+          "floor": 6.2,
+          "ceiling": 31.2
         },
         {
           "id": "44392176",
@@ -117,11 +133,13 @@
             "WR"
           ],
           "team": "MIN",
-          "opp": "@NO",
+          "opp": "NO",
           "salary": 7300,
           "proj": 17.4,
           "own_small": 0.11599999999999999,
-          "own_large": 0.102
+          "own_large": 0.102,
+          "floor": 6.6,
+          "ceiling": 31.1
         },
         {
           "id": "44391902",
@@ -130,11 +148,13 @@
             "RB"
           ],
           "team": "LV",
-          "opp": "@NE",
+          "opp": "NE",
           "salary": 7200,
           "proj": 15.8,
           "own_small": 0.009000000000000001,
-          "own_large": 0.031
+          "own_large": 0.031,
+          "floor": 6.7,
+          "ceiling": 27.3
         },
         {
           "id": "44392178",
@@ -143,11 +163,13 @@
             "WR"
           ],
           "team": "CIN",
-          "opp": "@MIA",
+          "opp": "MIA",
           "salary": 7100,
           "proj": 12.5,
           "own_small": 0.002,
-          "own_large": 0.006999999999999999
+          "own_large": 0.006999999999999999,
+          "floor": 3.2,
+          "ceiling": 24.6
         },
         {
           "id": "44392588",
@@ -156,11 +178,13 @@
             "TE"
           ],
           "team": "LV",
-          "opp": "@NE",
+          "opp": "NE",
           "salary": 7000,
           "proj": 18.4,
           "own_small": 0.095,
-          "own_large": 0.133
+          "own_large": 0.133,
+          "floor": 7.6,
+          "ceiling": 31.8
         },
         {
           "id": "44391824",
@@ -169,11 +193,13 @@
             "QB"
           ],
           "team": "CIN",
-          "opp": "@MIA",
+          "opp": "MIA",
           "salary": 6900,
           "proj": 19.2,
           "own_small": 0.005,
-          "own_large": 0.019
+          "own_large": 0.019,
+          "floor": 9.8,
+          "ceiling": 29.4
         },
         {
           "id": "44391904",
@@ -182,11 +208,13 @@
             "RB"
           ],
           "team": "CIN",
-          "opp": "@MIA",
+          "opp": "MIA",
           "salary": 6900,
           "proj": 18.8,
           "own_small": 0.102,
-          "own_large": 0.139
+          "own_large": 0.139,
+          "floor": 8.0,
+          "ceiling": 32.3
         },
         {
           "id": "44392590",
@@ -199,7 +227,9 @@
           "salary": 6700,
           "proj": 20.5,
           "own_small": 0.395,
-          "own_large": 0.325
+          "own_large": 0.325,
+          "floor": 8.9,
+          "ceiling": 34.3
         },
         {
           "id": "44391906",
@@ -212,7 +242,9 @@
           "salary": 6700,
           "proj": 19.8,
           "own_small": 0.193,
-          "own_large": 0.177
+          "own_large": 0.177,
+          "floor": 8.7,
+          "ceiling": 33.9
         },
         {
           "id": "44391825",
@@ -221,11 +253,13 @@
             "QB"
           ],
           "team": "DET",
-          "opp": "@ARI",
+          "opp": "ARI",
           "salary": 6600,
           "proj": 22.1,
           "own_small": 0.16,
-          "own_large": 0.133
+          "own_large": 0.133,
+          "floor": 11.2,
+          "ceiling": 32.5
         },
         {
           "id": "44392180",
@@ -238,7 +272,9 @@
           "salary": 6600,
           "proj": 16.8,
           "own_small": 0.126,
-          "own_large": 0.139
+          "own_large": 0.139,
+          "floor": 6.6,
+          "ceiling": 30.0
         },
         {
           "id": "44391908",
@@ -247,11 +283,13 @@
             "RB"
           ],
           "team": "MIN",
-          "opp": "@NO",
+          "opp": "NO",
           "salary": 6500,
           "proj": 19.1,
           "own_small": 0.146,
-          "own_large": 0.163
+          "own_large": 0.163,
+          "floor": 8.3,
+          "ceiling": 32.2
         },
         {
           "id": "44391826",
@@ -260,11 +298,13 @@
             "QB"
           ],
           "team": "SF",
-          "opp": "@SEA",
+          "opp": "SEA",
           "salary": 6500,
           "proj": 19.0,
           "own_small": 0.026000000000000002,
-          "own_large": 0.033
+          "own_large": 0.033,
+          "floor": 9.3,
+          "ceiling": 28.6
         },
         {
           "id": "44392182",
@@ -273,11 +313,13 @@
             "WR"
           ],
           "team": "SF",
-          "opp": "@SEA",
+          "opp": "SEA",
           "salary": 6500,
           "proj": 12.8,
           "own_small": 0.005,
-          "own_large": 0.018000000000000002
+          "own_large": 0.018000000000000002,
+          "floor": 3.6,
+          "ceiling": 24.5
         },
         {
           "id": "44392184",
@@ -290,7 +332,9 @@
           "salary": 6400,
           "proj": 14.3,
           "own_small": 0.066,
-          "own_large": 0.086
+          "own_large": 0.086,
+          "floor": 4.3,
+          "ceiling": 27.5
         },
         {
           "id": "44391827",
@@ -303,7 +347,9 @@
           "salary": 6300,
           "proj": 20.0,
           "own_small": 0.045,
-          "own_large": 0.057999999999999996
+          "own_large": 0.057999999999999996,
+          "floor": 10.3,
+          "ceiling": 30.5
         },
         {
           "id": "44392186",
@@ -312,11 +358,13 @@
             "WR"
           ],
           "team": "NYG",
-          "opp": "@WAS",
+          "opp": "WAS",
           "salary": 6300,
           "proj": 13.5,
           "own_small": 0.031,
-          "own_large": 0.047
+          "own_large": 0.047,
+          "floor": 4.4,
+          "ceiling": 25.5
         },
         {
           "id": "44392188",
@@ -329,7 +377,9 @@
           "salary": 6200,
           "proj": 18.2,
           "own_small": 0.41700000000000004,
-          "own_large": 0.34700000000000003
+          "own_large": 0.34700000000000003,
+          "floor": 6.9,
+          "ceiling": 32.1
         },
         {
           "id": "44391912",
@@ -338,11 +388,13 @@
             "RB"
           ],
           "team": "CHI",
-          "opp": "@GB",
+          "opp": "GB",
           "salary": 6200,
           "proj": 19.7,
           "own_small": 0.414,
-          "own_large": 0.369
+          "own_large": 0.369,
+          "floor": 8.3,
+          "ceiling": 34.0
         },
         {
           "id": "44391914",
@@ -355,7 +407,9 @@
           "salary": 6100,
           "proj": 12.6,
           "own_small": 0.05,
-          "own_large": 0.044000000000000004
+          "own_large": 0.044000000000000004,
+          "floor": 4.5,
+          "ceiling": 22.9
         },
         {
           "id": "44392190",
@@ -364,11 +418,13 @@
             "WR"
           ],
           "team": "DEN",
-          "opp": "@LAC",
+          "opp": "LAC",
           "salary": 6100,
           "proj": 13.3,
           "own_small": 0.047,
-          "own_large": 0.061
+          "own_large": 0.061,
+          "floor": 4.2,
+          "ceiling": 25.0
         },
         {
           "id": "44391829",
@@ -381,7 +437,9 @@
           "salary": 6100,
           "proj": 17.5,
           "own_small": 0.009000000000000001,
-          "own_large": 0.02
+          "own_large": 0.02,
+          "floor": 8.3,
+          "ceiling": 27.2
         },
         {
           "id": "44392192",
@@ -390,11 +448,13 @@
             "WR"
           ],
           "team": "IND",
-          "opp": "@PIT",
+          "opp": "PIT",
           "salary": 6000,
           "proj": 12.1,
           "own_small": 0.013999999999999999,
-          "own_large": 0.025
+          "own_large": 0.025,
+          "floor": 4.1,
+          "ceiling": 22.7
         },
         {
           "id": "44391916",
@@ -407,7 +467,9 @@
           "salary": 6000,
           "proj": 9.4,
           "own_small": 0.002,
-          "own_large": 0.003
+          "own_large": 0.003,
+          "floor": 2.7,
+          "ceiling": 18.1
         },
         {
           "id": "44391918",
@@ -416,11 +478,13 @@
             "RB"
           ],
           "team": "NYG",
-          "opp": "@WAS",
+          "opp": "WAS",
           "salary": 6000,
           "proj": 13.8,
           "own_small": 0.033,
-          "own_large": 0.045
+          "own_large": 0.045,
+          "floor": 5.4,
+          "ceiling": 24.8
         },
         {
           "id": "44391830",
@@ -433,7 +497,9 @@
           "salary": 6000,
           "proj": 18.4,
           "own_small": 0.024,
-          "own_large": 0.031
+          "own_large": 0.031,
+          "floor": 9.1,
+          "ceiling": 27.9
         },
         {
           "id": "44392194",
@@ -442,11 +508,13 @@
             "WR"
           ],
           "team": "DET",
-          "opp": "@ARI",
+          "opp": "ARI",
           "salary": 5900,
           "proj": 12.9,
           "own_small": 0.141,
-          "own_large": 0.113
+          "own_large": 0.113,
+          "floor": 3.3,
+          "ceiling": 25.4
         },
         {
           "id": "44391831",
@@ -455,11 +523,13 @@
             "QB"
           ],
           "team": "HOU",
-          "opp": "@TEN",
+          "opp": "TEN",
           "salary": 5900,
           "proj": 17.9,
           "own_small": 0.02,
-          "own_large": 0.028999999999999998
+          "own_large": 0.028999999999999998,
+          "floor": 8.8,
+          "ceiling": 27.5
         },
         {
           "id": "44391922",
@@ -468,11 +538,13 @@
             "RB"
           ],
           "team": "HOU",
-          "opp": "@TEN",
+          "opp": "TEN",
           "salary": 5800,
           "proj": 11.2,
           "own_small": 0.003,
-          "own_large": 0.008
+          "own_large": 0.008,
+          "floor": 3.7,
+          "ceiling": 21.1
         },
         {
           "id": "44391832",
@@ -485,7 +557,9 @@
           "salary": 5800,
           "proj": 17.6,
           "own_small": 0.036000000000000004,
-          "own_large": 0.033
+          "own_large": 0.033,
+          "floor": 8.3,
+          "ceiling": 27.0
         },
         {
           "id": "44391924",
@@ -494,11 +568,13 @@
             "RB"
           ],
           "team": "CLE",
-          "opp": "@NYJ",
+          "opp": "NYJ",
           "salary": 5700,
           "proj": 14.2,
           "own_small": 0.11,
-          "own_large": 0.081
+          "own_large": 0.081,
+          "floor": 5.6,
+          "ceiling": 25.4
         },
         {
           "id": "44391833",
@@ -511,7 +587,9 @@
           "salary": 5700,
           "proj": 17.6,
           "own_small": 0.049,
-          "own_large": 0.046
+          "own_large": 0.046,
+          "floor": 8.6,
+          "ceiling": 27.8
         },
         {
           "id": "44392198",
@@ -524,7 +602,9 @@
           "salary": 5700,
           "proj": 13.2,
           "own_small": 0.10300000000000001,
-          "own_large": 0.102
+          "own_large": 0.102,
+          "floor": 4.2,
+          "ceiling": 25.3
         },
         {
           "id": "44391834",
@@ -533,11 +613,13 @@
             "QB"
           ],
           "team": "DEN",
-          "opp": "@LAC",
+          "opp": "LAC",
           "salary": 5600,
           "proj": 17.8,
           "own_small": 0.037000000000000005,
-          "own_large": 0.037000000000000005
+          "own_large": 0.037000000000000005,
+          "floor": 8.5,
+          "ceiling": 27.4
         },
         {
           "id": "44391926",
@@ -550,7 +632,9 @@
           "salary": 5600,
           "proj": 10.8,
           "own_small": 0.006,
-          "own_large": 0.005
+          "own_large": 0.005,
+          "floor": 3.8,
+          "ceiling": 19.6
         },
         {
           "id": "44391835",
@@ -563,7 +647,9 @@
           "salary": 5500,
           "proj": 20.8,
           "own_small": 0.28300000000000003,
-          "own_large": 0.204
+          "own_large": 0.204,
+          "floor": 10.2,
+          "ceiling": 31.2
         },
         {
           "id": "44391930",
@@ -576,7 +662,9 @@
           "salary": 5500,
           "proj": 12.5,
           "own_small": 0.005,
-          "own_large": 0.023
+          "own_large": 0.023,
+          "floor": 4.6,
+          "ceiling": 22.8
         },
         {
           "id": "44392202",
@@ -585,11 +673,13 @@
             "WR"
           ],
           "team": "SF",
-          "opp": "@SEA",
+          "opp": "SEA",
           "salary": 5500,
           "proj": 11.2,
           "own_small": 0.011000000000000001,
-          "own_large": 0.013999999999999999
+          "own_large": 0.013999999999999999,
+          "floor": 3.6,
+          "ceiling": 21.0
         },
         {
           "id": "44391836",
@@ -598,11 +688,13 @@
             "QB"
           ],
           "team": "LV",
-          "opp": "@NE",
+          "opp": "NE",
           "salary": 5400,
           "proj": 15.2,
           "own_small": 0.012,
-          "own_large": 0.022000000000000002
+          "own_large": 0.022000000000000002,
+          "floor": 6.9,
+          "ceiling": 24.1
         },
         {
           "id": "44391934",
@@ -615,7 +707,9 @@
           "salary": 5400,
           "proj": 11.4,
           "own_small": 0.002,
-          "own_large": 0.016
+          "own_large": 0.016,
+          "floor": 4.4,
+          "ceiling": 20.5
         },
         {
           "id": "44391932",
@@ -628,7 +722,9 @@
           "salary": 5400,
           "proj": 16.2,
           "own_small": 0.262,
-          "own_large": 0.23399999999999999
+          "own_large": 0.23399999999999999,
+          "floor": 6.7,
+          "ceiling": 28.6
         },
         {
           "id": "44392208",
@@ -641,7 +737,9 @@
           "salary": 5400,
           "proj": 13.5,
           "own_small": 0.131,
-          "own_large": 0.127
+          "own_large": 0.127,
+          "floor": 4.2,
+          "ceiling": 26.0
         },
         {
           "id": "44391936",
@@ -654,7 +752,9 @@
           "salary": 5300,
           "proj": 11.8,
           "own_small": 0.002,
-          "own_large": 0.011000000000000001
+          "own_large": 0.011000000000000001,
+          "floor": 4.3,
+          "ceiling": 21.6
         },
         {
           "id": "44391837",
@@ -667,7 +767,9 @@
           "salary": 5300,
           "proj": 16.0,
           "own_small": 0.034,
-          "own_large": 0.034
+          "own_large": 0.034,
+          "floor": 7.5,
+          "ceiling": 25.6
         },
         {
           "id": "44391938",
@@ -680,7 +782,9 @@
           "salary": 5300,
           "proj": 15.9,
           "own_small": 0.23600000000000002,
-          "own_large": 0.223
+          "own_large": 0.223,
+          "floor": 5.9,
+          "ceiling": 28.3
         },
         {
           "id": "44392210",
@@ -693,7 +797,9 @@
           "salary": 5300,
           "proj": 12.3,
           "own_small": 0.057999999999999996,
-          "own_large": 0.057
+          "own_large": 0.057,
+          "floor": 3.8,
+          "ceiling": 23.0
         },
         {
           "id": "44392212",
@@ -706,7 +812,9 @@
           "salary": 5300,
           "proj": 11.7,
           "own_small": 0.038,
-          "own_large": 0.042
+          "own_large": 0.042,
+          "floor": 2.9,
+          "ceiling": 23.2
         },
         {
           "id": "44392214",
@@ -715,11 +823,13 @@
             "WR"
           ],
           "team": "CLE",
-          "opp": "@NYJ",
+          "opp": "NYJ",
           "salary": 5200,
           "proj": 10.9,
           "own_small": 0.028999999999999998,
-          "own_large": 0.045
+          "own_large": 0.045,
+          "floor": 2.6,
+          "ceiling": 22.4
         },
         {
           "id": "44391942",
@@ -728,11 +838,13 @@
             "RB"
           ],
           "team": "DEN",
-          "opp": "@LAC",
+          "opp": "LAC",
           "salary": 5200,
           "proj": 11.9,
           "own_small": 0.017,
-          "own_large": 0.034
+          "own_large": 0.034,
+          "floor": 4.3,
+          "ceiling": 21.7
         },
         {
           "id": "44391838",
@@ -741,11 +853,13 @@
             "QB"
           ],
           "team": "MIN",
-          "opp": "@NO",
+          "opp": "NO",
           "salary": 5200,
           "proj": 17.1,
           "own_small": 0.033,
-          "own_large": 0.04
+          "own_large": 0.04,
+          "floor": 8.2,
+          "ceiling": 26.2
         },
         {
           "id": "44392216",
@@ -758,7 +872,9 @@
           "salary": 5200,
           "proj": 10.4,
           "own_small": 0.011000000000000001,
-          "own_large": 0.015
+          "own_large": 0.015,
+          "floor": 3.0,
+          "ceiling": 20.1
         },
         {
           "id": "44392592",
@@ -767,11 +883,13 @@
             "TE"
           ],
           "team": "SF",
-          "opp": "@SEA",
+          "opp": "SEA",
           "salary": 5200,
           "proj": 13.9,
           "own_small": 0.091,
-          "own_large": 0.106
+          "own_large": 0.106,
+          "floor": 4.9,
+          "ceiling": 25.3
         },
         {
           "id": "44391946",
@@ -784,7 +902,9 @@
           "salary": 5100,
           "proj": 8.1,
           "own_small": 0.002,
-          "own_large": 0.003
+          "own_large": 0.003,
+          "floor": 2.1,
+          "ceiling": 15.9
         },
         {
           "id": "44391839",
@@ -793,11 +913,13 @@
             "QB"
           ],
           "team": "CLE",
-          "opp": "@NYJ",
+          "opp": "NYJ",
           "salary": 5100,
           "proj": 16.4,
           "own_small": 0.048,
-          "own_large": 0.051
+          "own_large": 0.051,
+          "floor": 7.7,
+          "ceiling": 25.5
         },
         {
           "id": "44391840",
@@ -810,7 +932,9 @@
           "salary": 5100,
           "proj": 16.1,
           "own_small": 0.046,
-          "own_large": 0.045
+          "own_large": 0.045,
+          "floor": 7.6,
+          "ceiling": 24.9
         },
         {
           "id": "44391944",
@@ -823,7 +947,9 @@
           "salary": 5100,
           "proj": 8.0,
           "own_small": 0.002,
-          "own_large": 0.003
+          "own_large": 0.003,
+          "floor": 2.1,
+          "ceiling": 16.0
         },
         {
           "id": "44391948",
@@ -832,11 +958,13 @@
             "RB"
           ],
           "team": "DEN",
-          "opp": "@LAC",
+          "opp": "LAC",
           "salary": 5000,
           "proj": 9.7,
           "own_small": 0.005,
-          "own_large": 0.013999999999999999
+          "own_large": 0.013999999999999999,
+          "floor": 2.9,
+          "ceiling": 19.3
         },
         {
           "id": "44391841",
@@ -845,11 +973,13 @@
             "QB"
           ],
           "team": "IND",
-          "opp": "@PIT",
+          "opp": "PIT",
           "salary": 5000,
           "proj": 14.0,
           "own_small": 0.002,
-          "own_large": 0.01
+          "own_large": 0.01,
+          "floor": 6.4,
+          "ceiling": 22.6
         },
         {
           "id": "44392594",
@@ -858,11 +988,13 @@
             "TE"
           ],
           "team": "IND",
-          "opp": "@PIT",
+          "opp": "PIT",
           "salary": 5000,
           "proj": 12.7,
           "own_small": 0.036000000000000004,
-          "own_large": 0.053
+          "own_large": 0.053,
+          "floor": 4.9,
+          "ceiling": 22.8
         },
         {
           "id": "44391950",
@@ -875,7 +1007,9 @@
           "salary": 5000,
           "proj": 11.7,
           "own_small": 0.025,
-          "own_large": 0.031
+          "own_large": 0.031,
+          "floor": 4.0,
+          "ceiling": 22.0
         },
         {
           "id": "44392220",
@@ -888,7 +1022,9 @@
           "salary": 5000,
           "proj": 12.1,
           "own_small": 0.102,
-          "own_large": 0.102
+          "own_large": 0.102,
+          "floor": 3.2,
+          "ceiling": 23.9
         },
         {
           "id": "44391842",
@@ -901,7 +1037,9 @@
           "salary": 5000,
           "proj": 14.4,
           "own_small": 0.018000000000000002,
-          "own_large": 0.032
+          "own_large": 0.032,
+          "floor": 6.6,
+          "ceiling": 23.0
         },
         {
           "id": "44392222",
@@ -910,11 +1048,13 @@
             "WR"
           ],
           "team": "CHI",
-          "opp": "@GB",
+          "opp": "GB",
           "salary": 4900,
           "proj": 12.7,
           "own_small": 0.14300000000000002,
-          "own_large": 0.134
+          "own_large": 0.134,
+          "floor": 4.3,
+          "ceiling": 23.9
         },
         {
           "id": "44392596",
@@ -923,11 +1063,13 @@
             "TE"
           ],
           "team": "DET",
-          "opp": "@ARI",
+          "opp": "ARI",
           "salary": 4900,
           "proj": 13.4,
           "own_small": 0.166,
-          "own_large": 0.135
+          "own_large": 0.135,
+          "floor": 4.2,
+          "ceiling": 24.8
         },
         {
           "id": "44391952",
@@ -940,7 +1082,9 @@
           "salary": 4900,
           "proj": 7.0,
           "own_small": 0.001,
-          "own_large": 0.001
+          "own_large": 0.001,
+          "floor": 1.9,
+          "ceiling": 14.0
         },
         {
           "id": "44391843",
@@ -953,7 +1097,9 @@
           "salary": 4900,
           "proj": 12.9,
           "own_small": 0.001,
-          "own_large": 0.003
+          "own_large": 0.003,
+          "floor": 5.4,
+          "ceiling": 20.2
         },
         {
           "id": "44391954",
@@ -966,7 +1112,9 @@
           "salary": 4900,
           "proj": 10.8,
           "own_small": 0.026000000000000002,
-          "own_large": 0.02
+          "own_large": 0.02,
+          "floor": 3.4,
+          "ceiling": 21.1
         },
         {
           "id": "44391956",
@@ -979,7 +1127,9 @@
           "salary": 4800,
           "proj": 10.3,
           "own_small": 0.013000000000000001,
-          "own_large": 0.016
+          "own_large": 0.016,
+          "floor": 3.3,
+          "ceiling": 19.7
         },
         {
           "id": "44391958",
@@ -988,11 +1138,13 @@
             "RB"
           ],
           "team": "HOU",
-          "opp": "@TEN",
+          "opp": "TEN",
           "salary": 4800,
           "proj": 8.3,
           "own_small": 0.002,
-          "own_large": 0.003
+          "own_large": 0.003,
+          "floor": 2.5,
+          "ceiling": 16.3
         },
         {
           "id": "44392224",
@@ -1001,11 +1153,13 @@
             "WR"
           ],
           "team": "LV",
-          "opp": "@NE",
+          "opp": "NE",
           "salary": 4800,
           "proj": 10.0,
           "own_small": 0.017,
-          "own_large": 0.027000000000000003
+          "own_large": 0.027000000000000003,
+          "floor": 2.5,
+          "ceiling": 20.1
         },
         {
           "id": "44391960",
@@ -1018,7 +1172,9 @@
           "salary": 4800,
           "proj": 5.0,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 1.0,
+          "ceiling": 11.1
         },
         {
           "id": "44392598",
@@ -1027,11 +1183,13 @@
             "TE"
           ],
           "team": "MIN",
-          "opp": "@NO",
+          "opp": "NO",
           "salary": 4800,
           "proj": 12.4,
           "own_small": 0.057999999999999996,
-          "own_large": 0.066
+          "own_large": 0.066,
+          "floor": 4.3,
+          "ceiling": 22.4
         },
         {
           "id": "44391844",
@@ -1040,11 +1198,13 @@
             "QB"
           ],
           "team": "NYG",
-          "opp": "@WAS",
+          "opp": "WAS",
           "salary": 4800,
           "proj": 13.4,
           "own_small": 0.002,
-          "own_large": 0.009000000000000001
+          "own_large": 0.009000000000000001,
+          "floor": 5.6,
+          "ceiling": 22.1
         },
         {
           "id": "44391845",
@@ -1053,11 +1213,13 @@
             "QB"
           ],
           "team": "CHI",
-          "opp": "@GB",
+          "opp": "GB",
           "salary": 4700,
           "proj": 17.1,
           "own_small": 0.076,
-          "own_large": 0.08199999999999999
+          "own_large": 0.08199999999999999,
+          "floor": 7.2,
+          "ceiling": 26.7
         },
         {
           "id": "44392226",
@@ -1066,11 +1228,13 @@
             "WR"
           ],
           "team": "CHI",
-          "opp": "@GB",
+          "opp": "GB",
           "salary": 4700,
           "proj": 9.7,
           "own_small": 0.034,
-          "own_large": 0.048
+          "own_large": 0.048,
+          "floor": 1.9,
+          "ceiling": 20.3
         },
         {
           "id": "44391964",
@@ -1079,11 +1243,13 @@
             "RB"
           ],
           "team": "CLE",
-          "opp": "@NYJ",
+          "opp": "NYJ",
           "salary": 4700,
           "proj": 4.8,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.6,
+          "ceiling": 11.1
         },
         {
           "id": "44392600",
@@ -1096,7 +1262,9 @@
           "salary": 4700,
           "proj": 12.2,
           "own_small": 0.069,
-          "own_large": 0.076
+          "own_large": 0.076,
+          "floor": 4.0,
+          "ceiling": 22.7
         },
         {
           "id": "44391966",
@@ -1105,11 +1273,13 @@
             "RB"
           ],
           "team": "SF",
-          "opp": "@SEA",
+          "opp": "SEA",
           "salary": 4700,
           "proj": 3.5,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.4,
+          "ceiling": 8.4
         },
         {
           "id": "44392602",
@@ -1118,11 +1288,13 @@
             "TE"
           ],
           "team": "CHI",
-          "opp": "@GB",
+          "opp": "GB",
           "salary": 4600,
           "proj": 10.7,
           "own_small": 0.017,
-          "own_large": 0.037000000000000005
+          "own_large": 0.037000000000000005,
+          "floor": 3.0,
+          "ceiling": 20.8
         },
         {
           "id": "44392230",
@@ -1131,11 +1303,13 @@
             "WR"
           ],
           "team": "DEN",
-          "opp": "@LAC",
+          "opp": "LAC",
           "salary": 4600,
           "proj": 10.1,
           "own_small": 0.02,
-          "own_large": 0.027999999999999997
+          "own_large": 0.027999999999999997,
+          "floor": 2.3,
+          "ceiling": 20.4
         },
         {
           "id": "44391968",
@@ -1148,7 +1322,9 @@
           "salary": 4600,
           "proj": 7.8,
           "own_small": 0.005,
-          "own_large": 0.003
+          "own_large": 0.003,
+          "floor": 2.0,
+          "ceiling": 16.4
         },
         {
           "id": "44391846",
@@ -1161,7 +1337,9 @@
           "salary": 4600,
           "proj": 15.1,
           "own_small": 0.031,
-          "own_large": 0.03
+          "own_large": 0.03,
+          "floor": 6.8,
+          "ceiling": 23.8
         },
         {
           "id": "44392228",
@@ -1174,7 +1352,9 @@
           "salary": 4600,
           "proj": 12.4,
           "own_small": 0.14400000000000002,
-          "own_large": 0.142
+          "own_large": 0.142,
+          "floor": 4.3,
+          "ceiling": 22.8
         },
         {
           "id": "44391970",
@@ -1187,7 +1367,9 @@
           "salary": 4600,
           "proj": 5.9,
           "own_small": 0.001,
-          "own_large": 0.001
+          "own_large": 0.001,
+          "floor": 1.3,
+          "ceiling": 12.1
         },
         {
           "id": "44391974",
@@ -1200,7 +1382,9 @@
           "salary": 4500,
           "proj": 9.7,
           "own_small": 0.009000000000000001,
-          "own_large": 0.012
+          "own_large": 0.012,
+          "floor": 3.3,
+          "ceiling": 18.1
         },
         {
           "id": "44392604",
@@ -1213,7 +1397,9 @@
           "salary": 4500,
           "proj": 9.7,
           "own_small": 0.006,
-          "own_large": 0.022000000000000002
+          "own_large": 0.022000000000000002,
+          "floor": 2.7,
+          "ceiling": 18.7
         },
         {
           "id": "44391978",
@@ -1222,11 +1408,13 @@
             "RB"
           ],
           "team": "NYG",
-          "opp": "@WAS",
+          "opp": "WAS",
           "salary": 4500,
           "proj": 4.8,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.9,
+          "ceiling": 10.8
         },
         {
           "id": "44391976",
@@ -1239,7 +1427,9 @@
           "salary": 4500,
           "proj": 6.7,
           "own_small": 0.001,
-          "own_large": 0.001
+          "own_large": 0.001,
+          "floor": 1.4,
+          "ceiling": 14.0
         },
         {
           "id": "44392234",
@@ -1252,7 +1442,9 @@
           "salary": 4500,
           "proj": 9.5,
           "own_small": 0.01,
-          "own_large": 0.015
+          "own_large": 0.015,
+          "floor": 2.9,
+          "ceiling": 17.8
         },
         {
           "id": "44391984",
@@ -1261,11 +1453,13 @@
             "RB"
           ],
           "team": "CIN",
-          "opp": "@MIA",
+          "opp": "MIA",
           "salary": 4400,
           "proj": 5.5,
           "own_small": 0.001,
-          "own_large": 0.001
+          "own_large": 0.001,
+          "floor": 0.9,
+          "ceiling": 12.3
         },
         {
           "id": "44392606",
@@ -1274,11 +1468,13 @@
             "TE"
           ],
           "team": "CLE",
-          "opp": "@NYJ",
+          "opp": "NYJ",
           "salary": 4400,
           "proj": 10.3,
           "own_small": 0.019,
-          "own_large": 0.031
+          "own_large": 0.031,
+          "floor": 3.2,
+          "ceiling": 19.5
         },
         {
           "id": "44391980",
@@ -1291,7 +1487,9 @@
           "salary": 4400,
           "proj": 2.0,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 6.1
         },
         {
           "id": "44391982",
@@ -1304,7 +1502,9 @@
           "salary": 4400,
           "proj": 5.6,
           "own_small": 0.001,
-          "own_large": 0.001
+          "own_large": 0.001,
+          "floor": 0.9,
+          "ceiling": 12.6
         },
         {
           "id": "44391986",
@@ -1313,11 +1513,13 @@
             "RB"
           ],
           "team": "DET",
-          "opp": "@ARI",
+          "opp": "ARI",
           "salary": 4300,
           "proj": 3.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.1,
+          "ceiling": 8.6
         },
         {
           "id": "44391988",
@@ -1326,11 +1528,13 @@
             "RB"
           ],
           "team": "IND",
-          "opp": "@PIT",
+          "opp": "PIT",
           "salary": 4300,
           "proj": 2.8,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 7.6
         },
         {
           "id": "44392240",
@@ -1339,11 +1543,13 @@
             "WR"
           ],
           "team": "IND",
-          "opp": "@PIT",
+          "opp": "PIT",
           "salary": 4300,
           "proj": 8.1,
           "own_small": 0.001,
-          "own_large": 0.002
+          "own_large": 0.002,
+          "floor": 1.9,
+          "ceiling": 16.3
         },
         {
           "id": "44391990",
@@ -1356,7 +1562,9 @@
           "salary": 4300,
           "proj": 4.6,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.5,
+          "ceiling": 11.0
         },
         {
           "id": "44392250",
@@ -1365,11 +1573,13 @@
             "WR"
           ],
           "team": "NYG",
-          "opp": "@WAS",
+          "opp": "WAS",
           "salary": 4300,
           "proj": 6.0,
           "own_small": 0.001,
-          "own_large": 0.001
+          "own_large": 0.001,
+          "floor": 0.6,
+          "ceiling": 13.7
         },
         {
           "id": "44392608",
@@ -1378,11 +1588,13 @@
             "TE"
           ],
           "team": "NYG",
-          "opp": "@WAS",
+          "opp": "WAS",
           "salary": 4300,
           "proj": 11.8,
           "own_small": 0.083,
-          "own_large": 0.087
+          "own_large": 0.087,
+          "floor": 4.1,
+          "ceiling": 21.6
         },
         {
           "id": "44391998",
@@ -1391,11 +1603,13 @@
             "RB"
           ],
           "team": "CHI",
-          "opp": "@GB",
+          "opp": "GB",
           "salary": 4200,
           "proj": 4.0,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.4,
+          "ceiling": 10.2
         },
         {
           "id": "44392244",
@@ -1404,11 +1618,13 @@
             "WR"
           ],
           "team": "CLE",
-          "opp": "@NYJ",
+          "opp": "NYJ",
           "salary": 4200,
           "proj": 11.1,
           "own_small": 0.107,
-          "own_large": 0.10400000000000001
+          "own_large": 0.10400000000000001,
+          "floor": 3.6,
+          "ceiling": 20.7
         },
         {
           "id": "44391994",
@@ -1417,11 +1633,13 @@
             "RB"
           ],
           "team": "DEN",
-          "opp": "@LAC",
+          "opp": "LAC",
           "salary": 4200,
           "proj": 2.0,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 6.0
         },
         {
           "id": "44391992",
@@ -1430,11 +1648,13 @@
             "RB"
           ],
           "team": "LV",
-          "opp": "@NE",
+          "opp": "NE",
           "salary": 4200,
           "proj": 6.1,
           "own_small": 0.01,
-          "own_large": 0.026000000000000002
+          "own_large": 0.026000000000000002,
+          "floor": 1.6,
+          "ceiling": 12.9
         },
         {
           "id": "44391996",
@@ -1447,7 +1667,9 @@
           "salary": 4200,
           "proj": 4.0,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.5,
+          "ceiling": 9.7
         },
         {
           "id": "44392610",
@@ -1456,11 +1678,13 @@
             "TE"
           ],
           "team": "CIN",
-          "opp": "@MIA",
+          "opp": "MIA",
           "salary": 4100,
           "proj": 6.6,
           "own_small": 0.032,
-          "own_large": 0.012
+          "own_large": 0.012,
+          "floor": 1.0,
+          "ceiling": 14.3
         },
         {
           "id": "44392000",
@@ -1469,11 +1693,13 @@
             "RB"
           ],
           "team": "CLE",
-          "opp": "@NYJ",
+          "opp": "NYJ",
           "salary": 4100,
           "proj": 0.9,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 3.3
         },
         {
           "id": "44392242",
@@ -1486,7 +1712,9 @@
           "salary": 4100,
           "proj": 13.1,
           "own_small": 0.34600000000000003,
-          "own_large": 0.27
+          "own_large": 0.27,
+          "floor": 4.4,
+          "ceiling": 24.5
         },
         {
           "id": "44392248",
@@ -1495,11 +1723,13 @@
             "WR"
           ],
           "team": "MIN",
-          "opp": "@NO",
+          "opp": "NO",
           "salary": 4100,
           "proj": 5.1,
           "own_small": 0.001,
-          "own_large": 0.001
+          "own_large": 0.001,
+          "floor": 0.3,
+          "ceiling": 11.9
         },
         {
           "id": "44392038",
@@ -1512,7 +1742,9 @@
           "salary": 4000,
           "proj": 0.5,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 2.0
         },
         {
           "id": "44392034",
@@ -1521,11 +1753,13 @@
             "RB"
           ],
           "team": "CHI",
-          "opp": "@GB",
+          "opp": "GB",
           "salary": 4000,
           "proj": 1.1,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 3.9
         },
         {
           "id": "44392156",
@@ -1534,11 +1768,13 @@
             "RB"
           ],
           "team": "CIN",
-          "opp": "@MIA",
+          "opp": "MIA",
           "salary": 4000,
           "proj": 0.2,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 0.7
         },
         {
           "id": "44392112",
@@ -1547,11 +1783,13 @@
             "RB"
           ],
           "team": "CLE",
-          "opp": "@NYJ",
+          "opp": "NYJ",
           "salary": 4000,
           "proj": 0.5,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.8
         },
         {
           "id": "44392062",
@@ -1560,11 +1798,13 @@
             "RB"
           ],
           "team": "DEN",
-          "opp": "@LAC",
+          "opp": "LAC",
           "salary": 4000,
           "proj": 0.6,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 2.4
         },
         {
           "id": "44392044",
@@ -1573,11 +1813,13 @@
             "RB"
           ],
           "team": "DET",
-          "opp": "@ARI",
+          "opp": "ARI",
           "salary": 4000,
           "proj": 0.6,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 2.4
         },
         {
           "id": "44392030",
@@ -1590,7 +1832,9 @@
           "salary": 4000,
           "proj": 2.4,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 7.0
         },
         {
           "id": "44392086",
@@ -1599,11 +1843,13 @@
             "RB"
           ],
           "team": "HOU",
-          "opp": "@TEN",
+          "opp": "TEN",
           "salary": 4000,
           "proj": 0.2,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 0.6
         },
         {
           "id": "44392254",
@@ -1612,11 +1858,13 @@
             "WR"
           ],
           "team": "HOU",
-          "opp": "@TEN",
+          "opp": "TEN",
           "salary": 4000,
           "proj": 4.7,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.2,
+          "ceiling": 11.4
         },
         {
           "id": "44392612",
@@ -1625,11 +1873,13 @@
             "TE"
           ],
           "team": "HOU",
-          "opp": "@TEN",
+          "opp": "TEN",
           "salary": 4000,
           "proj": 9.6,
           "own_small": 0.013000000000000001,
-          "own_large": 0.033
+          "own_large": 0.033,
+          "floor": 2.7,
+          "ceiling": 18.5
         },
         {
           "id": "44392140",
@@ -1638,11 +1888,13 @@
             "RB"
           ],
           "team": "LV",
-          "opp": "@NE",
+          "opp": "NE",
           "salary": 4000,
           "proj": 0.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.4
         },
         {
           "id": "44392146",
@@ -1651,11 +1903,13 @@
             "RB"
           ],
           "team": "LV",
-          "opp": "@NE",
+          "opp": "NE",
           "salary": 4000,
           "proj": 0.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.4
         },
         {
           "id": "44392144",
@@ -1664,11 +1918,13 @@
             "RB"
           ],
           "team": "LV",
-          "opp": "@NE",
+          "opp": "NE",
           "salary": 4000,
           "proj": 0.9,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 3.2
         },
         {
           "id": "44392052",
@@ -1681,7 +1937,9 @@
           "salary": 4000,
           "proj": 1.4,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.4
         },
         {
           "id": "44392150",
@@ -1694,7 +1952,9 @@
           "salary": 4000,
           "proj": 0.2,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 0.8
         },
         {
           "id": "44392154",
@@ -1707,7 +1967,9 @@
           "salary": 4000,
           "proj": 1.2,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.2
         },
         {
           "id": "44392122",
@@ -1716,11 +1978,13 @@
             "RB"
           ],
           "team": "MIN",
-          "opp": "@NO",
+          "opp": "NO",
           "salary": 4000,
           "proj": 1.6,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 5.0
         },
         {
           "id": "44392164",
@@ -1729,11 +1993,13 @@
             "RB"
           ],
           "team": "MIN",
-          "opp": "@NO",
+          "opp": "NO",
           "salary": 4000,
           "proj": 1.7,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 5.2
         },
         {
           "id": "44392130",
@@ -1742,11 +2008,13 @@
             "RB"
           ],
           "team": "MIN",
-          "opp": "@NO",
+          "opp": "NO",
           "salary": 4000,
           "proj": 0.2,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 0.9
         },
         {
           "id": "44392132",
@@ -1759,7 +2027,9 @@
           "salary": 4000,
           "proj": 0.5,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.9
         },
         {
           "id": "44392162",
@@ -1768,11 +2038,13 @@
             "RB"
           ],
           "team": "NYG",
-          "opp": "@WAS",
+          "opp": "WAS",
           "salary": 4000,
           "proj": 2.6,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 7.4
         },
         {
           "id": "44392072",
@@ -1781,11 +2053,13 @@
             "RB"
           ],
           "team": "NYG",
-          "opp": "@WAS",
+          "opp": "WAS",
           "salary": 4000,
           "proj": 1.0,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 3.4
         },
         {
           "id": "44392102",
@@ -1798,7 +2072,9 @@
           "salary": 4000,
           "proj": 0.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.2
         },
         {
           "id": "44392106",
@@ -1811,7 +2087,9 @@
           "salary": 4000,
           "proj": 0.2,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 0.9
         },
         {
           "id": "44392092",
@@ -1824,7 +2102,9 @@
           "salary": 4000,
           "proj": 2.2,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 6.6
         },
         {
           "id": "44392094",
@@ -1837,7 +2117,9 @@
           "salary": 4000,
           "proj": 0.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.3
         },
         {
           "id": "44392096",
@@ -1850,7 +2132,9 @@
           "salary": 4000,
           "proj": 0.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.2
         },
         {
           "id": "44392016",
@@ -1863,7 +2147,9 @@
           "salary": 4000,
           "proj": 0.5,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.9
         },
         {
           "id": "44392068",
@@ -1876,7 +2162,9 @@
           "salary": 4000,
           "proj": 0.4,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.7
         },
         {
           "id": "44392014",
@@ -1889,7 +2177,9 @@
           "salary": 4000,
           "proj": 0.2,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 0.8
         },
         {
           "id": "44392256",
@@ -1902,7 +2192,9 @@
           "salary": 4000,
           "proj": 8.0,
           "own_small": 0.015,
-          "own_large": 0.011000000000000001
+          "own_large": 0.011000000000000001,
+          "floor": 1.5,
+          "ceiling": 16.8
         },
         {
           "id": "44392078",
@@ -1915,7 +2207,9 @@
           "salary": 4000,
           "proj": 1.1,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 3.6
         },
         {
           "id": "44392262",
@@ -1924,11 +2218,13 @@
             "WR"
           ],
           "team": "CHI",
-          "opp": "@GB",
+          "opp": "GB",
           "salary": 3900,
           "proj": 7.4,
           "own_small": 0.006999999999999999,
-          "own_large": 0.011000000000000001
+          "own_large": 0.011000000000000001,
+          "floor": 1.6,
+          "ceiling": 15.4
         },
         {
           "id": "44392258",
@@ -1937,11 +2233,13 @@
             "WR"
           ],
           "team": "HOU",
-          "opp": "@TEN",
+          "opp": "TEN",
           "salary": 3900,
           "proj": 7.1,
           "own_small": 0.005,
-          "own_large": 0.004
+          "own_large": 0.004,
+          "floor": 0.9,
+          "ceiling": 15.5
         },
         {
           "id": "44392614",
@@ -1954,7 +2252,9 @@
           "salary": 3900,
           "proj": 8.4,
           "own_small": 0.001,
-          "own_large": 0.008
+          "own_large": 0.008,
+          "floor": 2.1,
+          "ceiling": 16.8
         },
         {
           "id": "44392266",
@@ -1963,11 +2263,13 @@
             "WR"
           ],
           "team": "NYG",
-          "opp": "@WAS",
+          "opp": "WAS",
           "salary": 3800,
           "proj": 4.4,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 11.0
         },
         {
           "id": "44392616",
@@ -1980,7 +2282,9 @@
           "salary": 3800,
           "proj": 9.6,
           "own_small": 0.031,
-          "own_large": 0.03
+          "own_large": 0.03,
+          "floor": 2.7,
+          "ceiling": 18.5
         },
         {
           "id": "44392264",
@@ -1993,7 +2297,9 @@
           "salary": 3800,
           "proj": 6.7,
           "own_small": 0.001,
-          "own_large": 0.006999999999999999
+          "own_large": 0.006999999999999999,
+          "floor": 0.9,
+          "ceiling": 14.7
         },
         {
           "id": "44392268",
@@ -2006,7 +2312,9 @@
           "salary": 3800,
           "proj": 8.6,
           "own_small": 0.073,
-          "own_large": 0.07
+          "own_large": 0.07,
+          "floor": 1.7,
+          "ceiling": 18.0
         },
         {
           "id": "44392274",
@@ -2015,11 +2323,13 @@
             "WR"
           ],
           "team": "CLE",
-          "opp": "@NYJ",
+          "opp": "NYJ",
           "salary": 3700,
           "proj": 3.7,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 9.6
         },
         {
           "id": "44392618",
@@ -2032,7 +2342,9 @@
           "salary": 3700,
           "proj": 9.1,
           "own_small": 0.037000000000000005,
-          "own_large": 0.055
+          "own_large": 0.055,
+          "floor": 2.1,
+          "ceiling": 18.4
         },
         {
           "id": "44392272",
@@ -2045,7 +2357,9 @@
           "salary": 3700,
           "proj": 6.9,
           "own_small": 0.006,
-          "own_large": 0.009000000000000001
+          "own_large": 0.009000000000000001,
+          "floor": 1.4,
+          "ceiling": 14.4
         },
         {
           "id": "44392270",
@@ -2058,7 +2372,9 @@
           "salary": 3700,
           "proj": 9.6,
           "own_small": 0.138,
-          "own_large": 0.121
+          "own_large": 0.121,
+          "floor": 2.2,
+          "ceiling": 19.6
         },
         {
           "id": "44392282",
@@ -2067,11 +2383,13 @@
             "WR"
           ],
           "team": "CIN",
-          "opp": "@MIA",
+          "opp": "MIA",
           "salary": 3600,
           "proj": 1.5,
           "own_small": 0.001,
-          "own_large": 0.001
+          "own_large": 0.001,
+          "floor": 0.0,
+          "ceiling": 5.2
         },
         {
           "id": "44392278",
@@ -2080,11 +2398,13 @@
             "WR"
           ],
           "team": "IND",
-          "opp": "@PIT",
+          "opp": "PIT",
           "salary": 3600,
           "proj": 4.8,
           "own_small": 0.0,
-          "own_large": 0.001
+          "own_large": 0.001,
+          "floor": 0.3,
+          "ceiling": 11.4
         },
         {
           "id": "44392620",
@@ -2097,7 +2417,9 @@
           "salary": 3600,
           "proj": 10.4,
           "own_small": 0.09300000000000001,
-          "own_large": 0.077
+          "own_large": 0.077,
+          "floor": 3.0,
+          "ceiling": 19.9
         },
         {
           "id": "44392276",
@@ -2110,7 +2432,9 @@
           "salary": 3600,
           "proj": 8.0,
           "own_small": 0.019,
-          "own_large": 0.019
+          "own_large": 0.019,
+          "floor": 1.5,
+          "ceiling": 16.9
         },
         {
           "id": "44392288",
@@ -2119,11 +2443,13 @@
             "WR"
           ],
           "team": "CIN",
-          "opp": "@MIA",
+          "opp": "MIA",
           "salary": 3500,
           "proj": 6.4,
           "own_small": 0.005,
-          "own_large": 0.013999999999999999
+          "own_large": 0.013999999999999999,
+          "floor": 0.9,
+          "ceiling": 14.1
         },
         {
           "id": "44392622",
@@ -2132,11 +2458,13 @@
             "TE"
           ],
           "team": "LV",
-          "opp": "@NE",
+          "opp": "NE",
           "salary": 3500,
           "proj": 7.9,
           "own_small": 0.009000000000000001,
-          "own_large": 0.021
+          "own_large": 0.021,
+          "floor": 2.0,
+          "ceiling": 15.5
         },
         {
           "id": "44392290",
@@ -2149,7 +2477,9 @@
           "salary": 3500,
           "proj": 7.7,
           "own_small": 0.024,
-          "own_large": 0.027999999999999997
+          "own_large": 0.027999999999999997,
+          "floor": 1.5,
+          "ceiling": 16.3
         },
         {
           "id": "44392284",
@@ -2158,11 +2488,13 @@
             "WR"
           ],
           "team": "SF",
-          "opp": "@SEA",
+          "opp": "SEA",
           "salary": 3500,
           "proj": 1.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.6
         },
         {
           "id": "44392286",
@@ -2175,7 +2507,9 @@
           "salary": 3500,
           "proj": 2.4,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 7.0
         },
         {
           "id": "44392852",
@@ -2184,11 +2518,13 @@
             "DST"
           ],
           "team": "CIN",
-          "opp": "@MIA",
+          "opp": "MIA",
           "salary": 3500,
           "proj": 8.2,
           "own_small": 0.033,
-          "own_large": 0.038
+          "own_large": 0.038,
+          "floor": 2.0,
+          "ceiling": 15.9
         },
         {
           "id": "44392300",
@@ -2201,7 +2537,9 @@
           "salary": 3400,
           "proj": 8.0,
           "own_small": 0.146,
-          "own_large": 0.092
+          "own_large": 0.092,
+          "floor": 1.7,
+          "ceiling": 16.2
         },
         {
           "id": "44392296",
@@ -2210,11 +2548,13 @@
             "WR"
           ],
           "team": "DEN",
-          "opp": "@LAC",
+          "opp": "LAC",
           "salary": 3400,
           "proj": 4.2,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.2,
+          "ceiling": 10.1
         },
         {
           "id": "44392294",
@@ -2223,11 +2563,13 @@
             "WR"
           ],
           "team": "DET",
-          "opp": "@ARI",
+          "opp": "ARI",
           "salary": 3400,
           "proj": 6.6,
           "own_small": 0.047,
-          "own_large": 0.034
+          "own_large": 0.034,
+          "floor": 0.4,
+          "ceiling": 15.1
         },
         {
           "id": "44392298",
@@ -2240,7 +2582,9 @@
           "salary": 3400,
           "proj": 6.3,
           "own_small": 0.001,
-          "own_large": 0.005
+          "own_large": 0.005,
+          "floor": 0.9,
+          "ceiling": 13.9
         },
         {
           "id": "44392853",
@@ -2249,11 +2593,13 @@
             "DST"
           ],
           "team": "HOU",
-          "opp": "@TEN",
+          "opp": "TEN",
           "salary": 3400,
           "proj": 9.1,
           "own_small": 0.079,
-          "own_large": 0.071
+          "own_large": 0.071,
+          "floor": 2.7,
+          "ceiling": 16.7
         },
         {
           "id": "44392310",
@@ -2262,11 +2608,13 @@
             "WR"
           ],
           "team": "CIN",
-          "opp": "@MIA",
+          "opp": "MIA",
           "salary": 3300,
           "proj": 0.7,
           "own_small": 0.001,
-          "own_large": 0.001
+          "own_large": 0.001,
+          "floor": 0.0,
+          "ceiling": 3.0
         },
         {
           "id": "44392302",
@@ -2275,11 +2623,13 @@
             "WR"
           ],
           "team": "LV",
-          "opp": "@NE",
+          "opp": "NE",
           "salary": 3300,
           "proj": 6.0,
           "own_small": 0.003,
-          "own_large": 0.003
+          "own_large": 0.003,
+          "floor": 0.7,
+          "ceiling": 13.5
         },
         {
           "id": "44392308",
@@ -2292,7 +2642,9 @@
           "salary": 3300,
           "proj": 5.1,
           "own_small": 0.001,
-          "own_large": 0.003
+          "own_large": 0.003,
+          "floor": 0.1,
+          "ceiling": 12.5
         },
         {
           "id": "44392624",
@@ -2305,7 +2657,9 @@
           "salary": 3300,
           "proj": 7.0,
           "own_small": 0.01,
-          "own_large": 0.01
+          "own_large": 0.01,
+          "floor": 1.5,
+          "ceiling": 14.7
         },
         {
           "id": "44392854",
@@ -2318,7 +2672,9 @@
           "salary": 3300,
           "proj": 6.6,
           "own_small": 0.011000000000000001,
-          "own_large": 0.01
+          "own_large": 0.01,
+          "floor": 1.0,
+          "ceiling": 13.8
         },
         {
           "id": "44392316",
@@ -2327,11 +2683,13 @@
             "WR"
           ],
           "team": "DEN",
-          "opp": "@LAC",
+          "opp": "LAC",
           "salary": 3200,
           "proj": 5.3,
           "own_small": 0.003,
-          "own_large": 0.004
+          "own_large": 0.004,
+          "floor": 0.4,
+          "ceiling": 12.3
         },
         {
           "id": "44392320",
@@ -2344,7 +2702,9 @@
           "salary": 3200,
           "proj": 4.6,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.3,
+          "ceiling": 11.1
         },
         {
           "id": "44392314",
@@ -2353,11 +2713,13 @@
             "WR"
           ],
           "team": "HOU",
-          "opp": "@TEN",
+          "opp": "TEN",
           "salary": 3200,
           "proj": 5.7,
           "own_small": 0.003,
-          "own_large": 0.005
+          "own_large": 0.005,
+          "floor": 0.6,
+          "ceiling": 12.9
         },
         {
           "id": "44392312",
@@ -2370,7 +2732,9 @@
           "salary": 3200,
           "proj": 6.2,
           "own_small": 0.009000000000000001,
-          "own_large": 0.011000000000000001
+          "own_large": 0.011000000000000001,
+          "floor": 0.7,
+          "ceiling": 14.1
         },
         {
           "id": "44392626",
@@ -2383,7 +2747,9 @@
           "salary": 3200,
           "proj": 7.9,
           "own_small": 0.028999999999999998,
-          "own_large": 0.018000000000000002
+          "own_large": 0.018000000000000002,
+          "floor": 1.7,
+          "ceiling": 15.9
         },
         {
           "id": "44392318",
@@ -2396,7 +2762,9 @@
           "salary": 3200,
           "proj": 4.2,
           "own_small": 0.001,
-          "own_large": 0.001
+          "own_large": 0.001,
+          "floor": 0.0,
+          "ceiling": 11.0
         },
         {
           "id": "44392855",
@@ -2405,11 +2773,13 @@
             "DST"
           ],
           "team": "DEN",
-          "opp": "@LAC",
+          "opp": "LAC",
           "salary": 3200,
           "proj": 8.0,
           "own_small": 0.065,
-          "own_large": 0.077
+          "own_large": 0.077,
+          "floor": 1.8,
+          "ceiling": 15.7
         },
         {
           "id": "44392322",
@@ -2418,11 +2788,13 @@
             "WR"
           ],
           "team": "IND",
-          "opp": "@PIT",
+          "opp": "PIT",
           "salary": 3100,
           "proj": 1.2,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.4
         },
         {
           "id": "44392324",
@@ -2435,7 +2807,9 @@
           "salary": 3100,
           "proj": 2.6,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 7.1
         },
         {
           "id": "44392628",
@@ -2448,7 +2822,9 @@
           "salary": 3100,
           "proj": 6.6,
           "own_small": 0.006,
-          "own_large": 0.012
+          "own_large": 0.012,
+          "floor": 1.3,
+          "ceiling": 13.8
         },
         {
           "id": "44392328",
@@ -2461,7 +2837,9 @@
           "salary": 3100,
           "proj": 3.8,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 10.3
         },
         {
           "id": "44392330",
@@ -2474,7 +2852,9 @@
           "salary": 3100,
           "proj": 4.4,
           "own_small": 0.001,
-          "own_large": 0.004
+          "own_large": 0.004,
+          "floor": 0.0,
+          "ceiling": 11.1
         },
         {
           "id": "44392856",
@@ -2483,11 +2863,13 @@
             "DST"
           ],
           "team": "MIN",
-          "opp": "@NO",
+          "opp": "NO",
           "salary": 3100,
           "proj": 7.8,
           "own_small": 0.066,
-          "own_large": 0.068
+          "own_large": 0.068,
+          "floor": 1.7,
+          "ceiling": 15.3
         },
         {
           "id": "44392394",
@@ -2500,7 +2882,9 @@
           "salary": 3000,
           "proj": 0.4,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.5
         },
         {
           "id": "44392390",
@@ -2513,7 +2897,9 @@
           "salary": 3000,
           "proj": 1.5,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 5.1
         },
         {
           "id": "44392388",
@@ -2526,7 +2912,9 @@
           "salary": 3000,
           "proj": 3.1,
           "own_small": 0.002,
-          "own_large": 0.005
+          "own_large": 0.005,
+          "floor": 0.0,
+          "ceiling": 8.8
         },
         {
           "id": "44392382",
@@ -2535,11 +2923,13 @@
             "WR"
           ],
           "team": "CHI",
-          "opp": "@GB",
+          "opp": "GB",
           "salary": 3000,
           "proj": 1.0,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 3.8
         },
         {
           "id": "44392338",
@@ -2548,11 +2938,13 @@
             "WR"
           ],
           "team": "CHI",
-          "opp": "@GB",
+          "opp": "GB",
           "salary": 3000,
           "proj": 0.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.3
         },
         {
           "id": "44392508",
@@ -2561,11 +2953,13 @@
             "WR"
           ],
           "team": "CLE",
-          "opp": "@NYJ",
+          "opp": "NYJ",
           "salary": 3000,
           "proj": 1.0,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 3.9
         },
         {
           "id": "44392512",
@@ -2574,11 +2968,13 @@
             "WR"
           ],
           "team": "CLE",
-          "opp": "@NYJ",
+          "opp": "NYJ",
           "salary": 3000,
           "proj": 0.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.0
         },
         {
           "id": "44392420",
@@ -2587,11 +2983,13 @@
             "WR"
           ],
           "team": "DEN",
-          "opp": "@LAC",
+          "opp": "LAC",
           "salary": 3000,
           "proj": 1.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.8
         },
         {
           "id": "44392400",
@@ -2600,11 +2998,13 @@
             "WR"
           ],
           "team": "DET",
-          "opp": "@ARI",
+          "opp": "ARI",
           "salary": 3000,
           "proj": 0.4,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.6
         },
         {
           "id": "44392398",
@@ -2613,11 +3013,13 @@
             "WR"
           ],
           "team": "DET",
-          "opp": "@ARI",
+          "opp": "ARI",
           "salary": 3000,
           "proj": 0.4,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.5
         },
         {
           "id": "44392370",
@@ -2630,7 +3032,9 @@
           "salary": 3000,
           "proj": 1.8,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 5.9
         },
         {
           "id": "44392372",
@@ -2643,7 +3047,9 @@
           "salary": 3000,
           "proj": 1.2,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.5
         },
         {
           "id": "44392458",
@@ -2652,11 +3058,13 @@
             "WR"
           ],
           "team": "HOU",
-          "opp": "@TEN",
+          "opp": "TEN",
           "salary": 3000,
           "proj": 1.9,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 6.0
         },
         {
           "id": "44392486",
@@ -2665,11 +3073,13 @@
             "WR"
           ],
           "team": "IND",
-          "opp": "@PIT",
+          "opp": "PIT",
           "salary": 3000,
           "proj": 0.6,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 2.3
         },
         {
           "id": "44392484",
@@ -2678,11 +3088,13 @@
             "WR"
           ],
           "team": "IND",
-          "opp": "@PIT",
+          "opp": "PIT",
           "salary": 3000,
           "proj": 0.6,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 2.3
         },
         {
           "id": "44392560",
@@ -2691,11 +3103,13 @@
             "WR"
           ],
           "team": "LV",
-          "opp": "@NE",
+          "opp": "NE",
           "salary": 3000,
           "proj": 0.6,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 2.4
         },
         {
           "id": "44392556",
@@ -2704,11 +3118,13 @@
             "WR"
           ],
           "team": "LV",
-          "opp": "@NE",
+          "opp": "NE",
           "salary": 3000,
           "proj": 1.4,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.8
         },
         {
           "id": "44392554",
@@ -2717,11 +3133,13 @@
             "WR"
           ],
           "team": "LV",
-          "opp": "@NE",
+          "opp": "NE",
           "salary": 3000,
           "proj": 1.7,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 5.4
         },
         {
           "id": "44392416",
@@ -2734,7 +3152,9 @@
           "salary": 3000,
           "proj": 1.1,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.2
         },
         {
           "id": "44392566",
@@ -2747,7 +3167,9 @@
           "salary": 3000,
           "proj": 5.0,
           "own_small": 0.001,
-          "own_large": 0.003
+          "own_large": 0.003,
+          "floor": 0.4,
+          "ceiling": 11.8
         },
         {
           "id": "44392568",
@@ -2760,7 +3182,9 @@
           "salary": 3000,
           "proj": 1.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.6
         },
         {
           "id": "44392570",
@@ -2773,7 +3197,9 @@
           "salary": 3000,
           "proj": 1.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.5
         },
         {
           "id": "44392534",
@@ -2782,11 +3208,13 @@
             "WR"
           ],
           "team": "MIN",
-          "opp": "@NO",
+          "opp": "NO",
           "salary": 3000,
           "proj": 3.0,
           "own_small": 0.0,
-          "own_large": 0.001
+          "own_large": 0.001,
+          "floor": 0.0,
+          "ceiling": 8.3
         },
         {
           "id": "44392536",
@@ -2795,11 +3223,13 @@
             "WR"
           ],
           "team": "MIN",
-          "opp": "@NO",
+          "opp": "NO",
           "salary": 3000,
           "proj": 1.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.3
         },
         {
           "id": "44392538",
@@ -2808,11 +3238,13 @@
             "WR"
           ],
           "team": "MIN",
-          "opp": "@NO",
+          "opp": "NO",
           "salary": 3000,
           "proj": 0.6,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 2.5
         },
         {
           "id": "44392518",
@@ -2825,7 +3257,9 @@
           "salary": 3000,
           "proj": 4.1,
           "own_small": 0.002,
-          "own_large": 0.002
+          "own_large": 0.002,
+          "floor": 0.0,
+          "ceiling": 10.5
         },
         {
           "id": "44392522",
@@ -2838,7 +3272,9 @@
           "salary": 3000,
           "proj": 0.7,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 2.6
         },
         {
           "id": "44392528",
@@ -2851,7 +3287,9 @@
           "salary": 3000,
           "proj": 0.6,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 2.5
         },
         {
           "id": "44392630",
@@ -2864,7 +3302,9 @@
           "salary": 3000,
           "proj": 4.6,
           "own_small": 0.0,
-          "own_large": 0.001
+          "own_large": 0.001,
+          "floor": 0.3,
+          "ceiling": 10.6
         },
         {
           "id": "44392438",
@@ -2873,11 +3313,13 @@
             "WR"
           ],
           "team": "NYG",
-          "opp": "@WAS",
+          "opp": "WAS",
           "salary": 3000,
           "proj": 1.0,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 3.8
         },
         {
           "id": "44392446",
@@ -2886,11 +3328,13 @@
             "WR"
           ],
           "team": "NYG",
-          "opp": "@WAS",
+          "opp": "WAS",
           "salary": 3000,
           "proj": 0.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.0
         },
         {
           "id": "44392500",
@@ -2903,7 +3347,9 @@
           "salary": 3000,
           "proj": 3.1,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 8.5
         },
         {
           "id": "44392494",
@@ -2916,7 +3362,9 @@
           "salary": 3000,
           "proj": 0.6,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 2.2
         },
         {
           "id": "44392470",
@@ -2929,7 +3377,9 @@
           "salary": 3000,
           "proj": 1.4,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.8
         },
         {
           "id": "44392480",
@@ -2942,7 +3392,9 @@
           "salary": 3000,
           "proj": 0.6,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 2.5
         },
         {
           "id": "44392336",
@@ -2951,11 +3403,13 @@
             "WR"
           ],
           "team": "SF",
-          "opp": "@SEA",
+          "opp": "SEA",
           "salary": 3000,
           "proj": 1.7,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 5.5
         },
         {
           "id": "44392586",
@@ -2964,11 +3418,13 @@
             "WR"
           ],
           "team": "SF",
-          "opp": "@SEA",
+          "opp": "SEA",
           "salary": 3000,
           "proj": 2.2,
           "own_small": 0.001,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 6.7
         },
         {
           "id": "44392340",
@@ -2981,7 +3437,9 @@
           "salary": 3000,
           "proj": 3.1,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 8.9
         },
         {
           "id": "44392450",
@@ -2994,7 +3452,9 @@
           "salary": 3000,
           "proj": 1.2,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.1
         },
         {
           "id": "44392448",
@@ -3007,7 +3467,9 @@
           "salary": 3000,
           "proj": 4.1,
           "own_small": 0.001,
-          "own_large": 0.001
+          "own_large": 0.001,
+          "floor": 0.0,
+          "ceiling": 10.1
         },
         {
           "id": "44392428",
@@ -3020,7 +3482,9 @@
           "salary": 3000,
           "proj": 0.6,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 2.4
         },
         {
           "id": "44392434",
@@ -3033,7 +3497,9 @@
           "salary": 3000,
           "proj": 0.6,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 2.3
         },
         {
           "id": "44392857",
@@ -3042,11 +3508,13 @@
             "DST"
           ],
           "team": "DET",
-          "opp": "@ARI",
+          "opp": "ARI",
           "salary": 3000,
           "proj": 5.9,
           "own_small": 0.022000000000000002,
-          "own_large": 0.018000000000000002
+          "own_large": 0.018000000000000002,
+          "floor": 0.0,
+          "ceiling": 13.0
         },
         {
           "id": "44392858",
@@ -3059,7 +3527,9 @@
           "salary": 3000,
           "proj": 7.0,
           "own_small": 0.032,
-          "own_large": 0.028999999999999998
+          "own_large": 0.028999999999999998,
+          "floor": 1.1,
+          "ceiling": 14.4
         },
         {
           "id": "44392632",
@@ -3072,7 +3542,9 @@
           "salary": 2900,
           "proj": 6.2,
           "own_small": 0.001,
-          "own_large": 0.002
+          "own_large": 0.002,
+          "floor": 0.9,
+          "ceiling": 13.4
         },
         {
           "id": "44392859",
@@ -3081,11 +3553,13 @@
             "DST"
           ],
           "team": "CHI",
-          "opp": "@GB",
+          "opp": "GB",
           "salary": 2900,
           "proj": 6.0,
           "own_small": 0.002,
-          "own_large": 0.006999999999999999
+          "own_large": 0.006999999999999999,
+          "floor": 0.3,
+          "ceiling": 13.1
         },
         {
           "id": "44392860",
@@ -3098,7 +3572,9 @@
           "salary": 2900,
           "proj": 8.1,
           "own_small": 0.106,
-          "own_large": 0.10800000000000001
+          "own_large": 0.10800000000000001,
+          "floor": 1.8,
+          "ceiling": 15.8
         },
         {
           "id": "44392636",
@@ -3107,11 +3583,13 @@
             "TE"
           ],
           "team": "DEN",
-          "opp": "@LAC",
+          "opp": "LAC",
           "salary": 2800,
           "proj": 5.7,
           "own_small": 0.002,
-          "own_large": 0.002
+          "own_large": 0.002,
+          "floor": 0.9,
+          "ceiling": 12.3
         },
         {
           "id": "44392634",
@@ -3124,7 +3602,9 @@
           "salary": 2800,
           "proj": 5.1,
           "own_small": 0.003,
-          "own_large": 0.003
+          "own_large": 0.003,
+          "floor": 0.7,
+          "ceiling": 11.0
         },
         {
           "id": "44392861",
@@ -3133,11 +3613,13 @@
             "DST"
           ],
           "team": "CLE",
-          "opp": "@NYJ",
+          "opp": "NYJ",
           "salary": 2800,
           "proj": 7.6,
           "own_small": 0.09300000000000001,
-          "own_large": 0.086
+          "own_large": 0.086,
+          "floor": 1.6,
+          "ceiling": 15.0
         },
         {
           "id": "44392862",
@@ -3150,7 +3632,9 @@
           "salary": 2800,
           "proj": 6.5,
           "own_small": 0.024,
-          "own_large": 0.032
+          "own_large": 0.032,
+          "floor": 0.5,
+          "ceiling": 13.8
         },
         {
           "id": "44392642",
@@ -3163,7 +3647,9 @@
           "salary": 2700,
           "proj": 4.2,
           "own_small": 0.0,
-          "own_large": 0.002
+          "own_large": 0.002,
+          "floor": 0.1,
+          "ceiling": 10.2
         },
         {
           "id": "44392640",
@@ -3176,7 +3662,9 @@
           "salary": 2700,
           "proj": 2.5,
           "own_small": 0.002,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 7.0
         },
         {
           "id": "44392638",
@@ -3189,7 +3677,9 @@
           "salary": 2700,
           "proj": 4.2,
           "own_small": 0.0,
-          "own_large": 0.001
+          "own_large": 0.001,
+          "floor": 0.0,
+          "ceiling": 10.6
         },
         {
           "id": "44392863",
@@ -3202,7 +3692,9 @@
           "salary": 2700,
           "proj": 5.7,
           "own_small": 0.01,
-          "own_large": 0.013000000000000001
+          "own_large": 0.013000000000000001,
+          "floor": 0.0,
+          "ceiling": 12.8
         },
         {
           "id": "44392864",
@@ -3215,7 +3707,9 @@
           "salary": 2700,
           "proj": 7.8,
           "own_small": 0.13,
-          "own_large": 0.11
+          "own_large": 0.11,
+          "floor": 1.8,
+          "ceiling": 15.3
         },
         {
           "id": "44392644",
@@ -3224,11 +3718,13 @@
             "TE"
           ],
           "team": "CHI",
-          "opp": "@GB",
+          "opp": "GB",
           "salary": 2600,
           "proj": 3.4,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 8.8
         },
         {
           "id": "44392648",
@@ -3237,11 +3733,13 @@
             "TE"
           ],
           "team": "CIN",
-          "opp": "@MIA",
+          "opp": "MIA",
           "salary": 2600,
           "proj": 1.9,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 5.6
         },
         {
           "id": "44392646",
@@ -3250,11 +3748,13 @@
             "TE"
           ],
           "team": "NYG",
-          "opp": "@WAS",
+          "opp": "WAS",
           "salary": 2600,
           "proj": 2.8,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 7.7
         },
         {
           "id": "44392865",
@@ -3267,7 +3767,9 @@
           "salary": 2600,
           "proj": 6.1,
           "own_small": 0.040999999999999995,
-          "own_large": 0.035
+          "own_large": 0.035,
+          "floor": 0.5,
+          "ceiling": 13.0
         },
         {
           "id": "44392866",
@@ -3276,11 +3778,13 @@
             "DST"
           ],
           "team": "NYG",
-          "opp": "@WAS",
+          "opp": "WAS",
           "salary": 2600,
           "proj": 5.8,
           "own_small": 0.009000000000000001,
-          "own_large": 0.018000000000000002
+          "own_large": 0.018000000000000002,
+          "floor": 0.1,
+          "ceiling": 12.7
         },
         {
           "id": "44392698",
@@ -3293,7 +3797,9 @@
           "salary": 2500,
           "proj": 1.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.4
         },
         {
           "id": "44392680",
@@ -3302,11 +3808,13 @@
             "TE"
           ],
           "team": "CHI",
-          "opp": "@GB",
+          "opp": "GB",
           "salary": 2500,
           "proj": 1.7,
           "own_small": 0.0,
-          "own_large": 0.001
+          "own_large": 0.001,
+          "floor": 0.0,
+          "ceiling": 5.4
         },
         {
           "id": "44392844",
@@ -3315,11 +3823,13 @@
             "TE"
           ],
           "team": "CIN",
-          "opp": "@MIA",
+          "opp": "MIA",
           "salary": 2500,
           "proj": 1.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.3
         },
         {
           "id": "44392846",
@@ -3328,11 +3838,13 @@
             "TE"
           ],
           "team": "CIN",
-          "opp": "@MIA",
+          "opp": "MIA",
           "salary": 2500,
           "proj": 1.4,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.6
         },
         {
           "id": "44392848",
@@ -3341,11 +3853,13 @@
             "TE"
           ],
           "team": "CIN",
-          "opp": "@MIA",
+          "opp": "MIA",
           "salary": 2500,
           "proj": 0.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.2
         },
         {
           "id": "44392788",
@@ -3354,11 +3868,13 @@
             "TE"
           ],
           "team": "CLE",
-          "opp": "@NYJ",
+          "opp": "NYJ",
           "salary": 2500,
           "proj": 1.8,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 5.5
         },
         {
           "id": "44392718",
@@ -3367,11 +3883,13 @@
             "TE"
           ],
           "team": "DEN",
-          "opp": "@LAC",
+          "opp": "LAC",
           "salary": 2500,
           "proj": 1.8,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 5.6
         },
         {
           "id": "44392720",
@@ -3380,11 +3898,13 @@
             "TE"
           ],
           "team": "DEN",
-          "opp": "@LAC",
+          "opp": "LAC",
           "salary": 2500,
           "proj": 1.8,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 5.7
         },
         {
           "id": "44392700",
@@ -3393,11 +3913,13 @@
             "TE"
           ],
           "team": "DET",
-          "opp": "@ARI",
+          "opp": "ARI",
           "salary": 2500,
           "proj": 2.1,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 6.2
         },
         {
           "id": "44392702",
@@ -3406,11 +3928,13 @@
             "TE"
           ],
           "team": "DET",
-          "opp": "@ARI",
+          "opp": "ARI",
           "salary": 2500,
           "proj": 0.6,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 2.4
         },
         {
           "id": "44392670",
@@ -3423,7 +3947,9 @@
           "salary": 2500,
           "proj": 1.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.2
         },
         {
           "id": "44392672",
@@ -3436,7 +3962,9 @@
           "salary": 2500,
           "proj": 0.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.0
         },
         {
           "id": "44392756",
@@ -3445,11 +3973,13 @@
             "TE"
           ],
           "team": "HOU",
-          "opp": "@TEN",
+          "opp": "TEN",
           "salary": 2500,
           "proj": 1.4,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.6
         },
         {
           "id": "44392652",
@@ -3458,11 +3988,13 @@
             "TE"
           ],
           "team": "HOU",
-          "opp": "@TEN",
+          "opp": "TEN",
           "salary": 2500,
           "proj": 2.9,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 7.8
         },
         {
           "id": "44392758",
@@ -3471,11 +4003,13 @@
             "TE"
           ],
           "team": "HOU",
-          "opp": "@TEN",
+          "opp": "TEN",
           "salary": 2500,
           "proj": 1.0,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 3.6
         },
         {
           "id": "44392768",
@@ -3484,11 +4018,13 @@
             "TE"
           ],
           "team": "IND",
-          "opp": "@PIT",
+          "opp": "PIT",
           "salary": 2500,
           "proj": 1.2,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.3
         },
         {
           "id": "44392770",
@@ -3497,11 +4033,13 @@
             "TE"
           ],
           "team": "IND",
-          "opp": "@PIT",
+          "opp": "PIT",
           "salary": 2500,
           "proj": 1.1,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.1
         },
         {
           "id": "44392826",
@@ -3510,11 +4048,13 @@
             "TE"
           ],
           "team": "LV",
-          "opp": "@NE",
+          "opp": "NE",
           "salary": 2500,
           "proj": 1.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.4
         },
         {
           "id": "44392710",
@@ -3527,7 +4067,9 @@
           "salary": 2500,
           "proj": 0.5,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.9
         },
         {
           "id": "44392650",
@@ -3540,7 +4082,9 @@
           "salary": 2500,
           "proj": 3.6,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 9.1
         },
         {
           "id": "44392834",
@@ -3553,7 +4097,9 @@
           "salary": 2500,
           "proj": 2.1,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 6.1
         },
         {
           "id": "44392836",
@@ -3566,7 +4112,9 @@
           "salary": 2500,
           "proj": 0.2,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 0.8
         },
         {
           "id": "44392808",
@@ -3575,11 +4123,13 @@
             "TE"
           ],
           "team": "MIN",
-          "opp": "@NO",
+          "opp": "NO",
           "salary": 2500,
           "proj": 1.2,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.3
         },
         {
           "id": "44392810",
@@ -3588,11 +4138,13 @@
             "TE"
           ],
           "team": "MIN",
-          "opp": "@NO",
+          "opp": "NO",
           "salary": 2500,
           "proj": 1.0,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 3.8
         },
         {
           "id": "44392820",
@@ -3605,7 +4157,9 @@
           "salary": 2500,
           "proj": 0.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.0
         },
         {
           "id": "44392818",
@@ -3618,7 +4172,9 @@
           "salary": 2500,
           "proj": 0.5,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 2.1
         },
         {
           "id": "44392796",
@@ -3631,7 +4187,9 @@
           "salary": 2500,
           "proj": 1.1,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 3.9
         },
         {
           "id": "44392740",
@@ -3640,11 +4198,13 @@
             "TE"
           ],
           "team": "NYG",
-          "opp": "@WAS",
+          "opp": "WAS",
           "salary": 2500,
           "proj": 0.4,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.8
         },
         {
           "id": "44392780",
@@ -3657,7 +4217,9 @@
           "salary": 2500,
           "proj": 4.5,
           "own_small": 0.003,
-          "own_large": 0.005
+          "own_large": 0.005,
+          "floor": 0.4,
+          "ceiling": 10.4
         },
         {
           "id": "44392782",
@@ -3670,7 +4232,9 @@
           "salary": 2500,
           "proj": 1.5,
           "own_small": 0.0,
-          "own_large": 0.001
+          "own_large": 0.001,
+          "floor": 0.0,
+          "ceiling": 4.7
         },
         {
           "id": "44392784",
@@ -3683,7 +4247,9 @@
           "salary": 2500,
           "proj": 0.5,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.9
         },
         {
           "id": "44392764",
@@ -3696,7 +4262,9 @@
           "salary": 2500,
           "proj": 0.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.0
         },
         {
           "id": "44392666",
@@ -3705,11 +4273,13 @@
             "TE"
           ],
           "team": "SF",
-          "opp": "@SEA",
+          "opp": "SEA",
           "salary": 2500,
           "proj": 0.2,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.0
         },
         {
           "id": "44392660",
@@ -3718,11 +4288,13 @@
             "TE"
           ],
           "team": "SF",
-          "opp": "@SEA",
+          "opp": "SEA",
           "salary": 2500,
           "proj": 1.5,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.7
         },
         {
           "id": "44392662",
@@ -3731,11 +4303,13 @@
             "TE"
           ],
           "team": "SF",
-          "opp": "@SEA",
+          "opp": "SEA",
           "salary": 2500,
           "proj": 1.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.3
         },
         {
           "id": "44392656",
@@ -3748,7 +4322,9 @@
           "salary": 2500,
           "proj": 2.0,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 6.1
         },
         {
           "id": "44392654",
@@ -3761,7 +4337,9 @@
           "salary": 2500,
           "proj": 1.2,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.3
         },
         {
           "id": "44392746",
@@ -3774,7 +4352,9 @@
           "salary": 2500,
           "proj": 2.9,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 7.3
         },
         {
           "id": "44392748",
@@ -3787,7 +4367,9 @@
           "salary": 2500,
           "proj": 0.2,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 0.9
         },
         {
           "id": "44392730",
@@ -3800,7 +4382,9 @@
           "salary": 2500,
           "proj": 1.2,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.1
         },
         {
           "id": "44392732",
@@ -3813,7 +4397,9 @@
           "salary": 2500,
           "proj": 1.3,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 4.4
         },
         {
           "id": "44392734",
@@ -3826,7 +4412,9 @@
           "salary": 2500,
           "proj": 0.5,
           "own_small": 0.0,
-          "own_large": 0.0
+          "own_large": 0.0,
+          "floor": 0.0,
+          "ceiling": 1.8
         },
         {
           "id": "44392867",
@@ -3835,11 +4423,13 @@
             "DST"
           ],
           "team": "IND",
-          "opp": "@PIT",
+          "opp": "PIT",
           "salary": 2500,
           "proj": 5.7,
           "own_small": 0.032,
-          "own_large": 0.025
+          "own_large": 0.025,
+          "floor": 0.2,
+          "ceiling": 12.4
         },
         {
           "id": "44392868",
@@ -3848,11 +4438,13 @@
             "DST"
           ],
           "team": "LV",
-          "opp": "@NE",
+          "opp": "NE",
           "salary": 2500,
           "proj": 6.1,
           "own_small": 0.059000000000000004,
-          "own_large": 0.067
+          "own_large": 0.067,
+          "floor": 0.0,
+          "ceiling": 13.3
         },
         {
           "id": "44392869",
@@ -3861,11 +4453,13 @@
             "DST"
           ],
           "team": "SF",
-          "opp": "@SEA",
+          "opp": "SEA",
           "salary": 2400,
           "proj": 5.5,
           "own_small": 0.022000000000000002,
-          "own_large": 0.023
+          "own_large": 0.023,
+          "floor": -0.2,
+          "ceiling": 12.3
         },
         {
           "id": "44392870",
@@ -3878,7 +4472,9 @@
           "salary": 2300,
           "proj": 5.4,
           "own_small": 0.024,
-          "own_large": 0.028999999999999998
+          "own_large": 0.028999999999999998,
+          "floor": 0.0,
+          "ceiling": 12.2
         },
         {
           "id": "44392871",
@@ -3891,7 +4487,9 @@
           "salary": 2200,
           "proj": 3.3,
           "own_small": 0.001,
-          "own_large": 0.003
+          "own_large": 0.003,
+          "floor": -2.1,
+          "ceiling": 9.5
         },
         {
           "id": "44392872",
@@ -3904,7 +4502,9 @@
           "salary": 2100,
           "proj": 5.9,
           "own_small": 0.09,
-          "own_large": 0.078
+          "own_large": 0.078,
+          "floor": 0.3,
+          "ceiling": 12.7
         },
         {
           "id": "44392873",
@@ -3917,13 +4517,17 @@
           "salary": 2000,
           "proj": 4.9,
           "own_small": 0.048,
-          "own_large": 0.053
+          "own_large": 0.053,
+          "floor": -0.7,
+          "ceiling": 11.6
         }
       ],
       "expected": [
         {
           "id": "44391896",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "QUEEN",
             "ROOK"
           ]
@@ -3932,12 +4536,16 @@
           "id": "44392166",
           "pieces": [
             "BISHOP",
-            "QUEEN"
+            "KNIGHT",
+            "QUEEN",
+            "ROOK"
           ]
         },
         {
           "id": "44391898",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "QUEEN",
             "ROOK"
           ]
@@ -3946,19 +4554,25 @@
           "id": "44392168",
           "pieces": [
             "BISHOP",
-            "QUEEN"
+            "KNIGHT",
+            "QUEEN",
+            "ROOK"
           ]
         },
         {
           "id": "44392170",
           "pieces": [
             "BISHOP",
-            "QUEEN"
+            "KNIGHT",
+            "QUEEN",
+            "ROOK"
           ]
         },
         {
           "id": "44391900",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "QUEEN",
             "ROOK"
           ]
@@ -3967,26 +4581,34 @@
           "id": "44392172",
           "pieces": [
             "BISHOP",
-            "QUEEN"
+            "KNIGHT",
+            "QUEEN",
+            "ROOK"
           ]
         },
         {
           "id": "44392174",
           "pieces": [
             "BISHOP",
-            "QUEEN"
+            "KNIGHT",
+            "QUEEN",
+            "ROOK"
           ]
         },
         {
           "id": "44392176",
           "pieces": [
             "BISHOP",
-            "QUEEN"
+            "KNIGHT",
+            "QUEEN",
+            "ROOK"
           ]
         },
         {
           "id": "44391902",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "QUEEN",
             "ROOK"
           ]
@@ -3995,14 +4617,18 @@
           "id": "44392178",
           "pieces": [
             "BISHOP",
-            "QUEEN"
+            "KNIGHT",
+            "QUEEN",
+            "ROOK"
           ]
         },
         {
           "id": "44392588",
           "pieces": [
+            "BISHOP",
             "KNIGHT",
-            "QUEEN"
+            "QUEEN",
+            "ROOK"
           ]
         },
         {
@@ -4014,18 +4640,24 @@
         {
           "id": "44391904",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "ROOK"
           ]
         },
         {
           "id": "44392590",
           "pieces": [
-            "KNIGHT"
+            "BISHOP",
+            "KNIGHT",
+            "ROOK"
           ]
         },
         {
           "id": "44391906",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "ROOK"
           ]
         },
@@ -4038,12 +4670,16 @@
         {
           "id": "44392180",
           "pieces": [
-            "BISHOP"
+            "BISHOP",
+            "KNIGHT",
+            "ROOK"
           ]
         },
         {
           "id": "44391908",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "ROOK"
           ]
         },
@@ -4056,13 +4692,17 @@
         {
           "id": "44392182",
           "pieces": [
-            "BISHOP"
+            "BISHOP",
+            "KNIGHT",
+            "ROOK"
           ]
         },
         {
           "id": "44392184",
           "pieces": [
-            "BISHOP"
+            "BISHOP",
+            "KNIGHT",
+            "ROOK"
           ]
         },
         {
@@ -4074,31 +4714,41 @@
         {
           "id": "44392186",
           "pieces": [
-            "BISHOP"
+            "BISHOP",
+            "KNIGHT",
+            "ROOK"
           ]
         },
         {
           "id": "44392188",
           "pieces": [
-            "BISHOP"
+            "BISHOP",
+            "KNIGHT",
+            "ROOK"
           ]
         },
         {
           "id": "44391912",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "ROOK"
           ]
         },
         {
           "id": "44391914",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "ROOK"
           ]
         },
         {
           "id": "44392190",
           "pieces": [
-            "BISHOP"
+            "BISHOP",
+            "KNIGHT",
+            "ROOK"
           ]
         },
         {
@@ -4110,18 +4760,24 @@
         {
           "id": "44392192",
           "pieces": [
-            "BISHOP"
+            "BISHOP",
+            "KNIGHT",
+            "ROOK"
           ]
         },
         {
           "id": "44391916",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "ROOK"
           ]
         },
         {
           "id": "44391918",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "ROOK"
           ]
         },
@@ -4134,7 +4790,9 @@
         {
           "id": "44392194",
           "pieces": [
-            "BISHOP"
+            "BISHOP",
+            "KNIGHT",
+            "ROOK"
           ]
         },
         {
@@ -4146,6 +4804,8 @@
         {
           "id": "44391922",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "ROOK"
           ]
         },
@@ -4158,6 +4818,8 @@
         {
           "id": "44391924",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "ROOK"
           ]
         },
@@ -4170,7 +4832,9 @@
         {
           "id": "44392198",
           "pieces": [
-            "BISHOP"
+            "BISHOP",
+            "KNIGHT",
+            "ROOK"
           ]
         },
         {
@@ -4182,6 +4846,8 @@
         {
           "id": "44391926",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "ROOK"
           ]
         },
@@ -4194,13 +4860,17 @@
         {
           "id": "44391930",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "ROOK"
           ]
         },
         {
           "id": "44392202",
           "pieces": [
-            "BISHOP"
+            "BISHOP",
+            "KNIGHT",
+            "ROOK"
           ]
         },
         {
@@ -4212,24 +4882,32 @@
         {
           "id": "44391934",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "ROOK"
           ]
         },
         {
           "id": "44391932",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "ROOK"
           ]
         },
         {
           "id": "44392208",
           "pieces": [
-            "BISHOP"
+            "BISHOP",
+            "KNIGHT",
+            "ROOK"
           ]
         },
         {
           "id": "44391936",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "ROOK"
           ]
         },
@@ -4242,30 +4920,40 @@
         {
           "id": "44391938",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "ROOK"
           ]
         },
         {
           "id": "44392210",
           "pieces": [
-            "BISHOP"
+            "BISHOP",
+            "KNIGHT",
+            "ROOK"
           ]
         },
         {
           "id": "44392212",
           "pieces": [
-            "BISHOP"
+            "BISHOP",
+            "KNIGHT",
+            "ROOK"
           ]
         },
         {
           "id": "44392214",
           "pieces": [
-            "BISHOP"
+            "BISHOP",
+            "KNIGHT",
+            "ROOK"
           ]
         },
         {
           "id": "44391942",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "ROOK"
           ]
         },
@@ -4278,18 +4966,24 @@
         {
           "id": "44392216",
           "pieces": [
-            "BISHOP"
+            "BISHOP",
+            "KNIGHT",
+            "ROOK"
           ]
         },
         {
           "id": "44392592",
           "pieces": [
-            "KNIGHT"
+            "BISHOP",
+            "KNIGHT",
+            "ROOK"
           ]
         },
         {
           "id": "44391946",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "ROOK"
           ]
         },
@@ -4308,12 +5002,16 @@
         {
           "id": "44391944",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "ROOK"
           ]
         },
         {
           "id": "44391948",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "ROOK"
           ]
         },
@@ -4326,19 +5024,25 @@
         {
           "id": "44392594",
           "pieces": [
-            "KNIGHT"
+            "BISHOP",
+            "KNIGHT",
+            "ROOK"
           ]
         },
         {
           "id": "44391950",
           "pieces": [
+            "BISHOP",
+            "KNIGHT",
             "ROOK"
           ]
         },
         {
           "id": "44392220",
           "pieces": [
-            "BISHOP"
+            "BISHOP",
+            "KNIGHT",
+            "ROOK"
           ]
         },
         {
@@ -4350,20 +5054,25 @@
         {
           "id": "44392222",
           "pieces": [
-            "PAWN"
+            "KNIGHT",
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392596",
           "pieces": [
             "KNIGHT",
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44391952",
           "pieces": [
-            "PAWN"
+            "KNIGHT",
+            "PAWN",
+            "ROOK"
           ]
         },
         {
@@ -4375,38 +5084,49 @@
         {
           "id": "44391954",
           "pieces": [
-            "PAWN"
+            "KNIGHT",
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44391956",
           "pieces": [
-            "PAWN"
+            "KNIGHT",
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44391958",
           "pieces": [
-            "PAWN"
+            "KNIGHT",
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392224",
           "pieces": [
-            "PAWN"
+            "KNIGHT",
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44391960",
           "pieces": [
-            "PAWN"
+            "KNIGHT",
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392598",
           "pieces": [
             "KNIGHT",
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
@@ -4424,45 +5144,57 @@
         {
           "id": "44392226",
           "pieces": [
-            "PAWN"
+            "KNIGHT",
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44391964",
           "pieces": [
-            "PAWN"
+            "KNIGHT",
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392600",
           "pieces": [
             "KNIGHT",
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44391966",
           "pieces": [
-            "PAWN"
+            "KNIGHT",
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392602",
           "pieces": [
             "KNIGHT",
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392230",
           "pieces": [
-            "PAWN"
+            "KNIGHT",
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44391968",
           "pieces": [
-            "PAWN"
+            "KNIGHT",
+            "PAWN",
+            "ROOK"
           ]
         },
         {
@@ -4474,470 +5206,554 @@
         {
           "id": "44392228",
           "pieces": [
-            "PAWN"
+            "KNIGHT",
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44391970",
           "pieces": [
-            "PAWN"
+            "KNIGHT",
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44391974",
           "pieces": [
-            "PAWN"
+            "KNIGHT",
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392604",
           "pieces": [
             "KNIGHT",
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44391978",
           "pieces": [
-            "PAWN"
+            "KNIGHT",
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44391976",
           "pieces": [
-            "PAWN"
+            "KNIGHT",
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392234",
           "pieces": [
-            "PAWN"
+            "KNIGHT",
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44391984",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392606",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44391980",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44391982",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44391986",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44391988",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392240",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44391990",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392250",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392608",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44391998",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392244",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44391994",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44391992",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44391996",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392610",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392000",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392242",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392248",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392038",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392034",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392156",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392112",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392062",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392044",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392030",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392086",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392254",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392612",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392140",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392146",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392144",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392052",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392150",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392154",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392122",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392164",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392130",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392132",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392162",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392072",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392102",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392106",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392092",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392094",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392096",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392016",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392068",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392014",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392256",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392078",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392262",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392258",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392614",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392266",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392616",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392264",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392268",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392274",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392618",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392272",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392270",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392282",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392278",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392620",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392276",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392288",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392622",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392290",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392284",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392286",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
@@ -4949,25 +5765,29 @@
         {
           "id": "44392300",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392296",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392294",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392298",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
@@ -4979,25 +5799,29 @@
         {
           "id": "44392310",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392302",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392308",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392624",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
@@ -5009,37 +5833,43 @@
         {
           "id": "44392316",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392320",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392314",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392312",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392626",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392318",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
@@ -5051,31 +5881,36 @@
         {
           "id": "44392322",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392324",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392628",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392328",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392330",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
@@ -5087,253 +5922,295 @@
         {
           "id": "44392394",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392390",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392388",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392382",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392338",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392508",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392512",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392420",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392400",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392398",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392370",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392372",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392458",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392486",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392484",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392560",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392556",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392554",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392416",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392566",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392568",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392570",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392534",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392536",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392538",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392518",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392522",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392528",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392630",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392438",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392446",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392500",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392494",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392470",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392480",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392336",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392586",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392340",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392450",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392448",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392428",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392434",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
@@ -5351,7 +6228,8 @@
         {
           "id": "44392632",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
@@ -5369,13 +6247,15 @@
         {
           "id": "44392636",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392634",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
@@ -5393,19 +6273,22 @@
         {
           "id": "44392642",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392640",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392638",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
@@ -5423,19 +6306,22 @@
         {
           "id": "44392644",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392648",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392646",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
@@ -5453,253 +6339,295 @@
         {
           "id": "44392698",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392680",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392844",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392846",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392848",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392788",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392718",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392720",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392700",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392702",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392670",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392672",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392756",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392652",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392758",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392768",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392770",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392826",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392710",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392650",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392834",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392836",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392808",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392810",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392820",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392818",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392796",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392740",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392780",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392782",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392784",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392764",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392666",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392660",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392662",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392656",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392654",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392746",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392748",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392730",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392732",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
           "id": "44392734",
           "pieces": [
-            "PAWN"
+            "PAWN",
+            "ROOK"
           ]
         },
         {
@@ -5761,7 +6689,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         }
       ],
       "setup": [],
@@ -5793,7 +6723,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "b1",
@@ -5806,7 +6738,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         }
       ],
       "setup": [
@@ -5844,7 +6778,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         }
       ],
       "setup": [],
@@ -5871,7 +6807,9 @@
           "salary": 5200,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         }
       ],
       "setup": [],
@@ -5880,7 +6818,12 @@
       "cap": 50000,
       "field_size": 1000,
       "expected": {
-        "legal": false
+        "legal": true,
+        "san": "Nc3",
+        "piece": "KNIGHT",
+        "locked_player_ids": [
+          "rb1"
+        ]
       }
     },
     {
@@ -5898,7 +6841,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "b1",
@@ -5911,7 +6856,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "rb1",
@@ -5924,7 +6871,9 @@
           "salary": 5200,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "b2",
@@ -5937,7 +6886,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         }
       ],
       "setup": [
@@ -5981,7 +6932,9 @@
           "salary": 5200,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "b1",
@@ -5994,7 +6947,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "dst2",
@@ -6007,7 +6962,9 @@
           "salary": 5100,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         }
       ],
       "setup": [
@@ -6043,7 +7000,9 @@
           "salary": 5200,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "rb1",
@@ -6056,7 +7015,9 @@
           "salary": 5200,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "rb2",
@@ -6069,7 +7030,9 @@
           "salary": 5200,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         }
       ],
       "cap": 50000,
@@ -6092,7 +7055,9 @@
           "salary": 2500,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "dst2",
@@ -6105,7 +7070,9 @@
           "salary": 2600,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         }
       ],
       "cap": 50000,
@@ -6128,7 +7095,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "filler_b",
@@ -6141,7 +7110,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "rb_overlap_rook",
@@ -6154,7 +7125,9 @@
           "salary": 7200,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         }
       ],
       "setup": [
@@ -6197,7 +7170,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "filler_b",
@@ -6210,7 +7185,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "rb_overlap_queen",
@@ -6223,7 +7200,9 @@
           "salary": 7200,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         }
       ],
       "setup": [
@@ -6266,7 +7245,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "b1",
@@ -6279,7 +7260,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "te1",
@@ -6292,7 +7275,9 @@
           "salary": 5200,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "b2",
@@ -6305,7 +7290,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "wr1",
@@ -6318,7 +7305,9 @@
           "salary": 5000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "b3",
@@ -6331,7 +7320,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "rb_queen",
@@ -6344,7 +7335,9 @@
           "salary": 7200,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "b4",
@@ -6357,7 +7350,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "qb1",
@@ -6370,7 +7365,9 @@
           "salary": 6000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "rb1",
@@ -6383,7 +7380,9 @@
           "salary": 5200,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         }
       ],
       "setup": [
@@ -6458,7 +7457,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "b1",
@@ -6471,7 +7472,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "te1",
@@ -6484,7 +7487,9 @@
           "salary": 5200,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "b2",
@@ -6497,7 +7502,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "wr1",
@@ -6510,7 +7517,9 @@
           "salary": 5000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "b3",
@@ -6523,7 +7532,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "rb_queen",
@@ -6536,7 +7547,9 @@
           "salary": 7200,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "b4",
@@ -6549,7 +7562,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "qb_w",
@@ -6562,7 +7577,9 @@
           "salary": 6500,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "qb_b",
@@ -6575,7 +7592,9 @@
           "salary": 6200,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "rb1",
@@ -6588,7 +7607,9 @@
           "salary": 5200,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         }
       ],
       "white_king_player_id": "qb_w",
@@ -6666,7 +7687,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "b1",
@@ -6679,7 +7702,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "te1",
@@ -6692,7 +7717,9 @@
           "salary": 5200,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "b2",
@@ -6705,7 +7732,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "wr1",
@@ -6718,7 +7747,9 @@
           "salary": 5000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "b3",
@@ -6731,7 +7762,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "rb_queen",
@@ -6744,7 +7777,9 @@
           "salary": 7200,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "b4",
@@ -6757,7 +7792,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "qb_w",
@@ -6770,7 +7807,9 @@
           "salary": 6500,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "qb_b",
@@ -6783,7 +7822,9 @@
           "salary": 6200,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "rb1",
@@ -6796,7 +7837,9 @@
           "salary": 5200,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "qb_new",
@@ -6809,7 +7852,9 @@
           "salary": 5800,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         }
       ],
       "white_king_player_id": "qb_w",
@@ -6885,7 +7930,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "b_pawn1",
@@ -6898,7 +7945,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         }
       ],
       "setup": [
@@ -6936,7 +7985,9 @@
           "salary": 5200,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         }
       ],
       "setup": [],
@@ -6965,7 +8016,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "b_h6",
@@ -6978,7 +8031,9 @@
           "salary": 3000,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "w_e5",
@@ -6991,7 +8046,9 @@
           "salary": 3100,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         },
         {
           "id": "b_d5",
@@ -7004,7 +8061,9 @@
           "salary": 3200,
           "proj": 10.0,
           "own_small": 0.1,
-          "own_large": 0.1
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
         }
       ],
       "setup": [
@@ -7045,11 +8104,13 @@
           "RB"
         ],
         "team": "DET",
-        "opp": "@ARI",
+        "opp": "ARI",
         "salary": 9800,
         "proj": 29.5,
         "own_small": 0.402,
-        "own_large": 0.342
+        "own_large": 0.342,
+        "floor": 13.7,
+        "ceiling": 46.4
       },
       "expected": {
         "field_tier": "SMALL",
@@ -7067,11 +8128,13 @@
           "RB"
         ],
         "team": "DET",
-        "opp": "@ARI",
+        "opp": "ARI",
         "salary": 9800,
         "proj": 29.5,
         "own_small": 0.402,
-        "own_large": 0.342
+        "own_large": 0.342,
+        "floor": 13.7,
+        "ceiling": 46.4
       },
       "expected": {
         "field_tier": "MID",
@@ -7089,11 +8152,13 @@
           "RB"
         ],
         "team": "DET",
-        "opp": "@ARI",
+        "opp": "ARI",
         "salary": 9800,
         "proj": 29.5,
         "own_small": 0.402,
-        "own_large": 0.342
+        "own_large": 0.342,
+        "floor": 13.7,
+        "ceiling": 46.4
       },
       "expected": {
         "field_tier": "MID",
@@ -7111,11 +8176,13 @@
           "RB"
         ],
         "team": "DET",
-        "opp": "@ARI",
+        "opp": "ARI",
         "salary": 9800,
         "proj": 29.5,
         "own_small": 0.402,
-        "own_large": 0.342
+        "own_large": 0.342,
+        "floor": 13.7,
+        "ceiling": 46.4
       },
       "expected": {
         "field_tier": "LARGE",
@@ -9055,24 +10122,24 @@
             "side": "WHITE",
             "san": "Nf3",
             "piece": "KNIGHT",
-            "player_id": "44392590",
-            "player_name": "Trey McBride"
+            "player_id": "44391896",
+            "player_name": "Jahmyr Gibbs"
           },
           {
             "ply": 4,
             "side": "BLACK",
             "san": "Nc6",
             "piece": "KNIGHT",
-            "player_id": "44392588",
-            "player_name": "Brock Bowers"
+            "player_id": "44392166",
+            "player_name": "Jaxon Smith-Njigba"
           },
           {
             "ply": 5,
             "side": "WHITE",
             "san": "Bb5",
             "piece": "BISHOP",
-            "player_id": "44392166",
-            "player_name": "Jaxon Smith-Njigba"
+            "player_id": "44392170",
+            "player_name": "Amon-Ra St. Brown"
           },
           {
             "ply": 6,
@@ -9097,16 +10164,16 @@
             "side": "WHITE",
             "san": "Nf3",
             "piece": "KNIGHT",
-            "player_id": "44392590",
-            "player_name": "Trey McBride"
+            "player_id": "44391896",
+            "player_name": "Jahmyr Gibbs"
           },
           {
             "ply": 5,
             "side": "WHITE",
             "san": "Bb5",
             "piece": "BISHOP",
-            "player_id": "44392166",
-            "player_name": "Jaxon Smith-Njigba"
+            "player_id": "44392170",
+            "player_name": "Amon-Ra St. Brown"
           }
         ],
         "black_moves": [
@@ -9123,8 +10190,8 @@
             "side": "BLACK",
             "san": "Nc6",
             "piece": "KNIGHT",
-            "player_id": "44392588",
-            "player_name": "Brock Bowers"
+            "player_id": "44392166",
+            "player_name": "Jaxon Smith-Njigba"
           },
           {
             "ply": 6,
@@ -9136,6 +10203,489 @@
           }
         ],
         "opening_name_at_end": "Ruy Lopez: Morphy Defense"
+      }
+    },
+    {
+      "name": "pick_list_queen_sorts_by_ceiling",
+      "kind": "pick_list",
+      "piece": "QUEEN",
+      "players": [
+        {
+          "id": "a",
+          "name": "a",
+          "positions": [
+            "RB"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 7200,
+          "proj": 25.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 15.0,
+          "ceiling": 20.0
+        },
+        {
+          "id": "b",
+          "name": "b",
+          "positions": [
+            "RB"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 7300,
+          "proj": 20.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 12.0,
+          "ceiling": 45.0
+        }
+      ],
+      "locked_player_ids": [],
+      "current_player_ids": [],
+      "qb_team": null,
+      "cap": 50000,
+      "field_size": 1000,
+      "expected": {
+        "ids": [
+          "b",
+          "a"
+        ]
+      }
+    },
+    {
+      "name": "pick_list_rook_requires_qb_team",
+      "kind": "pick_list",
+      "piece": "ROOK",
+      "players": [
+        {
+          "id": "rb1",
+          "name": "rb1",
+          "positions": [
+            "RB"
+          ],
+          "team": "CIN",
+          "opp": "BBB",
+          "salary": 5200,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
+        },
+        {
+          "id": "rb2",
+          "name": "rb2",
+          "positions": [
+            "RB"
+          ],
+          "team": "DET",
+          "opp": "BBB",
+          "salary": 5300,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
+        }
+      ],
+      "locked_player_ids": [],
+      "current_player_ids": [],
+      "qb_team": "CIN",
+      "cap": 50000,
+      "field_size": 1000,
+      "expected": {
+        "ids": [
+          "rb1"
+        ]
+      }
+    },
+    {
+      "name": "pick_list_caps_bishop_at_12",
+      "kind": "pick_list",
+      "piece": "BISHOP",
+      "players": [
+        {
+          "id": "wr0",
+          "name": "wr0",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5100,
+          "proj": 0.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 0.0,
+          "ceiling": 0.0
+        },
+        {
+          "id": "wr1",
+          "name": "wr1",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5101,
+          "proj": 1.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 0.6,
+          "ceiling": 1.6
+        },
+        {
+          "id": "wr2",
+          "name": "wr2",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5102,
+          "proj": 2.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 1.2,
+          "ceiling": 3.2
+        },
+        {
+          "id": "wr3",
+          "name": "wr3",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5103,
+          "proj": 3.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 1.7999999999999998,
+          "ceiling": 4.800000000000001
+        },
+        {
+          "id": "wr4",
+          "name": "wr4",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5104,
+          "proj": 4.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 2.4,
+          "ceiling": 6.4
+        },
+        {
+          "id": "wr5",
+          "name": "wr5",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5105,
+          "proj": 5.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 3.0,
+          "ceiling": 8.0
+        },
+        {
+          "id": "wr6",
+          "name": "wr6",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5106,
+          "proj": 6.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 3.5999999999999996,
+          "ceiling": 9.600000000000001
+        },
+        {
+          "id": "wr7",
+          "name": "wr7",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5107,
+          "proj": 7.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 4.2,
+          "ceiling": 11.200000000000001
+        },
+        {
+          "id": "wr8",
+          "name": "wr8",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5108,
+          "proj": 8.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 4.8,
+          "ceiling": 12.8
+        },
+        {
+          "id": "wr9",
+          "name": "wr9",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5109,
+          "proj": 9.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 5.3999999999999995,
+          "ceiling": 14.4
+        },
+        {
+          "id": "wr10",
+          "name": "wr10",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5110,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
+        },
+        {
+          "id": "wr11",
+          "name": "wr11",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5111,
+          "proj": 11.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 6.6,
+          "ceiling": 17.6
+        },
+        {
+          "id": "wr12",
+          "name": "wr12",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5112,
+          "proj": 12.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 7.199999999999999,
+          "ceiling": 19.200000000000003
+        },
+        {
+          "id": "wr13",
+          "name": "wr13",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5113,
+          "proj": 13.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 7.8,
+          "ceiling": 20.8
+        },
+        {
+          "id": "wr14",
+          "name": "wr14",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5114,
+          "proj": 14.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 8.4,
+          "ceiling": 22.400000000000002
+        },
+        {
+          "id": "wr15",
+          "name": "wr15",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5115,
+          "proj": 15.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 9.0,
+          "ceiling": 24.0
+        },
+        {
+          "id": "wr16",
+          "name": "wr16",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5116,
+          "proj": 16.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 9.6,
+          "ceiling": 25.6
+        },
+        {
+          "id": "wr17",
+          "name": "wr17",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5117,
+          "proj": 17.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 10.2,
+          "ceiling": 27.200000000000003
+        },
+        {
+          "id": "wr18",
+          "name": "wr18",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5118,
+          "proj": 18.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 10.799999999999999,
+          "ceiling": 28.8
+        },
+        {
+          "id": "wr19",
+          "name": "wr19",
+          "positions": [
+            "WR"
+          ],
+          "team": "AAA",
+          "opp": "BBB",
+          "salary": 5119,
+          "proj": 19.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 11.4,
+          "ceiling": 30.400000000000002
+        }
+      ],
+      "locked_player_ids": [],
+      "current_player_ids": [],
+      "qb_team": null,
+      "cap": 50000,
+      "field_size": 1000,
+      "expected": {
+        "ids": [
+          "wr19",
+          "wr18",
+          "wr17",
+          "wr16",
+          "wr15",
+          "wr14",
+          "wr13",
+          "wr12",
+          "wr11",
+          "wr10",
+          "wr9",
+          "wr8"
+        ]
+      }
+    },
+    {
+      "name": "castle_qb_candidates_excludes_a_lonely_qb",
+      "kind": "castle_qb_candidates",
+      "players": [
+        {
+          "id": "qb1",
+          "name": "qb1",
+          "positions": [
+            "QB"
+          ],
+          "team": "CIN",
+          "opp": "BBB",
+          "salary": 6000,
+          "proj": 30.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 18.0,
+          "ceiling": 48.0
+        },
+        {
+          "id": "qb2",
+          "name": "qb2",
+          "positions": [
+            "QB"
+          ],
+          "team": "DET",
+          "opp": "BBB",
+          "salary": 6200,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
+        },
+        {
+          "id": "rb1",
+          "name": "rb1",
+          "positions": [
+            "RB"
+          ],
+          "team": "DET",
+          "opp": "BBB",
+          "salary": 5200,
+          "proj": 10.0,
+          "own_small": 0.1,
+          "own_large": 0.1,
+          "floor": 6.0,
+          "ceiling": 16.0
+        }
+      ],
+      "locked_player_ids": [],
+      "current_player_ids": [],
+      "cap": 50000,
+      "field_size": 1000,
+      "expected": {
+        "ids": [
+          "qb2"
+        ]
       }
     }
   ]

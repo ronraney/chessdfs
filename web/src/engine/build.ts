@@ -37,7 +37,8 @@ import type { ContestConfig } from "./config";
 import { BuildState, KingMode, Piece, Player, Side } from "./models";
 import type { BookLine } from "./openings";
 import { bookContinuations, openingName, splitFamily } from "./openings";
-import { classify, pieceForChessType } from "./pieces";
+import { castleQbCandidates, pickList } from "./picklist";
+import { pieceForChessType } from "./pieces";
 import type { ChessMove } from "./rules";
 import {
   applyCaptureMove,
@@ -50,7 +51,7 @@ import {
   isLegalCapture,
   isLegalMove,
   isLineupComplete,
-  lineupStillCompletable,
+  lockedQbTeam,
   openRosterSlots,
   pushSilentMove,
 } from "./rules";
@@ -108,21 +109,14 @@ function isBuildOver(state: BuildState, sport: SportConfig): boolean {
   return isLineupComplete(state.whiteMoves.map((m) => m.player), sport);
 }
 
-function sortByProjDesc(players: readonly Player[]): Player[] {
-  return [...players].sort((a, b) => b.proj - a.proj);
+function currentPlayersFor(state: BuildState, side: Side): Player[] {
+  return (side === Side.WHITE ? state.whiteMoves : state.blackMoves).map((m) => m.player);
 }
 
-function eligibleUnlocked(
-  piece: Piece,
-  state: BuildState,
-  sport: SportConfig,
-  playersPool: readonly Player[],
-): Player[] {
-  return playersPool.filter((p) => !state.lockedPlayerIds.has(p.id) && classify(p, sport).has(piece));
-}
-
-// Highest-projection eligible player for which `chessMove` is actually
-// legal -- the TEMPORARY placeholder pick (see module comment above).
+// The top of `piece`'s own pick list for which `chessMove` is actually
+// legal -- the TEMPORARY placeholder pick (see module comment above;
+// RULES.md: "Black ... picks the top of the moved piece's (capped)
+// list").
 function bestLegalPlayer(
   chessMove: ChessMove,
   piece: Piece,
@@ -131,16 +125,19 @@ function bestLegalPlayer(
   contest: ContestConfig,
   playersPool: readonly Player[],
 ): Player | null {
-  const candidates = sortByProjDesc(eligibleUnlocked(piece, state, sport, playersPool));
+  const side = state.board.turn() === "w" ? Side.WHITE : Side.BLACK;
+  const current = currentPlayersFor(state, side);
+  const qbTeam = lockedQbTeam(state, side);
+  const candidates = pickList(piece, playersPool, state.lockedPlayerIds, current, sport, contest, qbTeam);
   for (const player of candidates) {
     if (isLegalMove(state, chessMove, player, sport, contest)) return player;
   }
   return null;
 }
 
-// Highest-projection eligible player of `capturedType` for which
-// `chessMove` -- a capture of a piece with no lock history, i.e. it never
-// moved -- is actually legal right now. Same placeholder convention as
+// The top of `capturedType`'s own pick list for which `chessMove` -- a
+// capture of a piece with no lock history, i.e. it never moved -- is
+// actually legal right now. Same placeholder convention as
 // bestLegalPlayer.
 function bestLegalCapturePlayer(
   chessMove: ChessMove,
@@ -150,7 +147,10 @@ function bestLegalCapturePlayer(
   contest: ContestConfig,
   playersPool: readonly Player[],
 ): Player | null {
-  const candidates = sortByProjDesc(eligibleUnlocked(capturedType, state, sport, playersPool));
+  const side = state.board.turn() === "w" ? Side.WHITE : Side.BLACK;
+  const current = currentPlayersFor(state, side);
+  const qbTeam = lockedQbTeam(state, side);
+  const candidates = pickList(capturedType, playersPool, state.lockedPlayerIds, current, sport, contest, qbTeam);
   for (const player of candidates) {
     if (isLegalCapture(state, chessMove, sport, contest, player)) return player;
   }
@@ -158,7 +158,9 @@ function bestLegalCapturePlayer(
 }
 
 // [King, Rook] in EMERGE mode, or [Rook] in PLACED mode (castling locks
-// only the Rook there).
+// only the Rook there) -- the top of each piece's own pick list
+// (RULES.md: "Only offer QBs with at least one eligible teammate ... If
+// none, castling is illegal").
 function bestLegalCastlePlayers(
   state: BuildState,
   sport: SportConfig,
@@ -169,24 +171,22 @@ function bestLegalCastlePlayers(
   const side = state.board.turn() === "w" ? Side.WHITE : Side.BLACK;
   if (!canCastle(state, side, kingMode)) return null;
 
-  const current = (side === Side.WHITE ? state.whiteMoves : state.blackMoves).map((m) => m.player);
-  const cap = contest.effectiveCap(sport);
-  const rooks = sortByProjDesc(eligibleUnlocked(Piece.ROOK, state, sport, playersPool));
+  const current = currentPlayersFor(state, side);
+  const locked = state.lockedPlayerIds;
 
   if (kingMode === KingMode.PLACED) {
-    for (const rook of rooks) {
-      if (lineupStillCompletable([...current, rook], sport, cap)) return [rook];
-    }
-    return null;
+    const qbTeam = lockedQbTeam(state, side);
+    const rooks = pickList(Piece.ROOK, playersPool, locked, current, sport, contest, qbTeam);
+    return rooks.length > 0 ? [rooks[0]] : null;
   }
 
-  const kings = sortByProjDesc(eligibleUnlocked(Piece.KING, state, sport, playersPool));
-  for (const king of kings) {
-    for (const rook of rooks) {
-      if (lineupStillCompletable([...current, king, rook], sport, cap)) return [king, rook];
-    }
-  }
-  return null;
+  const kings = castleQbCandidates(playersPool, locked, current, sport, contest);
+  if (kings.length === 0) return null;
+  const king = kings[0];
+  const lockedWithKing = new Set(locked);
+  lockedWithKing.add(king.id);
+  const rooks = pickList(Piece.ROOK, playersPool, lockedWithKing, [...current, king], sport, contest, king.team);
+  return rooks.length > 0 ? [king, rooks[0]] : null;
 }
 
 // The player(s) `chessMove` would lock -- one, or two for castling in

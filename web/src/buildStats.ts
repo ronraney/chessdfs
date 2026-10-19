@@ -1,14 +1,15 @@
-// Task 37: the build screen's per-side stats and pick-modal eligibility --
-// UI-layer composition of already-exported engine primitives, porting the
-// same formulas dfs_chess/cli.py's _eligible_sorted/_side_stats use (no
-// Python equivalent of this file itself; same spirit as appData.ts's own
-// UI-layer joins). No new engine rules: salary/ownership/projection are
-// plain sums, "open slots" is rules.openRosterSlots, eligibility is
-// pieces.classify + BuildState.lockedPlayerIds.
+// Task 37: the build screen's per-side stats -- UI-layer composition of
+// already-exported engine primitives, porting the same formulas
+// dfs_chess/cli.py's _side_stats uses (no Python equivalent of this file
+// itself; same spirit as appData.ts's own UI-layer joins). No new engine
+// rules: salary/ownership/projection are plain sums, "open slots" is
+// rules.openRosterSlots. The pick modal's own candidate list is
+// engine/picklist.ts's pickList/castleQbCandidates (RULES.md piece table),
+// not this file -- "eligible, sorted by projection" stopped being the
+// whole story once each piece got its own sort metric and list cap.
 import type { Piece } from "./engine/models";
 import type { ContestConfig } from "./engine/config";
 import type { Player } from "./engine/models";
-import { classify } from "./engine/pieces";
 import { maxAssignable, openRosterSlots } from "./engine/rules";
 import type { PieceBand, SportConfig } from "./engine/sport";
 
@@ -85,20 +86,4 @@ export function pickReason(currentPlayers: readonly Player[], candidate: Player,
   if (spent > cap) return "over the cap";
   if (maxAssignable([...currentPlayers, candidate], sport.rosterSlots) < currentPlayers.length + 1) return "no slot left";
   return null;
-}
-
-// cli.py's _eligible_sorted: every unlocked player classifying as `piece`,
-// sorted by projection descending -- the pick modal's own candidate list.
-// Deliberately not pre-filtered by isLegalMove/lineupStillCompletable (same
-// as the CLI precedent): an infeasible pick is rejected when actually
-// applied, not hidden from the list beforehand.
-export function eligiblePlayers(
-  piece: Piece,
-  lockedPlayerIds: ReadonlySet<string>,
-  playersPool: readonly Player[],
-  sport: SportConfig,
-): Player[] {
-  return playersPool
-    .filter((p) => !lockedPlayerIds.has(p.id) && classify(p, sport).has(piece))
-    .sort((a, b) => b.proj - a.proj);
 }

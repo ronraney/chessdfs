@@ -177,6 +177,8 @@ function proxyPlayer(piece: Piece, eligible: Map<Piece, Set<string>>): Player {
     proj: 0,
     ownSmall: 0,
     ownLarge: 0,
+    floor: 0,
+    ceiling: 0,
   });
 }
 

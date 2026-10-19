@@ -37,8 +37,9 @@ from .openings import (
     rank_families,
     split_family,
 )
+from .picklist import castle_qb_candidates, pick_list
 from .pieces import classify, piece_for_chess_type
-from .rules import captured_square, open_roster_slots, place_kings, push_silent_move, switch_king
+from .rules import captured_square, locked_qb_team, open_roster_slots, place_kings, push_silent_move, switch_king
 from .sport import SportConfig, load_sport_config
 
 RESTART_BUILD = object()  # sentinel: the user chose "start again" at the book-exit prompt
@@ -140,12 +141,16 @@ def format_salary_ownership_table(state: BuildState, sport: SportConfig, contest
 
 
 def _eligible_sorted(
-    piece: Piece, state: BuildState, sport: SportConfig, players_pool: list[Player]
+    piece: Piece, state: BuildState, sport: SportConfig, contest: ContestConfig, players_pool: list[Player]
 ) -> list[Player]:
-    candidates = [
-        p for p in players_pool if p.id not in state.locked_player_ids and piece in classify(p, sport)
-    ]
-    return sorted(candidates, key=lambda p: p.proj, reverse=True)
+    """`piece`'s own pick list (RULES.md piece table: eligible, unlocked,
+    roster/salary-feasible, sorted by its own metric, capped) for
+    whichever side is currently on the move.
+    """
+    side = Side.WHITE if state.board.turn == chess.WHITE else Side.BLACK
+    current = [m.player for m in (state.white_moves if side is Side.WHITE else state.black_moves)]
+    qb_team = locked_qb_team(state, side)
+    return pick_list(piece, players_pool, state.locked_player_ids, current, sport, contest, qb_team)
 
 
 def _print_check_notice(state: BuildState) -> None:
@@ -236,7 +241,7 @@ def _prompt_player_choice(
         print_rows(page)
         shown += len(page)
 
-    print(f"\nEligible {label} players (by projection):")
+    print(f"\nEligible {label} players:")
     show_more()
 
     while True:
@@ -533,38 +538,48 @@ def _play_castling_move(
 ) -> MoveResult | None:
     """Shared castling handler for both template and free-play White
     turns. EMERGE mode: prompts for QB then RB (King + Rook locked
-    together). PLACED mode (Task 14): the King is already locked, so
-    this only prompts for RB, then offers the one-time "Switch your
-    QB?" right after. Returns None on any decline/infeasibility, same
+    together) -- only QBs with at least one eligible teammate are
+    offered (RULES.md: "If none, castling is illegal"). PLACED mode
+    (Task 14): the King is already locked, so this offers the one-time
+    "Switch your QB?" FIRST, then prompts for RB from the final QB's
+    teammates (RULES.md: the Rook must be a teammate of whichever QB
+    ends up locked, so the switch has to be resolved before the Rook
+    pick, not after). Returns None on any decline/infeasibility, same
     convention the callers already use.
     """
     base = proj_total(state, Side.WHITE)
     if king_mode is KingMode.EMERGE:
-        qb = _prompt_player_choice(
-            _eligible_sorted(Piece.KING, state, sport, players_pool), contest, base, "QB", input_func, allow_cancel
+        qb_candidates = castle_qb_candidates(
+            players_pool, state.locked_player_ids, [m.player for m in state.white_moves], sport, contest
         )
+        qb = _prompt_player_choice(qb_candidates, contest, base, "QB", input_func, allow_cancel)
         if qb is None:
             return None
         base += qb.proj  # King + Rook lock together -- the RB preview builds on top of this move's own QB too
+        rb_candidates = pick_list(
+            Piece.ROOK,
+            players_pool,
+            state.locked_player_ids | {qb.id},
+            [m.player for m in state.white_moves] + [qb],
+            sport,
+            contest,
+            qb.team,
+        )
     else:
+        state = _offer_king_switch(state, sport, contest, players_pool, input_func)
         qb = next(m.player for m in state.white_moves if m.piece is Piece.KING)  # ignored by play_white_move
+        rb_candidates = pick_list(
+            Piece.ROOK, players_pool, state.locked_player_ids, [m.player for m in state.white_moves], sport, contest, qb.team
+        )
 
-    rb = _prompt_player_choice(
-        _eligible_sorted(Piece.ROOK, state, sport, players_pool), contest, base, "RB", input_func, allow_cancel
-    )
+    rb = _prompt_player_choice(rb_candidates, contest, base, "RB", input_func, allow_cancel)
     if rb is None:
         return None
 
     try:
-        result = play_white_move(state, chess_move, qb, sport, contest, book, white_rook=rb, king_mode=king_mode)
+        return play_white_move(state, chess_move, qb, sport, contest, book, white_rook=rb, king_mode=king_mode)
     except ValueError:
         return None
-
-    if king_mode is KingMode.PLACED:
-        new_state = _offer_king_switch(result.state, sport, contest, players_pool, input_func)
-        if new_state is not result.state:
-            result = MoveResult(new_state, result.opening, result.message)
-    return result
 
 
 def _play_capture_move(
@@ -599,7 +614,7 @@ def _play_capture_move(
         f"{captured_type.value.lower()}: pick a {captured_type.value.title()}."
     )
     player = _prompt_player_choice(
-        _eligible_sorted(captured_type, state, sport, players_pool),
+        _eligible_sorted(captured_type, state, sport, contest, players_pool),
         contest,
         proj_total(state, Side.WHITE),
         captured_type.value.title(),
@@ -718,7 +733,7 @@ def _play_white_template_move(
         return _play_silent_king_move(state, chess_move, sport, book)
 
     player = _prompt_player_choice(
-        _eligible_sorted(piece, state, sport, players_pool),
+        _eligible_sorted(piece, state, sport, contest, players_pool),
         contest,
         proj_total(state, Side.WHITE),
         piece.value.title(),
@@ -786,7 +801,7 @@ def _play_white_free_turn(
                 return _play_silent_king_move(state, chess_move, sport, book)
 
             player = _prompt_player_choice(
-                _eligible_sorted(piece, state, sport, players_pool),
+                _eligible_sorted(piece, state, sport, contest, players_pool),
                 contest,
                 proj_total(state, Side.WHITE),
                 piece.value.title(),

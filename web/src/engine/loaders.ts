@@ -36,6 +36,8 @@ export const ETR_COLUMN_MAP = {
   proj: "DK Proj",
   ownSmall: "Small Field",
   ownLarge: "Large Field",
+  floor: "DK Floor",
+  ceiling: "DK Ceiling",
 } as const;
 
 export type EtrColumnMap = typeof ETR_COLUMN_MAP;
@@ -47,6 +49,11 @@ function parseSalary(raw: string): number {
 // "40.20%" -> 0.402 (stored as a 0-1 fraction; shown as a percent in the UI).
 function parsePercent(raw: string): number {
   return parseFloat(raw.replace(/%+$/, "")) / 100;
+}
+
+// "@ARI" (away) -> "ARI"; "SF" (home) is unchanged.
+function stripOpp(raw: string): string {
+  return raw.startsWith("@") ? raw.slice(1) : raw;
 }
 
 // Bug fix: some DK exports carry only a plain "id" column, not "DK_ID" --
@@ -76,11 +83,13 @@ export function loadEtrCsv(data: string, columnMap: EtrColumnMap = ETR_COLUMN_MA
         name: row[columnMap.name].trim(),
         positions: [row[columnMap.pos]],
         team: row[columnMap.team],
-        opp: row[columnMap.opp],
+        opp: stripOpp(row[columnMap.opp]),
         salary: parseSalary(row[columnMap.salary]),
         proj: parseFloat(row[columnMap.proj]),
         ownSmall: parsePercent(row[columnMap.ownSmall]),
         ownLarge: parsePercent(row[columnMap.ownLarge]),
+        floor: parseFloat(row[columnMap.floor]),
+        ceiling: parseFloat(row[columnMap.ceiling]),
       }),
   );
 }
@@ -101,7 +110,7 @@ export interface SlateValidationResult {
   idColumn: string;
 }
 
-const REQUIRED_COLUMN_KEYS = ["name", "pos", "team", "opp", "salary", "proj", "ownSmall", "ownLarge"] as const;
+const REQUIRED_COLUMN_KEYS = ["name", "pos", "team", "opp", "salary", "proj", "ownSmall", "ownLarge", "floor", "ceiling"] as const;
 
 export function validateSlateCsv(
   data: string,

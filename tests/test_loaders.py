@@ -65,10 +65,10 @@ def test_load_etr_csv_falls_back_to_plain_id_column(tmp_path):
     """
     csv_path = tmp_path / "id_only.csv"
     csv_path.write_text(
-        "Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field,id\n"
-        'Test Player A,DST,AAA,BBB,"$2,000",5.0,10.00%,10.00%,1001\n'
-        'Test Player B,DST,AAA,BBB,"$2,100",5.1,10.00%,10.00%,1002\n'
-        'Test Player C,DST,AAA,BBB,"$2,200",5.2,10.00%,10.00%,1003\n'
+        "Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field,DK Floor,DK Ceiling,id\n"
+        'Test Player A,DST,AAA,BBB,"$2,000",5.0,10.00%,10.00%,2.0,8.0,1001\n'
+        'Test Player B,DST,AAA,BBB,"$2,100",5.1,10.00%,10.00%,2.1,8.1,1002\n'
+        'Test Player C,DST,AAA,BBB,"$2,200",5.2,10.00%,10.00%,2.2,8.2,1003\n'
     )
     players = load_etr_csv(csv_path)
     assert [p.id for p in players] == ["1001", "1002", "1003"]
@@ -76,11 +76,11 @@ def test_load_etr_csv_falls_back_to_plain_id_column(tmp_path):
 
 # --- slate validation (Task 43, admin-upload-only rigor) --------------------
 
-_HEADER = "Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field,DK_ID"
+_HEADER = "Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field,DK Floor,DK Ceiling,DK_ID"
 
 
 def _row(id_: str, name: str, pos: str, salary: int) -> str:
-    return f'{name},{pos},AAA,BBB,"${salary:,}",10.0,10.00%,10.00%,{id_}'
+    return f'{name},{pos},AAA,BBB,"${salary:,}",10.0,10.00%,10.00%,6.0,16.0,{id_}'
 
 
 # QB(1) + RB(2) + WR(3) + TE(1) + DST(1) -- exactly covers every dedicated
@@ -122,8 +122,8 @@ def test_validate_etr_csv_feasible_minimal_slate_validates_cleanly(tmp_path):
 def test_validate_etr_csv_rejects_no_id_column(tmp_path):
     path = tmp_path / "slate.csv"
     path.write_text(
-        "Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field\n"
-        "QB1,QB,AAA,BBB,$6000,10.0,10.00%,10.00%\n"
+        "Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field,DK Floor,DK Ceiling\n"
+        "QB1,QB,AAA,BBB,$6000,10.0,10.00%,10.00%,6.0,16.0\n"
     )
     with pytest.raises(SlateValidationError, match="No ID column found"):
         validate_etr_csv(path, NFL)
@@ -148,7 +148,7 @@ def test_validate_etr_csv_rejects_missing_required_columns_naming_them(tmp_path)
     path.write_text("Player,DK Pos,DK_ID\nQB1,QB,1\n")
     with pytest.raises(
         SlateValidationError,
-        match=r"Missing required column\(s\): Team, Opp, DK Salary, DK Proj, Small Field, Large Field\.",
+        match=r"Missing required column\(s\): Team, Opp, DK Salary, DK Proj, Small Field, Large Field, DK Floor, DK Ceiling\.",
     ):
         validate_etr_csv(path, NFL)
 

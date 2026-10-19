@@ -80,10 +80,10 @@ describe("loadEtrCsv", () => {
 // validateSlateCsv's own comment for why that'd break every other caller's
 // small/synthetic CSVs).
 describe("validateSlateCsv", () => {
-  const HEADER = "Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field,DK_ID";
+  const HEADER = "Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field,DK Floor,DK Ceiling,DK_ID";
 
   function row(id: string, name: string, pos: string, salary: number): string {
-    return `${name},${pos},AAA,BBB,"$${salary.toLocaleString()}",10.0,10.00%,10.00%,${id}`;
+    return `${name},${pos},AAA,BBB,"$${salary.toLocaleString()}",10.0,10.00%,10.00%,6.0,16.0,${id}`;
   }
 
   // QB(1) + RB(2) + WR(3) + TE(1) + DST(1) -- exactly covers every
@@ -119,8 +119,8 @@ describe("validateSlateCsv", () => {
   });
 
   it("rejects a slate with no ID column at all (neither DK_ID nor id)", () => {
-    const noIdHeader = "Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field";
-    const badCsv = [noIdHeader, "QB1,QB,AAA,BBB,$6000,10.0,10.00%,10.00%"].join("\n");
+    const noIdHeader = "Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field,DK Floor,DK Ceiling";
+    const badCsv = [noIdHeader, "QB1,QB,AAA,BBB,$6000,10.0,10.00%,10.00%,6.0,16.0"].join("\n");
     expect(() => validateSlateCsv(badCsv, NFL)).toThrow(SlateValidationError);
     expect(() => validateSlateCsv(badCsv, NFL)).toThrow(/No ID column found/);
   });
@@ -137,7 +137,7 @@ describe("validateSlateCsv", () => {
 
   it("rejects a slate missing required columns, naming them", () => {
     const badCsv = ["Player,DK Pos,DK_ID", "QB1,QB,1"].join("\n");
-    expect(() => validateSlateCsv(badCsv, NFL)).toThrow(/Missing required column\(s\): Team, Opp, DK Salary, DK Proj, Small Field, Large Field\./);
+    expect(() => validateSlateCsv(badCsv, NFL)).toThrow(/Missing required column\(s\): Team, Opp, DK Salary, DK Proj, Small Field, Large Field, DK Floor, DK Ceiling\./);
   });
 
   it("rejects a slate with too few players for a roster slot, naming it", () => {

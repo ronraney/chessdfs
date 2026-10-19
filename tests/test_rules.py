@@ -26,17 +26,19 @@ NFL = load_sport_config(
 )
 
 
-def make_player(id_: str, pos: str, salary: int) -> Player:
+def make_player(id_: str, pos: str, salary: int, team: str = "AAA") -> Player:
     return Player(
         id=id_,
         name=id_,
         positions=(pos,),
-        team="AAA",
+        team=team,
         opp="BBB",
         salary=salary,
         proj=10.0,
         own_small=0.1,
         own_large=0.1,
+        floor=6.0,
+        ceiling=16.0,
     )
 
 
@@ -55,9 +57,9 @@ def test_illegal_chess_move_rejected():
 
 
 def test_move_piece_must_match_classification():
-    rb = make_player("rb1", "RB", 5200)  # pools as Rook only, not Knight
-    assert classify(rb, NFL) == {Piece.ROOK}
-    assert is_legal_move(BuildState(), uci("b1c3"), rb, NFL, CONTEST) is False
+    qb = make_player("qb1", "QB", 6000)  # pools as King only, never Knight
+    assert classify(qb, NFL) == {Piece.KING}
+    assert is_legal_move(BuildState(), uci("b1c3"), qb, NFL, CONTEST) is False
 
 
 def test_turn_alternates():
@@ -78,6 +80,38 @@ def test_san_comes_from_board():
     state = apply_move(BuildState(), uci("b1c3"), knight, NFL, CONTEST)
     assert state.white_moves[0].san == "Nc3"
     assert state.white_moves[0].piece is Piece.KNIGHT
+
+
+# --- direct Rook move: team-restricted (RULES.md piece table) --------------
+
+def test_direct_rook_move_without_a_locked_qb_accepts_any_rbwrte_team():
+    # RULES.md "Direct Rook move": "if not [locked], list all RB/WR/TE."
+    state = apply_move(BuildState(), uci("a2a4"), make_player("w1", "WR", 3000), NFL, CONTEST)
+    state = apply_move(state, uci("a7a5"), make_player("b1", "WR", 3000), NFL, CONTEST)
+
+    teammate = make_player("rb1", "RB", 5200, team="CIN")
+    assert is_legal_move(state, uci("a1a3"), teammate, NFL, CONTEST) is True
+
+    other_team = make_player("rb2", "RB", 5300, team="DET")
+    assert is_legal_move(state, uci("a1a3"), other_team, NFL, CONTEST) is True
+
+
+def test_direct_rook_move_with_a_locked_qb_requires_a_teammate():
+    # RULES.md "Direct Rook move": "if the side's QB is locked, list his
+    # teammates."
+    qb = make_player("qb1", "QB", 6000, team="CIN")
+    state = apply_move(BuildState(), uci("e2e4"), make_player("w1", "WR", 3000), NFL, CONTEST)
+    state = apply_move(state, uci("e7e5"), make_player("b1", "WR", 3000), NFL, CONTEST)
+    state = apply_move(state, uci("a2a4"), make_player("w2", "WR", 3000), NFL, CONTEST)
+    state = apply_move(state, uci("a7a5"), make_player("b2", "WR", 3000), NFL, CONTEST)
+    state = apply_move(state, uci("e1e2"), qb, NFL, CONTEST)  # King move locks the QB (CIN)
+    state = apply_move(state, uci("h7h6"), make_player("b3", "WR", 3000), NFL, CONTEST)
+
+    teammate = make_player("rb1", "RB", 5200, team="CIN")
+    assert is_legal_move(state, uci("a1a3"), teammate, NFL, CONTEST) is True
+
+    other_team = make_player("rb2", "RB", 5300, team="DET")
+    assert is_legal_move(state, uci("a1a3"), other_team, NFL, CONTEST) is False
 
 
 # --- exclusivity ------------------------------------------------------------
@@ -215,6 +249,8 @@ def test_multi_position_player_fills_either_slot():
         proj=10.0,
         own_small=0.1,
         own_large=0.1,
+        floor=6.0,
+        ceiling=16.0,
     )
     three_rbs = [make_player(f"rb{i}", "RB", 5200) for i in range(3)]  # fills RB(2) + FLEX(1)
     roster = three_rbs + [hybrid]
@@ -275,6 +311,8 @@ def test_assign_roster_slots_multi_position_player_gets_a_valid_slot():
         proj=10.0,
         own_small=0.1,
         own_large=0.1,
+        floor=6.0,
+        ceiling=16.0,
     )
     three_rbs = [make_player(f"rb{i}", "RB", 5200) for i in range(3)]
     roster = three_rbs + [hybrid]
@@ -361,6 +399,24 @@ def test_castle_rejects_wrong_piece_types():
         castle(state, uci("e1c1"), not_a_king, rook, NFL, CONTEST)
 
 
+# --- Rook = correlation: castling's Rook must be the King's teammate ------
+
+def test_castle_rejects_a_rook_not_on_the_kings_team():
+    state = _state_ready_to_castle_queenside()
+    king = make_player("qb1", "QB", 6000, team="CIN")
+    rook = make_player("rb1", "RB", 5200, team="DET")  # not a teammate
+    with pytest.raises(ValueError):
+        castle(state, uci("e1c1"), king, rook, NFL, CONTEST)
+
+
+def test_castle_accepts_a_rook_on_the_kings_team():
+    state = _state_ready_to_castle_queenside()
+    king = make_player("qb1", "QB", 6000, team="CIN")
+    rook = make_player("rb1", "RB", 5200, team="CIN")
+    new_state = castle(state, uci("e1c1"), king, rook, NFL, CONTEST)
+    assert {"qb1", "rb1"} <= new_state.locked_player_ids
+
+
 def test_castle_respects_exclusivity():
     # A board built directly from a FEN (not played out through apply_move):
     # King and Rook both still home (castling rights intact), Knight and
@@ -418,12 +474,12 @@ def test_place_kings_rejects_the_same_player_for_both_sides():
         place_kings(qb, qb, NFL, CONTEST)
 
 
-def _state_ready_to_castle_queenside_placed() -> BuildState:
+def _state_ready_to_castle_queenside_placed(white_qb_team: str = "AAA") -> BuildState:
     """Like `_state_ready_to_castle_queenside`, but White's QB is
     already locked from setup (Task 14 PLACED king mode) before any
     move is played.
     """
-    state = place_kings(make_player("qb_w", "QB", 6500), make_player("qb_b", "QB", 6200), NFL, CONTEST)
+    state = place_kings(make_player("qb_w", "QB", 6500, team=white_qb_team), make_player("qb_b", "QB", 6200), NFL, CONTEST)
     state = apply_move(state, uci("d2d4"), make_player("w_pawn", "WR", 3000), NFL, CONTEST)
     state = apply_move(state, uci("a7a6"), make_player("b1", "WR", 3000), NFL, CONTEST)
     state = apply_move(state, uci("b1c3"), make_player("te1", "TE", 5200), NFL, CONTEST)
@@ -463,6 +519,20 @@ def test_castle_in_placed_mode_locks_only_the_rook():
     assert new_state.board.piece_type_at(chess.C1) == chess.KING
     assert new_state.board.piece_type_at(chess.D1) == chess.ROOK
     assert new_state.white_castled is True
+
+
+def test_castle_in_placed_mode_rejects_a_rook_not_on_the_placed_qbs_team():
+    state = _state_ready_to_castle_queenside_placed(white_qb_team="CIN")
+    rook = make_player("rb1", "RB", 5200, team="DET")  # not a teammate of the placed QB
+    with pytest.raises(ValueError):
+        castle(state, uci("e1c1"), None, rook, NFL, CONTEST, KingMode.PLACED)
+
+
+def test_castle_in_placed_mode_accepts_a_rook_on_the_placed_qbs_team():
+    state = _state_ready_to_castle_queenside_placed(white_qb_team="CIN")
+    rook = make_player("rb1", "RB", 5200, team="CIN")
+    new_state = castle(state, uci("e1c1"), None, rook, NFL, CONTEST, KingMode.PLACED)
+    assert "rb1" in new_state.locked_player_ids
 
 
 def test_castle_twice_illegal_in_placed_mode():
@@ -569,7 +639,7 @@ def test_capturing_an_unmoved_pawn_requires_and_locks_a_pawn_pick():
     assert state.board.is_capture(capture_move)
 
     pawn_pick = make_player("wr_new", "WR", 3200)
-    assert classify(pawn_pick, NFL) == {Piece.PAWN}
+    assert classify(pawn_pick, NFL) == {Piece.PAWN, Piece.ROOK}  # Rook too: no QB locked yet
 
     assert is_legal_capture(state, capture_move, NFL, CONTEST) is False  # no player supplied
     assert is_legal_capture(state, capture_move, NFL, CONTEST, pawn_pick) is True
@@ -598,7 +668,7 @@ def test_capturing_an_unmoved_knight_gives_a_knight_pick():
     assert state.board.is_capture(capture_move)
 
     knight_pick = make_player("te1", "TE", 5200)
-    assert classify(knight_pick, NFL) == {Piece.KNIGHT}
+    assert classify(knight_pick, NFL) == {Piece.KNIGHT, Piece.BISHOP, Piece.ROOK}
 
     assert is_legal_capture(state, capture_move, NFL, CONTEST) is False
     assert is_legal_capture(state, capture_move, NFL, CONTEST, knight_pick) is True
