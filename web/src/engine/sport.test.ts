@@ -68,4 +68,21 @@ describe("loadSportConfig", () => {
     const sport = loadSportConfig(config);
     expect(sport.sport).toBe("TEST");
   });
+
+  it("defaults domeTeams to empty when dome_teams is absent", () => {
+    const config = makeConfig([{ piece: "PAWN", positions: null, min_salary: null, max_salary: null }]);
+    const sport = loadSportConfig(config);
+    expect(sport.domeTeams.size).toBe(0);
+  });
+
+  it("parses dome_teams into domeTeams", () => {
+    const config: RawSportConfig = {
+      ...makeConfig([{ piece: "PAWN", positions: null, min_salary: null, max_salary: null }]),
+      dome_teams: ["ARI", "LV"],
+    };
+    const sport = loadSportConfig(config);
+    expect(sport.domeTeams.has("ARI")).toBe(true);
+    expect(sport.domeTeams.has("LV")).toBe(true);
+    expect(sport.domeTeams.has("SF")).toBe(false);
+  });
 });

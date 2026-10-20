@@ -218,3 +218,52 @@ describe("drawSlateOutcomes: Vegas total", () => {
     expect(highGame1Sum / N).toBeGreaterThan(neutralGame1Sum / N);
   });
 });
+
+describe("drawSlateOutcomes: dome", () => {
+  it("a dome game leans more on the shared zGame factor than a non-dome game", () => {
+    // Dome only scales wGame (the shared-per-game loading), not wTeam --
+    // so the cleanest place to see it is a CROSS-team pair (no shared
+    // zTeam at all) sharing only the game's zGame factor. Game1 (AAA/BBB)
+    // is flagged dome; game2 (CCC/DDD) is an identical control, non-dome.
+    const qbA = makePlayer("qbA", "QB", "AAA", "BBB", 12, 18, 28);
+    const qbB = makePlayer("qbB", "QB", "BBB", "AAA", 12, 18, 28);
+    const qbC = makePlayer("qbC", "QB", "CCC", "DDD", 12, 18, 28);
+    const qbD = makePlayer("qbD", "QB", "DDD", "CCC", 12, 18, 28);
+    const players = [qbA, qbB, qbC, qbD];
+    const domeTeams = new Set(["AAA"]);
+
+    const rng = new SeededRandom(2468);
+    const N = 10000;
+    const aPts: number[] = [];
+    const bPts: number[] = [];
+    const cPts: number[] = [];
+    const dPts: number[] = [];
+    for (let i = 0; i < N; i++) {
+      const out = drawSlateOutcomes(players, NO_VEGAS, rng, domeTeams);
+      aPts.push(out.get("qbA")!);
+      bPts.push(out.get("qbB")!);
+      cPts.push(out.get("qbC")!);
+      dPts.push(out.get("qbD")!);
+    }
+
+    const domeCorr = pearsonR(aPts, bPts);
+    const controlCorr = pearsonR(cPts, dPts);
+    expect(domeCorr).toBeGreaterThan(controlCorr);
+  });
+
+  it("an empty domeTeams set draws every game as non-dome (default, unchanged from before dome existed)", () => {
+    const players = [
+      makePlayer("qb1", "QB", "AAA", "BBB", 12, 18, 28),
+      makePlayer("wr1", "WR", "AAA", "BBB", 5, 10, 18),
+      makePlayer("rb1", "RB", "BBB", "AAA", 6, 12, 20),
+      makePlayer("dst1", "DST", "BBB", "AAA", 2, 7, 14),
+    ];
+    const rngNoDomeArg = new SeededRandom(13);
+    const rngEmptyDome = new SeededRandom(13);
+    const out1 = drawSlateOutcomes(players, NO_VEGAS, rngNoDomeArg);
+    const out2 = drawSlateOutcomes(players, NO_VEGAS, rngEmptyDome, new Set());
+    for (const p of players) {
+      expect(out1.get(p.id)).toBe(out2.get(p.id));
+    }
+  });
+});

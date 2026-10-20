@@ -87,6 +87,10 @@ export interface SportConfigFields {
   // Queen/Rook/Bishop/Knight, none for King/Pawn -- but that default
   // lives in each sport's own config data, not hardcoded here).
   listCaps?: ReadonlyMap<Piece, number>;
+  // Teams whose home stadium is a dome/retractable roof -- engine/sim's
+  // dome wGame boost reads this; no bearing on chess-move/pick-list rules
+  // at all. Empty for a sport (or a test fixture) with no such concept.
+  domeTeams?: ReadonlySet<string>;
 }
 
 export class SportConfig {
@@ -95,6 +99,7 @@ export class SportConfig {
   readonly pieceBands: readonly PieceBand[];
   readonly rosterSlots: readonly RosterSlot[];
   readonly listCaps: ReadonlyMap<Piece, number>;
+  readonly domeTeams: ReadonlySet<string>;
 
   constructor(fields: SportConfigFields) {
     this.sport = fields.sport;
@@ -102,6 +107,7 @@ export class SportConfig {
     this.pieceBands = fields.pieceBands;
     this.rosterSlots = fields.rosterSlots;
     this.listCaps = fields.listCaps ?? new Map();
+    this.domeTeams = fields.domeTeams ?? new Set();
   }
 
   get rosterSize(): number {
@@ -134,6 +140,7 @@ export interface RawSportConfig {
   piece_bands: RawPieceBand[];
   roster_slots: RawRosterSlot[];
   list_caps?: Record<string, number>;
+  dome_teams?: string[];
 }
 
 function pieceFromName(name: string): Piece {
@@ -206,5 +213,6 @@ export function loadSportConfig(data: RawSportConfig): SportConfig {
     pieceBands,
     rosterSlots,
     listCaps,
+    domeTeams: new Set(data.dome_teams ?? []),
   });
 }

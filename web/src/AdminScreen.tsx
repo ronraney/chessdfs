@@ -12,8 +12,10 @@ import "./App.css";
 import { NFL } from "./appData";
 import { SlateValidationError, validateSlateCsv } from "./engine/loaders";
 import type { Player } from "./engine/models";
+import { VegasValidationError, validateVegasCsv } from "./engine/sim/vegasCsv";
 import { clearProjectionsCsv, getSavedProjectionsCsv, saveProjectionsCsv } from "./projectionsStore";
 import ThemeToggle from "./ThemeToggle";
+import { clearVegasCsv, getSavedVegasCsv, saveVegasCsv } from "./vegasStore";
 
 // Blob#text() isn't implemented by jsdom (the test environment), so
 // FileReader is used instead -- same reasoning as the old App.tsx upload.
@@ -57,12 +59,64 @@ function summarizeSavedSlate(): SlateSummary | null {
   }
 }
 
+// Re-parses the saved projections CSV, same "run fresh wherever read"
+// reasoning as projectionsStore's own comment -- null if nothing's saved
+// or it no longer validates (e.g. a since-changed sport config). The
+// Vegas upload's team-matching needs the actual players, not just
+// summarizeSavedSlate's own display-only tally.
+function getSavedSlatePlayers(): Player[] | null {
+  const csv = getSavedProjectionsCsv();
+  if (csv === null) return null;
+  try {
+    return validateSlateCsv(csv, NFL).players;
+  } catch {
+    return null;
+  }
+}
+
+// Every team on the loaded slate -- the union of `team` and `opp` across
+// every player, not just `team` alone, so a team with zero rostered
+// players on this particular slate (shouldn't happen for a real NFL
+// week, but not assumed) still counts as "on the slate" via its
+// opponents' own `opp` values.
+function slateTeams(players: readonly Player[]): Set<string> {
+  const teams = new Set<string>();
+  for (const p of players) {
+    teams.add(p.team);
+    teams.add(p.opp);
+  }
+  return teams;
+}
+
+interface VegasSummary {
+  teamCount: number;
+  missingTeams: readonly string[];
+}
+
+// Null whenever there's no saved projections slate to validate team
+// coverage against -- the Vegas upload itself is gated on this (see the
+// "Upload projections first" message below).
+function summarizeSavedVegas(players: readonly Player[] | null): VegasSummary | null {
+  if (players === null) return null;
+  const csv = getSavedVegasCsv();
+  if (csv === null) return null;
+  try {
+    const { vegas, missingTeams } = validateVegasCsv(csv, slateTeams(players));
+    return { teamCount: vegas.size, missingTeams };
+  } catch {
+    return null;
+  }
+}
+
 function AdminScreen() {
   const [authed, setAuthed] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState(false);
   const [slate, setSlate] = useState<SlateSummary | null>(() => summarizeSavedSlate());
+  const [slatePlayers, setSlatePlayers] = useState<Player[] | null>(() => getSavedSlatePlayers());
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [vegas, setVegas] = useState<VegasSummary | null>(() => summarizeSavedVegas(getSavedSlatePlayers()));
+  const [vegasUploadError, setVegasUploadError] = useState<string | null>(null);
 
   function handleSubmitPassword(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -89,7 +143,12 @@ function AdminScreen() {
       const { players, idColumn } = validateSlateCsv(text, NFL);
       saveProjectionsCsv(text);
       setSlate({ playerCount: players.length, byPosition: countByPosition(players), idColumn });
+      setSlatePlayers(players);
       setUploadError(null);
+      // A new slate may have different teams than whatever Vegas data was
+      // saved against the old one -- re-derive its summary (or let it
+      // disappear if it no longer validates) rather than leave a stale one.
+      setVegas(summarizeSavedVegas(players));
     } catch (e) {
       setUploadError(
         e instanceof SlateValidationError ? e.message : "Couldn't read that file as a projections CSV -- check it's a valid DK projections export.",
@@ -100,7 +159,34 @@ function AdminScreen() {
   function handleClear(): void {
     clearProjectionsCsv();
     setSlate(null);
+    setSlatePlayers(null);
     setUploadError(null);
+    setVegas(null);
+  }
+
+  // Validates against the CURRENT slate's teams (slatePlayers) -- disabled
+  // in the UI below whenever slatePlayers is null, so this only ever runs
+  // once a projections slate is actually loaded.
+  async function handleVegasUpload(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    if (!file || slatePlayers === null) return;
+    try {
+      const text = await readFileAsText(file);
+      const { vegas: parsed, missingTeams } = validateVegasCsv(text, slateTeams(slatePlayers));
+      saveVegasCsv(text);
+      setVegas({ teamCount: parsed.size, missingTeams });
+      setVegasUploadError(null);
+    } catch (e) {
+      setVegasUploadError(
+        e instanceof VegasValidationError ? e.message : "Couldn't read that file as a Vegas CSV -- check it's a valid Vegas export.",
+      );
+    }
+  }
+
+  function handleClearVegas(): void {
+    clearVegasCsv();
+    setVegas(null);
+    setVegasUploadError(null);
   }
 
   if (!authed) {
@@ -160,6 +246,38 @@ function AdminScreen() {
         <button type="button" className="continue" onClick={handleClear}>
           Clear projections
         </button>
+      </section>
+      <section className="step">
+        <h2>Vegas</h2>
+        {slatePlayers === null ? (
+          <p className="status">Upload projections first.</p>
+        ) : (
+          <>
+            <label className="file-label" htmlFor="admin-vegas-csv">
+              Vegas CSV
+            </label>
+            <input id="admin-vegas-csv" type="file" accept=".csv" onChange={handleVegasUpload} />
+            {vegas !== null && (
+              <div className="status">
+                <p>{vegas.teamCount} team(s) loaded.</p>
+                {vegas.missingTeams.length > 0 && (
+                  <p className="status">
+                    No Vegas row for: {vegas.missingTeams.join(", ")} -- they'll use neutral defaults.
+                  </p>
+                )}
+              </div>
+            )}
+            {vegas === null && vegasUploadError === null && <p className="status">No Vegas data saved yet.</p>}
+            {vegasUploadError !== null && (
+              <p className="error" role="alert">
+                {vegasUploadError}
+              </p>
+            )}
+            <button type="button" className="continue" onClick={handleClearVegas}>
+              Clear Vegas data
+            </button>
+          </>
+        )}
       </section>
     </main>
   );

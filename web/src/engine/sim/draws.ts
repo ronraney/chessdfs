@@ -9,10 +9,20 @@
 // replaced by the injected SeededRandom so the whole module stays pure
 // and deterministic (no I/O, no unseeded randomness).
 //
-// Scope note: nfl-dfs's dome-game wGame boost (SIM_DOME_WGAME_SCALE_,
-// SIM_DOME_TEAMS_) is NOT ported -- the task scoped Vegas input to
-// (total, spread) only, with no mention of dome, and chess-dfs's ETR data
-// carries no dome flag. Every game draws as a non-dome game.
+// Dome: nfl-dfs's SIM_DOME_TEAMS_ (a static team list, not weekly Vegas
+// data) now lives in sport config (config/sports/nfl.json's dome_teams,
+// SportConfig.domeTeams) and is passed in as drawSlateOutcomes' own
+// `domeTeams` parameter -- defaults to an empty set, so every existing
+// caller that predates this parameter still draws every game as non-dome.
+// nfl-dfs determines a game's dome status from its HOME team alone
+// (SIM_DOME_TEAMS_.has(homeTeam)); chess-dfs's Player has no home/away
+// flag at all (loadEtrCsv's stripOpp() discards the "@" prefix that would
+// have carried it -- see below), so there's no way to know which of a
+// game's two teams is actually hosting. This port instead flags a game as
+// dome if EITHER team in the matchup is a dome team. That's exact when
+// the home team is the dome team, but can be wrong the other way (a dome
+// team's road game at a real outdoor stadium reads as dome here) -- the
+// best signal available without extending Player to carry home/away.
 //
 // Scope note: nfl-dfs's grouping of pool entries by real player identity
 // (_showdownPlayerKey_) exists to let a Showdown slate's CPT/FLEX pair for
@@ -60,6 +70,8 @@ const TAIL_K = 1.0;
 const VEGAS_WEIGHT = 0.5;
 const SPREAD_WEIGHT = 0.3;
 const DST_POS_MIN = -5;
+// Dome: multiply a player's wGame loading by this before renormalizing.
+const DOME_WGAME_SCALE = 1.15;
 // Composite Z clip -- regime boosts can push |Z| past ~3, where normCDF
 // saturates to exactly 0/1 and the piecewise draw stops carrying shared-
 // random-variable correlation. nfl-dfs's frozen sweepRegimeParams() value.
@@ -191,6 +203,8 @@ export interface GameVegas {
  * neutral defaults on a per-game basis. */
 export type SlateVegas = ReadonlyMap<string, GameVegas>;
 
+const EMPTY_DOME_TEAMS: ReadonlySet<string> = new Set();
+
 interface GameGroup {
   key: string;
   teamX: string;
@@ -236,22 +250,27 @@ function resolveGameVegas(teamX: string, teamY: string, games: SlateVegas): Reso
 /**
  * Draws one full-slate set of correlated fantasy-point outcomes for one
  * trial. Ported from nfl-dfs's drawSlateOutcomes_ -- see module header for
- * the scope notes (no dome, no Showdown CPT/FLEX grouping, Vegas keyed by
- * team) that distinguish this port from the original.
+ * the scope notes (no Showdown CPT/FLEX grouping, Vegas keyed by team,
+ * dome from either-team-in-the-matchup) that distinguish this port from
+ * the original. `domeTeams` defaults to empty (every game non-dome) --
+ * pass `sport.domeTeams` for the real nfl-dfs dome boost.
  */
 export function drawSlateOutcomes(
   players: readonly Player[],
   games: SlateVegas,
   rng: SeededRandom,
+  domeTeams: ReadonlySet<string> = EMPTY_DOME_TEAMS,
 ): Map<string, number> {
   const groups = buildGameGroups(players);
 
   const gameVegas = new Map<string, ResolvedGameVegas>();
   const resolvedTotals: number[] = [];
+  const domeByGame = new Map<string, boolean>();
   for (const g of groups) {
     const v = resolveGameVegas(g.teamX, g.teamY, games);
     gameVegas.set(g.key, v);
     if (isFiniteNum(v.total) && v.total > 0) resolvedTotals.push(v.total);
+    domeByGame.set(g.key, domeTeams.has(g.teamX) || domeTeams.has(g.teamY));
   }
   const avgTotal = resolvedTotals.length > 0 ? mean(resolvedTotals) : 45;
   const totalStd = resolvedTotals.length > 1 ? popStdDev(resolvedTotals, avgTotal) : 5;
@@ -348,10 +367,11 @@ export function drawSlateOutcomes(
     const gameKey = canonicalGameKey(p.team, p.opp);
     const regime = regimeByGame.get(gameKey);
 
+    const domeWgMult = domeByGame.get(gameKey) ? DOME_WGAME_SCALE : 1.0;
     const regimeWgMult = regime?.isShootout ? SHOOTOUT_WG_SCALE : 1.0;
     const regimeWtMult = regime?.isScript && regime.scriptWinner === p.team ? SCRIPT_WT_SCALE : 1.0;
 
-    const wgRaw = w.g * regimeWgMult;
+    const wgRaw = w.g * domeWgMult * regimeWgMult;
     const wtRaw = w.t * regimeWtMult;
     const wIndRaw = Math.sqrt(Math.max(0, 1 - w.g * w.g - w.t * w.t));
     const norm = Math.sqrt(wgRaw * wgRaw + wtRaw * wtRaw + wIndRaw * wIndRaw);

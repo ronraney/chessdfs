@@ -11,6 +11,7 @@
     {"piece": "PAWN", "positions": ["DST"], "exclude_positions": null, "min_salary": null, "max_salary": null}
   ],
   "list_caps": {"QUEEN": 12, "ROOK": 12, "BISHOP": 12, "KNIGHT": 12},
+  "dome_teams": ["ARI", "ATL", "DAL", "DET", "HOU", "IND", "LV", "MIN", "NO", "LAR"],
   "roster_slots": [
     {"name": "QB", "positions": ["QB"], "count": 1},
     {"name": "RB", "positions": ["RB"], "count": 2},
