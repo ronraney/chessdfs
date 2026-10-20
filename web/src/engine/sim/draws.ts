@@ -14,15 +14,10 @@
 // SportConfig.domeTeams) and is passed in as drawSlateOutcomes' own
 // `domeTeams` parameter -- defaults to an empty set, so every existing
 // caller that predates this parameter still draws every game as non-dome.
-// nfl-dfs determines a game's dome status from its HOME team alone
-// (SIM_DOME_TEAMS_.has(homeTeam)); chess-dfs's Player has no home/away
-// flag at all (loadEtrCsv's stripOpp() discards the "@" prefix that would
-// have carried it -- see below), so there's no way to know which of a
-// game's two teams is actually hosting. This port instead flags a game as
-// dome if EITHER team in the matchup is a dome team. That's exact when
-// the home team is the dome team, but can be wrong the other way (a dome
-// team's road game at a real outdoor stadium reads as dome here) -- the
-// best signal available without extending Player to carry home/away.
+// Dome status is exactly nfl-dfs's own check (SIM_DOME_TEAMS_.has(homeTeam)):
+// a game is dome iff its HOME team is a dome team. Player.isHome (see
+// models.ts) is the real home/away signal, derived in loadEtrCsv from the
+// ETR "Opp" column's own "@" convention -- not an approximation.
 //
 // Scope note: nfl-dfs's grouping of pool entries by real player identity
 // (_showdownPlayerKey_) exists to let a Showdown slate's CPT/FLEX pair for
@@ -42,14 +37,14 @@
 // odds convention, confirmed directly from nfl-dfs's own comment ("
 // homeTeamSpread < 0 means home is favored (giving points)").
 //
-// chess-dfs's Player has no home/away flag (loadEtrCsv's stripOpp()
-// discards the "@" prefix that would have carried it). nfl-dfs's own math
-// doesn't actually depend on which side is "home" -- its homeShift
-// calculation reduces to "the favored team's own spread sign", which is
-// already what each team's own signed Spread value gives directly here.
-// Where nfl-dfs needs an arbitrary one-of-two-teams reference (picking the
-// script-regime winner), this port uses alphabetical team order in place
-// of home/away -- the final per-team math is identical either way.
+// The Vegas spread/script-regime math below still uses alphabetical team
+// order (teamX/teamY) rather than Player.isHome, deliberately -- nfl-dfs's
+// own math doesn't actually depend on which side is "home" here: its
+// homeShift calculation reduces to "the favored team's own spread sign",
+// already what each team's own signed Spread value gives directly
+// regardless of label. Swapping in isHome here would relabel teamX/teamY
+// as home/away without changing a single computed value -- dome is the
+// one place in this file where the actual home team matters.
 //
 // players is `readonly Player[]` (chess-dfs's existing engine/models.ts
 // type) rather than a separate sim-only type: Player already carries the
@@ -209,6 +204,10 @@ interface GameGroup {
   key: string;
   teamX: string;
   teamY: string;
+  // Whichever team's players report isHome -- undefined if no player in
+  // this game does (e.g. a synthetic test pool that never set it), in
+  // which case dome status can't be determined and defaults to false.
+  homeTeam?: string;
 }
 
 interface ResolvedGameVegas {
@@ -230,7 +229,12 @@ function buildGameGroups(players: readonly Player[]): GameGroup[] {
   for (const p of players) {
     const [teamX, teamY] = p.team <= p.opp ? [p.team, p.opp] : [p.opp, p.team];
     const key = canonicalGameKey(teamX, teamY);
-    if (!groups.has(key)) groups.set(key, { key, teamX, teamY });
+    let g = groups.get(key);
+    if (!g) {
+      g = { key, teamX, teamY };
+      groups.set(key, g);
+    }
+    if (p.isHome) g.homeTeam = p.team;
   }
   return [...groups.values()];
 }
@@ -251,9 +255,9 @@ function resolveGameVegas(teamX: string, teamY: string, games: SlateVegas): Reso
  * Draws one full-slate set of correlated fantasy-point outcomes for one
  * trial. Ported from nfl-dfs's drawSlateOutcomes_ -- see module header for
  * the scope notes (no Showdown CPT/FLEX grouping, Vegas keyed by team,
- * dome from either-team-in-the-matchup) that distinguish this port from
- * the original. `domeTeams` defaults to empty (every game non-dome) --
- * pass `sport.domeTeams` for the real nfl-dfs dome boost.
+ * dome from the home team only, via Player.isHome) that distinguish this
+ * port from the original. `domeTeams` defaults to empty (every game
+ * non-dome) -- pass `sport.domeTeams` for the real nfl-dfs dome boost.
  */
 export function drawSlateOutcomes(
   players: readonly Player[],
@@ -270,7 +274,7 @@ export function drawSlateOutcomes(
     const v = resolveGameVegas(g.teamX, g.teamY, games);
     gameVegas.set(g.key, v);
     if (isFiniteNum(v.total) && v.total > 0) resolvedTotals.push(v.total);
-    domeByGame.set(g.key, domeTeams.has(g.teamX) || domeTeams.has(g.teamY));
+    domeByGame.set(g.key, g.homeTeam !== undefined && domeTeams.has(g.homeTeam));
   }
   const avgTotal = resolvedTotals.length > 0 ? mean(resolvedTotals) : 45;
   const totalStd = resolvedTotals.length > 1 ? popStdDev(resolvedTotals, avgTotal) : 5;

@@ -55,6 +55,26 @@ describe("loadEtrCsv", () => {
     expect(players.every((p) => p.name === p.name.trim())).toBe(true);
   });
 
+  // Follow-up: the "@" prefix on the raw Opp column is the only home/away
+  // signal ETR carries -- "@NYG" means the row's own team (NO) is away;
+  // no "@" (NO, on NYG's own row) means NYG is home. isHome is derived
+  // from this before stripOpp discards the "@"; opp itself is unaffected.
+  it("derives isHome from the Opp column's \"@\" prefix", () => {
+    const header = "Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field,DK Floor,DK Ceiling,DK_ID";
+    const csv = [
+      header,
+      'Away Player,QB,NO,@NYG,"$6,000",20.0,10.00%,10.00%,12.0,28.0,1',
+      'Home Player,QB,NYG,NO,"$6,100",20.0,10.00%,10.00%,12.0,28.0,2',
+    ].join("\n");
+    const [awayPlayer, homePlayer] = loadEtrCsv(csv);
+    expect(awayPlayer.team).toBe("NO");
+    expect(awayPlayer.opp).toBe("NYG"); // "@" stripped
+    expect(awayPlayer.isHome).toBe(false);
+    expect(homePlayer.team).toBe("NYG");
+    expect(homePlayer.opp).toBe("NO");
+    expect(homePlayer.isHome).toBe(true);
+  });
+
   // Bug fix: a real DK export (data/samples/repro-slate.csv, not committed
   // here -- this fixture is a minimal stand-in with the same header shape)
   // carried a plain "id" column instead of "DK_ID". row["DK_ID"] was then

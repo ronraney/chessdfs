@@ -11,6 +11,7 @@ function makePlayer(
   floor: number,
   proj: number,
   ceiling: number,
+  isHome: boolean = false,
 ): Player {
   return new Player({
     id,
@@ -18,6 +19,7 @@ function makePlayer(
     positions: [position],
     team,
     opp,
+    isHome,
     salary: 5000,
     proj,
     ownSmall: 0.1,
@@ -45,6 +47,7 @@ function pearsonR(xs: readonly number[], ys: readonly number[]): number {
 }
 
 const NO_VEGAS: SlateVegas = new Map();
+const EMPTY_DOME: ReadonlySet<string> = new Set();
 
 describe("drawOutcome", () => {
   it("hits floor/median/ceiling exactly at u = P15/P50/P85", () => {
@@ -223,12 +226,14 @@ describe("drawSlateOutcomes: dome", () => {
   it("a dome game leans more on the shared zGame factor than a non-dome game", () => {
     // Dome only scales wGame (the shared-per-game loading), not wTeam --
     // so the cleanest place to see it is a CROSS-team pair (no shared
-    // zTeam at all) sharing only the game's zGame factor. Game1 (AAA/BBB)
-    // is flagged dome; game2 (CCC/DDD) is an identical control, non-dome.
-    const qbA = makePlayer("qbA", "QB", "AAA", "BBB", 12, 18, 28);
-    const qbB = makePlayer("qbB", "QB", "BBB", "AAA", 12, 18, 28);
-    const qbC = makePlayer("qbC", "QB", "CCC", "DDD", 12, 18, 28);
-    const qbD = makePlayer("qbD", "QB", "DDD", "CCC", 12, 18, 28);
+    // zTeam at all) sharing only the game's zGame factor. Game1 (AAA
+    // hosting BBB) is flagged dome; game2 (CCC hosting DDD) is an
+    // identical control, non-dome -- AAA is the HOME team (isHome: true),
+    // exactly the team dome status keys off of.
+    const qbA = makePlayer("qbA", "QB", "AAA", "BBB", 12, 18, 28, true);
+    const qbB = makePlayer("qbB", "QB", "BBB", "AAA", 12, 18, 28, false);
+    const qbC = makePlayer("qbC", "QB", "CCC", "DDD", 12, 18, 28, true);
+    const qbD = makePlayer("qbD", "QB", "DDD", "CCC", 12, 18, 28, false);
     const players = [qbA, qbB, qbC, qbD];
     const domeTeams = new Set(["AAA"]);
 
@@ -249,6 +254,42 @@ describe("drawSlateOutcomes: dome", () => {
     const domeCorr = pearsonR(aPts, bPts);
     const controlCorr = pearsonR(cPts, dPts);
     expect(domeCorr).toBeGreaterThan(controlCorr);
+  });
+
+  it("dome keys off the home team only, not either team in the matchup: NO @ NYG is not a dome game, NYG @ NO is", () => {
+    // Cross-team wGame-only pairs again (see the test above for why) --
+    // dome's measurable effect is a higher cross-team correlation than a
+    // domeTeams-empty control drawn from the identical matchup.
+    const domeTeams = new Set(["NO"]);
+    const rng = new SeededRandom(70118);
+    const N = 10000;
+
+    function crossTeamCorr(homeTeam: string, awayTeam: string, domes: ReadonlySet<string>): number {
+      const home = makePlayer("home", "QB", homeTeam, awayTeam, 12, 18, 28, true);
+      const away = makePlayer("away", "QB", awayTeam, homeTeam, 12, 18, 28, false);
+      const homePts: number[] = [];
+      const awayPts: number[] = [];
+      for (let i = 0; i < N; i++) {
+        const out = drawSlateOutcomes([home, away], NO_VEGAS, rng, domes);
+        homePts.push(out.get("home")!);
+        awayPts.push(out.get("away")!);
+      }
+      return pearsonR(homePts, awayPts);
+    }
+
+    // "NO @ NYG": NO away, NYG hosts -- NYG isn't a dome team, so this
+    // reads identically to a plain non-dome control even with domeTeams
+    // naming NO (NO is only the away team here, never consulted).
+    const noAtNyg = crossTeamCorr("NYG", "NO", domeTeams);
+    const nonDomeControl = crossTeamCorr("NYG", "NO", EMPTY_DOME);
+    expect(noAtNyg).toBeCloseTo(nonDomeControl, 1);
+
+    // "NYG @ NO": NYG away, NO hosts -- NO (Caesars Superdome) IS a dome
+    // team, so this game IS dome -- a real correlation boost vs. the same
+    // matchup with no dome list at all.
+    const nygAtNo = crossTeamCorr("NO", "NYG", domeTeams);
+    const domeControl = crossTeamCorr("NO", "NYG", EMPTY_DOME);
+    expect(nygAtNo).toBeGreaterThan(domeControl);
   });
 
   it("an empty domeTeams set draws every game as non-dome (default, unchanged from before dome existed)", () => {

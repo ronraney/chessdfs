@@ -56,6 +56,13 @@ function stripOpp(raw: string): string {
   return raw.startsWith("@") ? raw.slice(1) : raw;
 }
 
+// The "@" prefix on the raw (pre-strip) Opp value is the only home/away
+// signal in the ETR CSV: "@ARI" means the row's OWN team is away (at
+// ARI); no "@" means the row's own team is home.
+function isHomeFromOpp(raw: string): boolean {
+  return !raw.startsWith("@");
+}
+
 // Bug fix: some DK exports carry only a plain "id" column, not "DK_ID" --
 // `row[columnMap.id]` would then be `undefined` for every row, silently
 // giving every Player the SAME id. That's not just a cosmetic gap: once
@@ -84,6 +91,7 @@ export function loadEtrCsv(data: string, columnMap: EtrColumnMap = ETR_COLUMN_MA
         positions: [row[columnMap.pos]],
         team: row[columnMap.team],
         opp: stripOpp(row[columnMap.opp]),
+        isHome: isHomeFromOpp(row[columnMap.opp]),
         salary: parseSalary(row[columnMap.salary]),
         proj: parseFloat(row[columnMap.proj]),
         ownSmall: parsePercent(row[columnMap.ownSmall]),

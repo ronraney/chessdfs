@@ -46,6 +46,13 @@ export interface PlayerFields {
   positions: readonly string[]; // eligible positions (e.g. ["RB", "WR"]); NFL players have one
   team: string;
   opp: string;
+  // Whether `team` is hosting this game -- loadEtrCsv derives this from
+  // the ETR "Opp" column's own "@" convention ("@ARI" = away; see
+  // loaders.ts's stripOpp) before stripping it to a plain team code.
+  // Optional/defaulted (not derivable from chess-move/pick-list rules at
+  // all) so every pre-existing synthetic test Player keeps compiling
+  // unchanged; engine/sim's dome-game check is the only real consumer.
+  isHome?: boolean;
   salary: number;
   proj: number;
   ownSmall: number;
@@ -60,6 +67,7 @@ export class Player {
   readonly positions: readonly string[];
   readonly team: string;
   readonly opp: string;
+  readonly isHome: boolean;
   readonly salary: number;
   readonly proj: number;
   readonly ownSmall: number;
@@ -73,6 +81,7 @@ export class Player {
     this.positions = fields.positions;
     this.team = fields.team;
     this.opp = fields.opp;
+    this.isHome = fields.isHome ?? false;
     this.salary = fields.salary;
     this.proj = fields.proj;
     this.ownSmall = fields.ownSmall;
