@@ -10,9 +10,11 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import "./App.css";
 import { NFL } from "./appData";
+import { buildAndCacheFields, BUILD_TIERS } from "./buildFieldCache";
 import { SlateValidationError, validateSlateCsv } from "./engine/loaders";
-import type { Player } from "./engine/models";
+import type { FieldTier, Player } from "./engine/models";
 import { VegasValidationError, validateVegasCsv } from "./engine/sim/vegasCsv";
+import { clearFieldCache, getCachedFieldIds, slateSignature } from "./fieldCacheStore";
 import { clearProjectionsCsv, getSavedProjectionsCsv, saveProjectionsCsv } from "./projectionsStore";
 import ThemeToggle from "./ThemeToggle";
 import { clearVegasCsv, getSavedVegasCsv, saveVegasCsv } from "./vegasStore";
@@ -108,6 +110,21 @@ function summarizeSavedVegas(players: readonly Player[] | null): VegasSummary | 
   }
 }
 
+// How many lineups are cached for each tier, against the CURRENT saved
+// slate's own signature -- {} (nothing shown as cached) whenever there's
+// no slate loaded at all, same "null in, null/empty out" shape as the
+// other summarize* helpers above.
+function computeFieldCacheStatus(csv: string | null): Partial<Record<FieldTier, number>> {
+  if (csv === null) return {};
+  const signature = slateSignature(csv);
+  const status: Partial<Record<FieldTier, number>> = {};
+  for (const tier of BUILD_TIERS) {
+    const ids = getCachedFieldIds(signature, tier);
+    if (ids !== null) status[tier] = ids.length;
+  }
+  return status;
+}
+
 function AdminScreen() {
   const [authed, setAuthed] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
@@ -117,6 +134,11 @@ function AdminScreen() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [vegas, setVegas] = useState<VegasSummary | null>(() => summarizeSavedVegas(getSavedSlatePlayers()));
   const [vegasUploadError, setVegasUploadError] = useState<string | null>(null);
+  const [fieldCacheStatus, setFieldCacheStatus] = useState<Partial<Record<FieldTier, number>>>(() =>
+    computeFieldCacheStatus(getSavedProjectionsCsv()),
+  );
+  const [buildProgress, setBuildProgress] = useState<{ tier: FieldTier; completed: number; total: number } | null>(null);
+  const [buildError, setBuildError] = useState<string | null>(null);
 
   function handleSubmitPassword(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -149,6 +171,11 @@ function AdminScreen() {
       // saved against the old one -- re-derive its summary (or let it
       // disappear if it no longer validates) rather than leave a stale one.
       setVegas(summarizeSavedVegas(players));
+      // A field cached against the OLD slate is meaningless against this
+      // one (different players, different ownership) -- this task's own
+      // spec: "Uploading new projections clears the cache."
+      clearFieldCache();
+      setFieldCacheStatus({});
     } catch (e) {
       setUploadError(
         e instanceof SlateValidationError ? e.message : "Couldn't read that file as a projections CSV -- check it's a valid DK projections export.",
@@ -162,6 +189,25 @@ function AdminScreen() {
     setSlatePlayers(null);
     setUploadError(null);
     setVegas(null);
+    clearFieldCache();
+    setFieldCacheStatus({});
+  }
+
+  async function handleBuildFields(): Promise<void> {
+    const csv = getSavedProjectionsCsv();
+    if (csv === null || slatePlayers === null) return;
+    const signature = slateSignature(csv);
+    setBuildError(null);
+    try {
+      await buildAndCacheFields(signature, slatePlayers, (tier, completed, total) => {
+        setBuildProgress({ tier, completed, total });
+      });
+      setFieldCacheStatus(computeFieldCacheStatus(csv));
+    } catch (e) {
+      setBuildError(e instanceof Error ? e.message : "Field build failed.");
+    } finally {
+      setBuildProgress(null);
+    }
   }
 
   // Validates against the CURRENT slate's teams (slatePlayers) -- disabled
@@ -276,6 +322,36 @@ function AdminScreen() {
             <button type="button" className="continue" onClick={handleClearVegas}>
               Clear Vegas data
             </button>
+          </>
+        )}
+      </section>
+      <section className="step">
+        <h2>Simulated fields</h2>
+        {slatePlayers === null ? (
+          <p className="status">Upload projections first.</p>
+        ) : (
+          <>
+            <button type="button" className="continue" onClick={handleBuildFields} disabled={buildProgress !== null}>
+              Build fields
+            </button>
+            {buildProgress !== null && (
+              <div className="status">
+                <p>
+                  Building {buildProgress.tier}: {buildProgress.completed}/{buildProgress.total}
+                </p>
+                <progress value={buildProgress.completed} max={buildProgress.total} />
+              </div>
+            )}
+            {buildError !== null && (
+              <p className="error" role="alert">
+                {buildError}
+              </p>
+            )}
+            <div className="status">
+              {BUILD_TIERS.map((tier) => (
+                <p key={tier}>{tier}: {fieldCacheStatus[tier] !== undefined ? `${fieldCacheStatus[tier]} lineups cached` : "not built yet"}</p>
+              ))}
+            </div>
           </>
         )}
       </section>

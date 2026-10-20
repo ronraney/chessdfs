@@ -6,7 +6,9 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AdminScreen from "./AdminScreen";
-import { getSavedProjectionsCsv } from "./projectionsStore";
+import { FieldTier } from "./engine/models";
+import { getCachedFieldIds, saveCachedFieldIds, slateSignature } from "./fieldCacheStore";
+import { getSavedProjectionsCsv, saveProjectionsCsv } from "./projectionsStore";
 import { loadEtrCsv } from "./engine/loaders";
 import { SAMPLE_CSV, sampleCsvFile } from "./testFixtures";
 import { getSavedVegasCsv } from "./vegasStore";
@@ -145,7 +147,9 @@ describe("AdminScreen -- Vegas upload", () => {
     render(<AdminScreen />);
     const user = userEvent.setup();
     await logIn(user);
-    expect(screen.getByText("Upload projections first.")).toBeInTheDocument();
+    // Two sections share this message now -- Vegas AND Simulated fields
+    // (added this session) are both gated on the same loaded-slate check.
+    expect(screen.getAllByText("Upload projections first.")).toHaveLength(2);
     expect(screen.queryByLabelText("Vegas CSV")).not.toBeInTheDocument();
   });
 
@@ -213,5 +217,95 @@ describe("AdminScreen -- Vegas upload", () => {
 
     expect(screen.getByText("No Vegas data saved yet.")).toBeInTheDocument();
     expect(getSavedVegasCsv()).toBeNull();
+  });
+});
+
+// Build fields itself spins up a real Web Worker (fieldWorker.ts via
+// buildFieldCache.ts) -- jsdom doesn't implement Worker at all, the same
+// standing gap as stockfishEngine.ts's own Worker (see HANDOFF.md: "no
+// browser can launch in this environment at all"), so these tests never
+// click "Build fields" -- they cover gating, reading back a pre-seeded
+// cache, and clearing on upload/clear, all without touching the worker.
+describe("AdminScreen -- simulated fields cache", () => {
+  beforeEach(() => {
+    vi.stubEnv("VITE_ADMIN_PASSWORD", PASSWORD);
+    window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  async function logInAndUploadProjections(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+    render(<AdminScreen />);
+    await logIn(user);
+    await user.upload(screen.getByLabelText("Projections CSV"), sampleCsvFile());
+    await waitFor(() => expect(screen.getByText(`${SAMPLE_PLAYER_COUNT} players loaded · ID column: DK_ID`)).toBeInTheDocument());
+  }
+
+  // Seeds a slate as already saved from a PRIOR visit (no live upload
+  // action) -- the only way to test "a pre-existing cache shows up," since
+  // handleUpload always clears the cache on any successful upload (this
+  // task's own spec), which would just wipe whatever was pre-seeded.
+  async function logInWithSavedSlate(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+    saveProjectionsCsv(SAMPLE_CSV);
+    render(<AdminScreen />);
+    await logIn(user);
+  }
+
+  it("is gated behind a loaded projections slate", async () => {
+    render(<AdminScreen />);
+    const user = userEvent.setup();
+    await logIn(user);
+    expect(screen.queryByRole("button", { name: "Build fields" })).not.toBeInTheDocument();
+  });
+
+  it("once projections are loaded, shows the build button and 'not built yet' for every tier", async () => {
+    const user = userEvent.setup();
+    await logInAndUploadProjections(user);
+
+    expect(screen.getByRole("button", { name: "Build fields" })).toBeInTheDocument();
+    expect(screen.getByText("SMALL: not built yet")).toBeInTheDocument();
+    expect(screen.getByText("MID: not built yet")).toBeInTheDocument();
+    expect(screen.getByText("LARGE: not built yet")).toBeInTheDocument();
+  });
+
+  it("shows a pre-cached field's lineup count without needing to build", async () => {
+    const signature = slateSignature(SAMPLE_CSV);
+    saveCachedFieldIds(signature, FieldTier.LARGE, [["p1", "p2"], ["p3", "p4"], ["p5", "p6"]]);
+
+    const user = userEvent.setup();
+    await logInWithSavedSlate(user);
+
+    expect(screen.getByText("LARGE: 3 lineups cached")).toBeInTheDocument();
+    expect(screen.getByText("SMALL: not built yet")).toBeInTheDocument();
+  });
+
+  it("uploading new projections clears every cached field", async () => {
+    const signature = slateSignature(SAMPLE_CSV);
+    saveCachedFieldIds(signature, FieldTier.SMALL, [["p1"]]);
+    saveCachedFieldIds(signature, FieldTier.MID, [["p2"]]);
+
+    const user = userEvent.setup();
+    await logInAndUploadProjections(user); // re-upload the same CSV -- still a "new" save
+    await waitFor(() => expect(screen.getByText("SMALL: not built yet")).toBeInTheDocument());
+
+    expect(screen.getByText("MID: not built yet")).toBeInTheDocument();
+    expect(getCachedFieldIds(signature, FieldTier.SMALL)).toBeNull();
+    expect(getCachedFieldIds(signature, FieldTier.MID)).toBeNull();
+  });
+
+  it("Clear projections also clears every cached field", async () => {
+    const signature = slateSignature(SAMPLE_CSV);
+    saveCachedFieldIds(signature, FieldTier.LARGE, [["p1"]]);
+
+    const user = userEvent.setup();
+    await logInWithSavedSlate(user);
+    expect(screen.getByText("LARGE: 1 lineups cached")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Clear projections" }));
+
+    expect(screen.queryByRole("button", { name: "Build fields" })).not.toBeInTheDocument();
+    expect(getCachedFieldIds(signature, FieldTier.LARGE)).toBeNull();
   });
 });

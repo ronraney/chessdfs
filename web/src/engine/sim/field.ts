@@ -8,13 +8,22 @@
 // ((ownership / positionAvgOwnership) ^ biasExponent), per-player
 // ownership-based exposure caps (plus the extra QB-only exposure cap, and
 // the QB/DST aggregate-capacity-guarantee rescale -- a real, unconditional
-// part of how nfl-dfs computes those caps today, not a diagnostic), and
-// the Minimum Exposure Floor's per-solve catch-up boost. NOT ported (not
-// named in this task's "keep" list, and genuinely separate mechanisms in
-// nfl-dfs's own code): stack targeting (naked-QB rate, stack-team retry),
-// Field Pace Slack, Dynamic Floor Relaxation, and nfl-dfs's own salary
-// FLOOR (FIELD_MIN_SALARY_) -- this port only enforces the cap, matching
-// the task's own "salary cap" framing and its "under the cap" test spec.
+// part of how nfl-dfs computes those caps today, not a diagnostic), the
+// Minimum Exposure Floor's per-solve catch-up boost, nfl-dfs's own salary
+// FLOOR (FIELD_MIN_SALARY_ = $48,500, this session's follow-up task), and
+// stack targeting (this session's follow-up task too): a per-attempt coin
+// flip at FIELD_TARGET_NAKED_QB_RATE_'s complement decides stack INTENT;
+// if intended, candidate teams (>=1 QB AND >=2 WR/TE currently in the
+// exposure-capped pool) are weighted-sampled without replacement (weight =
+// that team's QB objective value), tried in that order up to
+// STACK_TEAM_RETRY_LIMIT_ times (each a separate MILP solve with
+// stackTeam>=2 WR/TE + qbFromStackTeam=1 constraints added), falling back
+// to a plain unstacked solve if every retried team (or no candidate team at
+// all) fails -- same as nfl-dfs's own fallback-to-unstacked-rather-than-
+// drop-the-attempt behavior. NOT ported, per this task's own instruction
+// (skip unless the floor makes too many attempts infeasible): Field Pace
+// Slack and Dynamic Floor Relaxation -- see this file's own accept-rate
+// test/comment below for the measurement that justified skipping both.
 //
 // Roster-slot shape (qb/dst/rb/wr/te/skill, with min/max counts) is
 // hardcoded exactly as nfl-dfs's own DK_MAIN_ROSTER_ is, not derived
@@ -67,12 +76,25 @@ const MIN_EXPOSURE_DECAY_K = 2.5;
 // MIN_EXPOSURE_MAX_CATCHUP_BOOST_ -- bounds the per-solve catch-up boost
 // so one badly-behind-pace player can't dominate the objective outright.
 const MIN_EXPOSURE_MAX_CATCHUP_BOOST = 3.0;
+// FIELD_MIN_SALARY_ -- the salary floor, enforced alongside the cap in
+// every attempt's own MILP solve (no Dynamic Floor Relaxation: an attempt
+// whose exposure-capped pool can't clear this floor is simply skipped,
+// same as any other infeasible attempt).
+export const SALARY_FLOOR = 48500;
+// FIELD_TARGET_NAKED_QB_RATE_ -- the fraction of attempts that should end
+// up with NO QB/WR-or-TE stack at all; stack intent per attempt is a coin
+// flip at 1 minus this rate.
+export const TARGET_NAKED_QB_RATE = 0.175;
+// STACK_TEAM_RETRY_LIMIT_ -- bounds how many candidate teams a single
+// stack-intended attempt tries (weighted, without replacement) before
+// falling back to an unstacked solve.
+const STACK_TEAM_RETRY_LIMIT = 6;
 
 export interface SimulatedField {
   readonly lineups: readonly (readonly Player[])[];
-  // entrants / sampleSize, per this task's own spec (nfl-dfs itself
-  // divides by lineups.length instead -- that only differs here when an
-  // attempt comes back infeasible and is skipped, see the main loop).
+  // entrants / lineups actually built -- nfl-dfs's own way (this session's
+  // follow-up task), not / sampleSize (last session's spec): only differs
+  // when an attempt comes back infeasible and is skipped, see the main loop.
   readonly lineupWeight: number;
 }
 
@@ -80,12 +102,22 @@ function positionOf(p: Player): string {
   return p.positions[0];
 }
 
-// Builds and solves one attempt's MILP: a plain (unstacked) best-lineup
-// solve over `pool` with `objective` as each player's own perturbed
-// score. Returns null on an infeasible attempt (e.g. exposure caps have
-// thinned a position below what a legal roster needs) -- skipped by the
-// caller, no retry/relaxation.
-function solveOneLineup(pool: readonly Player[], objective: ReadonlyMap<string, number>, cap: number): Player[] | null {
+// Builds and solves one attempt's MILP: a best-lineup solve over `pool`
+// with `objective` as each player's own perturbed score, salary required
+// within [floor, cap], and -- when `stackTeam` is given -- at least 2 WR/
+// TE from that team plus a QB from that same team (nfl-dfs's own
+// `stackTeam`/`qbFromStackTeam` constraint pair: without tying the QB to
+// the team, "2+ WR/TE from team X" alone doesn't force a real QB+2 stack).
+// Returns null on an infeasible attempt (e.g. exposure caps have thinned a
+// position below what a legal roster needs, or this exact stack can't be
+// built under salary) -- skipped/retried by the caller, no relaxation.
+function solveOneLineup(
+  pool: readonly Player[],
+  objective: ReadonlyMap<string, number>,
+  cap: number,
+  floor: number,
+  stackTeam?: string,
+): Player[] | null {
   const variables = new Map<string, Map<string, number>>();
   for (const p of pool) {
     const pos = positionOf(p);
@@ -107,11 +139,15 @@ function solveOneLineup(pool: readonly Player[], objective: ReadonlyMap<string, 
       coeffs.set("te", 1);
       coeffs.set("skill", 1);
     }
+    if (stackTeam !== undefined && p.team === stackTeam) {
+      if (pos === "WR" || pos === "TE") coeffs.set("stackTeam", 1);
+      if (pos === "QB") coeffs.set("qbFromStackTeam", 1);
+    }
     variables.set(p.id, coeffs);
   }
 
   const constraints = new Map<string, { equal?: number; min?: number; max?: number }>([
-    ["salary", { max: cap }],
+    ["salary", { min: floor, max: cap }],
     ["qb", { equal: 1 }],
     ["dst", { equal: 1 }],
     ["rb", { min: 2, max: 3 }],
@@ -119,6 +155,10 @@ function solveOneLineup(pool: readonly Player[], objective: ReadonlyMap<string, 
     ["te", { min: 1, max: 2 }],
     ["skill", { equal: 7 }],
   ]);
+  if (stackTeam !== undefined) {
+    constraints.set("stackTeam", { min: 2 });
+    constraints.set("qbFromStackTeam", { equal: 1 });
+  }
 
   const result = solve({ direction: "maximize", objective: "obj", constraints, variables, binaries: true });
   if (result.status !== "optimal") return null;
@@ -128,6 +168,32 @@ function solveOneLineup(pool: readonly Player[], objective: ReadonlyMap<string, 
     if (value > 0.5) selectedIds.add(id);
   }
   return pool.filter((p) => selectedIds.has(p.id));
+}
+
+// Weighted sample of up to `limit` teams from `teams`, without replacement
+// (nfl-dfs's own `_weightedSampleOne_`, called repeatedly against a
+// shrinking remainder) -- the stack-team retry order for one attempt.
+function sampleTeamsWithoutReplacement(rng: SeededRandom, teams: readonly string[], weights: readonly number[], limit: number): string[] {
+  const remainingTeams = [...teams];
+  const remainingWeights = [...weights];
+  const picked: string[] = [];
+  while (remainingTeams.length > 0 && picked.length < limit) {
+    const total = remainingWeights.reduce((sum, w) => sum + w, 0);
+    const threshold = rng.next() * total;
+    let running = 0;
+    let idx = remainingTeams.length - 1; // floating-point rounding fallback
+    for (let i = 0; i < remainingWeights.length; i++) {
+      running += remainingWeights[i];
+      if (running >= threshold) {
+        idx = i;
+        break;
+      }
+    }
+    picked.push(remainingTeams[idx]);
+    remainingTeams.splice(idx, 1);
+    remainingWeights.splice(idx, 1);
+  }
+  return picked;
 }
 
 /**
@@ -142,6 +208,11 @@ export function generateSimulatedField(
   sport: SportConfig,
   sampleSize: number,
   rng: SeededRandom,
+  // Optional, called once per attempt (accepted or skipped) with attempts
+  // completed so far -- added this session so a caller running this off
+  // the main thread (fieldWorker.ts) can report build progress without
+  // this function itself doing any I/O (still no DOM/postMessage here).
+  onProgress?: (completed: number, total: number) => void,
 ): SimulatedField {
   const tier = contest.fieldTier();
   const cap = contest.effectiveCap(sport);
@@ -200,9 +271,29 @@ export function generateSimulatedField(
   const playerExposureCount = new Map<string, number>();
   const playerAtCap = new Set<string>();
 
+  // Structural stack-eligible teams: has >=1 QB AND >=2 WR/TE among the
+  // FULL player universe (not the exposure-capped pool, which shrinks per
+  // attempt) -- mirrors nfl-dfs's own `stackEligibleTeams`, computed once.
+  const qbsByTeam = new Map<string, Player[]>();
+  const catchersByTeam = new Map<string, Player[]>();
+  for (const p of players) {
+    const pos = positionOf(p);
+    if (pos === "QB") {
+      const list = qbsByTeam.get(p.team) ?? [];
+      list.push(p);
+      qbsByTeam.set(p.team, list);
+    } else if (pos === "WR" || pos === "TE") {
+      const list = catchersByTeam.get(p.team) ?? [];
+      list.push(p);
+      catchersByTeam.set(p.team, list);
+    }
+  }
+  const stackEligibleTeams = [...qbsByTeam.keys()].filter((team) => (catchersByTeam.get(team)?.length ?? 0) >= 2);
+
   const lineups: Player[][] = [];
 
   for (let attempt = 0; attempt < sampleSize; attempt++) {
+    onProgress?.(attempt, sampleSize);
     const pool = players.filter((p) => {
       if (playerAtCap.has(p.id)) return false;
       if (positionOf(p) === "QB" && qbAtCap.has(p.id)) return false;
@@ -226,7 +317,33 @@ export function generateSimulatedField(
       objective.set(p.id, p.proj * (1 + noise) * ownershipBias * catchUpBoost);
     }
 
-    const lineup = solveOneLineup(pool, objective, cap);
+    // Stack decision (Part C of nfl-dfs's _buildOneLineupMilp_): one coin
+    // flip decides INTENT, independent of whether a candidate team is
+    // actually solvable this attempt.
+    let lineup: Player[] | null = null;
+    if (rng.next() < 1 - TARGET_NAKED_QB_RATE) {
+      const candidateTeams: string[] = [];
+      const candidateWeights: number[] = [];
+      for (const team of stackEligibleTeams) {
+        const qbsInPool = (qbsByTeam.get(team) ?? []).filter((qb) => objective.has(qb.id));
+        const catchersInPool = (catchersByTeam.get(team) ?? []).filter((c) => objective.has(c.id)).length;
+        if (qbsInPool.length > 0 && catchersInPool >= 2) {
+          candidateTeams.push(team);
+          candidateWeights.push(qbsInPool.reduce((sum, qb) => sum + (objective.get(qb.id) ?? 0), 0));
+        }
+      }
+      if (candidateTeams.length > 0) {
+        const tryOrder = sampleTeamsWithoutReplacement(rng, candidateTeams, candidateWeights, STACK_TEAM_RETRY_LIMIT);
+        for (const team of tryOrder) {
+          const attemptLineup = solveOneLineup(pool, objective, cap, SALARY_FLOOR, team);
+          if (attemptLineup !== null) {
+            lineup = attemptLineup;
+            break;
+          }
+        }
+      }
+    }
+    if (lineup === null) lineup = solveOneLineup(pool, objective, cap, SALARY_FLOOR); // no stack intended, or every candidate team failed
     if (lineup === null) continue; // infeasible this attempt -- skipped, no retry/relaxation
 
     lineups.push(lineup);
@@ -244,5 +361,10 @@ export function generateSimulatedField(
     }
   }
 
-  return { lineups, lineupWeight: contest.fieldSize / sampleSize };
+  onProgress?.(sampleSize, sampleSize);
+
+  // nfl-dfs's own way (this task's follow-up spec): entrants / lineups
+  // ACTUALLY built, not / sampleSize -- only differs when attempts are
+  // skipped as infeasible.
+  return { lineups, lineupWeight: contest.fieldSize / Math.max(lineups.length, 1) };
 }
