@@ -1112,3 +1112,42 @@ describe("BuildScreen -- Black's reply never crashes the build (bug fix)", () =>
     expect(screen.getByRole("button", { name: "Take back" })).not.toBeDisabled();
   });
 });
+
+// Field gets Pts from optimal: the same stat White's panel already showed
+// (locks forced, the other side's picks excluded, same slate optimal),
+// mirrored for Black -- during the build (both side columns) and on the
+// finish screen (both sides' lines).
+describe("BuildScreen -- Field gets Pts from optimal", () => {
+  it("both side columns show Pts from optimal once a pick locks", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    await user.click(chosenContinueButton()); // 1. e4
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await selectTopRow(user, dialog);
+    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+    await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+
+    expect(within(youColumn()).getByText("Pts from optimal")).toBeInTheDocument();
+    expect(within(fieldColumn()).getByText("Pts from optimal")).toBeInTheDocument();
+    const youValue = youColumn().querySelector(".side-pts-from-optimal")!.textContent;
+    const fieldValue = fieldColumn().querySelector(".side-pts-from-optimal")!.textContent;
+    expect(youValue).not.toBe("—");
+    expect(fieldValue).not.toBe("—");
+  });
+
+  it("the finish screen shows Pts from optimal for both sides", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    await user.click(chosenContinueButton()); // 1. e4
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await selectTopRow(user, dialog);
+    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+    await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+
+    await user.click(screen.getByRole("button", { name: "Stop with this core" }));
+
+    const finishCard = document.querySelector(".finish-card") as HTMLElement;
+    expect(within(finishCard).getByText(/^Pts from optimal:/)).toBeInTheDocument();
+    expect(within(finishCard).getByText(/^Field pts from optimal:/)).toBeInTheDocument();
+  });
+});

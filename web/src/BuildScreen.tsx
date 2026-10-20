@@ -908,6 +908,17 @@ export default function BuildScreen({
     [players, preset, state.whiteMoves, state.blackMoves],
   );
   const optimalStats = pointsFromOptimal(slateOptimal, bestCompletion);
+  // Same computation, mirrored for Black: Black's own locks forced in,
+  // White's picks excluded, against the same slate optimal.
+  const blackBestCompletion = useMemo(
+    () =>
+      optimalLineup(players, NFL, preset.contest.effectiveCap(NFL), {
+        locked: state.blackMoves.map((m) => m.player),
+        excludeIds: new Set(state.whiteMoves.map((m) => m.player.id)),
+      }),
+    [players, preset, state.whiteMoves, state.blackMoves],
+  );
+  const blackOptimalStats = pointsFromOptimal(slateOptimal, blackBestCompletion);
   const [family, variation] = chosenLine !== null ? splitFamily(chosenLine.name) : ["Your own opening", ""];
   const entryTier = preset.contest.entryTier(LAST_RANK);
   // Task 40 finish screen: the opening actually reached by the end of the
@@ -1005,7 +1016,8 @@ export default function BuildScreen({
               history={history}
               whiteMoves={state.whiteMoves}
               whiteStats={whiteStats}
-              optimalStats={optimalStats}
+              whiteOptimalStats={optimalStats}
+              blackOptimalStats={blackOptimalStats}
               onStartAgain={onStartAgain}
               onNewContest={onNewContest}
             />
@@ -1059,7 +1071,14 @@ export default function BuildScreen({
             </>
           )}
         </div>
-        <SideColumn side="field" label="Field" sideName="Black" stats={blackStats} moves={state.blackMoves} />
+        <SideColumn
+          side="field"
+          label="Field"
+          sideName="Black"
+          stats={blackStats}
+          moves={state.blackMoves}
+          optimalStats={blackOptimalStats}
+        />
       </div>
 
       <section className="player-field-table">
@@ -1184,7 +1203,7 @@ function SideColumn({
         <p className="side-projection">{stats.projTotal.toFixed(1)} pts</p>
       </div>
 
-      {side === "you" && optimalStats !== undefined && (
+      {optimalStats !== undefined && (
         <div className="side-stat-block">
           <p className="side-eyebrow">Pts from optimal</p>
           <p className="side-pts-from-optimal">{optimalStats === null ? "—" : formatPtsFromOptimal(optimalStats.delta)}</p>
@@ -1226,7 +1245,8 @@ function FinishCard({
   history,
   whiteMoves,
   whiteStats,
-  optimalStats,
+  whiteOptimalStats,
+  blackOptimalStats,
   onStartAgain,
   onNewContest,
 }: {
@@ -1235,7 +1255,8 @@ function FinishCard({
   history: readonly string[];
   whiteMoves: readonly Move[];
   whiteStats: SideStats;
-  optimalStats: PointsFromOptimal | null;
+  whiteOptimalStats: PointsFromOptimal | null;
+  blackOptimalStats: PointsFromOptimal | null;
   onStartAgain: () => void;
   onNewContest: () => void;
 }) {
@@ -1307,11 +1328,21 @@ function FinishCard({
         </p>
         <p>
           Pts from optimal:{" "}
-          <strong>{optimalStats === null ? "—" : formatPtsFromOptimal(optimalStats.delta)}</strong>
-          {optimalStats !== null && (
+          <strong>{whiteOptimalStats === null ? "—" : formatPtsFromOptimal(whiteOptimalStats.delta)}</strong>
+          {whiteOptimalStats !== null && (
             <span className="finish-stat-sub">
               {" "}
-              best finish {optimalStats.bestCompletion.toFixed(1)} · optimal {optimalStats.slateOptimal.toFixed(1)}
+              best finish {whiteOptimalStats.bestCompletion.toFixed(1)} · optimal {whiteOptimalStats.slateOptimal.toFixed(1)}
+            </span>
+          )}
+        </p>
+        <p>
+          Field pts from optimal:{" "}
+          <strong>{blackOptimalStats === null ? "—" : formatPtsFromOptimal(blackOptimalStats.delta)}</strong>
+          {blackOptimalStats !== null && (
+            <span className="finish-stat-sub">
+              {" "}
+              best finish {blackOptimalStats.bestCompletion.toFixed(1)} · optimal {blackOptimalStats.slateOptimal.toFixed(1)}
             </span>
           )}
         </p>
