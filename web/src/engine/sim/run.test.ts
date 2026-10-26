@@ -99,7 +99,7 @@ describe("computeEffectivePlaceAndPayout", () => {
 });
 
 describe("aggregateResults", () => {
-  it("computes roi/cashRate/top1Rate/finishPercentiles correctly on fixed trial results", () => {
+  it("computes roi/cashRate/winRate/top1PctRate/finishPercentiles correctly on fixed trial results", () => {
     const results: TrialResult[] = [
       { trial: 1, userScore: 0, place: 1, payout: 500 },
       { trial: 2, userScore: 0, place: 3, payout: 100 },
@@ -113,14 +113,17 @@ describe("aggregateResults", () => {
       { trial: 10, userScore: 0, place: 800, payout: 0 },
     ];
     const entryFee = 10;
-    const agg = aggregateResults(results, entryFee);
+    const entries = 300; // ceil(300 * 0.01) = 3 -- a top1PctCutoff distinct from winRate's place-1-only cutoff
+    const agg = aggregateResults(results, entryFee, entries);
 
     // totalPayout=1850, totalCost=100 -> roi=(1850-100)/100=17.5
     expect(agg.roi).toBeCloseTo(17.5, 10);
     // payout>0 on trials 1,2,3,6,8,9 -> 6/10
     expect(agg.cashRate).toBeCloseTo(0.6, 10);
     // place===1 on trials 1,3,9 -> 3/10
-    expect(agg.top1Rate).toBeCloseTo(0.3, 10);
+    expect(agg.winRate).toBeCloseTo(0.3, 10);
+    // place<=3 on trials 1,2,3,8,9 -> 5/10
+    expect(agg.top1PctRate).toBeCloseTo(0.5, 10);
 
     // Sorted places: [1,1,1,2,3,5,20,50,800,1000]
     expect(agg.finishPercentiles.P10).toBe(1);
@@ -132,7 +135,18 @@ describe("aggregateResults", () => {
 
   it("entryFee of 0 doesn't divide by zero -- roi reads 0", () => {
     const results: TrialResult[] = [{ trial: 1, userScore: 0, place: 1, payout: 0 }];
-    expect(aggregateResults(results, 0).roi).toBe(0);
+    expect(aggregateResults(results, 0, 100).roi).toBe(0);
+  });
+
+  it("top1PctCutoff is at least 1 even for a tiny contest (ceil, never floors to 0)", () => {
+    const results: TrialResult[] = [
+      { trial: 1, userScore: 0, place: 1, payout: 10 },
+      { trial: 2, userScore: 0, place: 2, payout: 0 },
+    ];
+    // entries=2 (H2H) -> ceil(2 * 0.01) = 1 -- only place 1 counts, same as winRate here.
+    const agg = aggregateResults(results, 5, 2);
+    expect(agg.top1PctRate).toBeCloseTo(0.5, 10);
+    expect(agg.top1PctRate).toBeCloseTo(agg.winRate, 10);
   });
 });
 

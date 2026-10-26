@@ -1,7 +1,8 @@
 // Monte Carlo trial loop: scores the user's lineup and a simulated field
 // against correlated per-trial draws, ranks the user, pays from the
-// contest's payout table, and aggregates into ROI/cash rate/top-1% rate/
-// finish-place percentiles. Ported from rraney/nfl-dfs's runSimulation_ +
+// contest's payout table, and aggregates into ROI/cash rate/win rate/
+// top-1%-of-entries rate/finish-place percentiles. Ported from
+// rraney/nfl-dfs's runSimulation_ +
 // scoreLineup_ + computeEffectivePlaceAndPayout_ + aggregateSimResults_
 // (sim_trial_loop.js, Parts C/D) -- the batch variant (runSimulationBatch_,
 // grading many lineups against one shared per-trial draw+field pass) is
@@ -60,19 +61,23 @@ export interface FinishPercentiles {
   readonly P90: number;
 }
 
-// roi/cashRate/top1Rate are fractions (0..1), not percentages -- same
-// internal representation nfl-dfs itself uses (its own Logger/sheet output
-// multiplies by 100 only for display, which has no equivalent here: no UI
-// in this task, Sim 4's job). top1Rate is the fraction of trials finishing
-// in place 1 exactly -- a literal win rate, a different number from
-// nfl-dfs's own "Top1pct_ROI" (dollar return over the top 1% of trials BY
-// PAYOUT) despite the similar name; paired with cashRate (also a bare
-// frequency, not a dollar figure) in this same return shape, "Rate" reads
-// as frequency here, not nfl-dfs's ROI-flavored "Top1pct_ROI" metric.
+// roi/cashRate/winRate/top1PctRate are fractions (0..1), not percentages --
+// same internal representation nfl-dfs itself uses (its own Logger/sheet
+// output multiplies by 100 only for display, which has no equivalent here:
+// no UI in this task, Sim 4's job). winRate is the fraction of trials
+// finishing in place 1 exactly. top1PctRate is the fraction of trials
+// finishing in the contest's own top 1% of ENTRIES (place <=
+// ceil(entries * 0.01)), a frequency over PLACE -- a different number from
+// nfl-dfs's own similarly-named "Top1pct_ROI" (a dollar return over the
+// top 1% of TRIALS, ranked by payout) despite the name collision; paired
+// with cashRate (also a bare place-based frequency, not a dollar figure)
+// in this same return shape, "Rate" reads as frequency here, not
+// nfl-dfs's ROI-flavored metric.
 export interface SimResult {
   readonly roi: number;
   readonly cashRate: number;
-  readonly top1Rate: number;
+  readonly winRate: number;
+  readonly top1PctRate: number;
   readonly finishPercentiles: FinishPercentiles;
 }
 
@@ -139,19 +144,25 @@ function percentile(sortedAscending: readonly number[], p: number): number {
   return sortedAscending[lo] + (sortedAscending[hi] - sortedAscending[lo]) * (idx - lo);
 }
 
-// Part D aggregation: Sim ROI, Cash Rate, top-1% (win) rate, and finish-
-// place percentiles. Exported separately from runSimulation so scoring/
-// payout correctness can be tested against hand-built TrialResult[]
-// fixtures directly, without needing a real correlated draw to land on
-// exact scores (same reason nfl-dfs keeps aggregateSimResults_ as its own
-// separately-callable pure function, distinct from runSimulation_ itself).
-export function aggregateResults(results: readonly TrialResult[], entryFee: number): SimResult {
+// Part D aggregation: Sim ROI, Cash Rate, win rate, top-1%-of-entries rate,
+// and finish-place percentiles. Exported separately from runSimulation so
+// scoring/payout correctness can be tested against hand-built
+// TrialResult[] fixtures directly, without needing a real correlated draw
+// to land on exact scores (same reason nfl-dfs keeps aggregateSimResults_
+// as its own separately-callable pure function, distinct from
+// runSimulation_ itself). `entries` is the contest's own total entrant
+// count (ContestConfig.fieldSize) -- the top1PctRate cutoff place,
+// ceil(entries * 0.01), is a property of the CONTEST, not of this
+// particular field sample's lineup count.
+export function aggregateResults(results: readonly TrialResult[], entryFee: number, entries: number): SimResult {
   const trialCount = results.length;
   const totalPayout = results.reduce((s, r) => s + r.payout, 0);
   const totalCost = trialCount * entryFee;
   const roi = totalCost > 0 ? (totalPayout - totalCost) / totalCost : 0;
   const cashRate = trialCount > 0 ? results.filter((r) => r.payout > 0).length / trialCount : 0;
-  const top1Rate = trialCount > 0 ? results.filter((r) => r.place === 1).length / trialCount : 0;
+  const winRate = trialCount > 0 ? results.filter((r) => r.place === 1).length / trialCount : 0;
+  const top1PctCutoff = Math.ceil(entries * 0.01);
+  const top1PctRate = trialCount > 0 ? results.filter((r) => r.place <= top1PctCutoff).length / trialCount : 0;
 
   const places = results.map((r) => r.place).sort((a, b) => a - b);
   const finishPercentiles: FinishPercentiles = {
@@ -162,7 +173,7 @@ export function aggregateResults(results: readonly TrialResult[], entryFee: numb
     P90: percentile(places, 0.9),
   };
 
-  return { roi, cashRate, top1Rate, finishPercentiles };
+  return { roi, cashRate, winRate, top1PctRate, finishPercentiles };
 }
 
 // The trial loop itself. Draws one correlated outcome per player each
@@ -210,5 +221,5 @@ export function runSimulation(
     results.push({ trial, userScore, place, payout });
   }
 
-  return aggregateResults(results, entryFee);
+  return aggregateResults(results, entryFee, contest.fieldSize);
 }
