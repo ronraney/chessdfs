@@ -14,9 +14,11 @@
 // resolves the cached field for the contest's tier via
 // fieldCacheStore.resolveCachedField first (which already recomputes
 // lineupWeight = contest.fieldSize / lineups.length against the REAL
-// contest asking, i.e. "resample to the contest's actual entries... using
-// lineupWeight" from this task's own wording) and passes the resulting
-// SimulatedField straight in.
+// contest asking) and passes the resulting SimulatedField straight in.
+// Above MAX_FIELD_SAMPLE lineups, runSimulation itself takes a further
+// seeded subsample before scoring (see that constant's own comment) --
+// this round's own follow-up, since scoring all 50,000 Large-tier lineups
+// every one of 5,000 trials measured at ~70s.
 //
 // Signature note (flagged, not silent): the task named this
 // `runSimulation(lineup, contest)`, but scoring a trial needs more than
@@ -45,6 +47,24 @@ import type { SimulatedField } from "./field";
 // test can cite it explicitly, same `DEFAULT_SAMPLE_SIZE` precedent as
 // field.ts.
 export const DEFAULT_TRIAL_COUNT = 5000;
+
+// The cached Large tier builds 50,000 lineups (buildFieldCache.ts's own
+// REPRESENTATIVE_FIELD_SIZE) -- scoring every one of them every trial
+// measured at ~70s for 5,000 trials (reported separately), the dominant
+// cost in this whole module. Above this many lineups, runSimulation scores
+// each trial against a seeded uniform sample of this many instead (every
+// lineup in a SimulatedField already carries the SAME scalar lineupWeight
+// -- there's no per-lineup weight to differentiate by, so "weighted by
+// lineupWeight" reduces to a plain uniform sample here), with lineupWeight
+// recomputed as contest.fieldSize / sampleSize so the user's effective
+// place still scales to the contest's REAL entry count, not to the
+// (smaller) sample size. The sample is drawn ONCE per runSimulation call,
+// not per trial -- same "field composition doesn't change per trial"
+// principle nfl-dfs's own runSimulation_ relies on; only the per-trial
+// draw changes. A config setting (this task's own wording), not a fixed
+// internal constant -- exported, and threaded through as an optional
+// trailing parameter, same `trialCount`/`DEFAULT_TRIAL_COUNT` pattern.
+export const MAX_FIELD_SAMPLE = 5000;
 
 export interface TrialResult {
   readonly trial: number;
@@ -93,6 +113,23 @@ function payoutByRank(payouts: readonly PayoutTier[]): ReadonlyMap<number, numbe
   const m = new Map<number, number>();
   for (const tier of payouts) m.set(tier.rank, tier.amount);
   return m;
+}
+
+// Seeded, uniform, without-replacement sample of `count` items (a partial
+// Fisher-Yates shuffle: only the first `count` positions are ever
+// shuffled, so this stays O(n), not O(n log n)) -- every lineup in a
+// SimulatedField is equally "representative" (one shared scalar
+// lineupWeight), so a uniform sample over the lineup array IS a sample
+// weighted by lineupWeight; there's no per-lineup weight to differentiate
+// by. `count >= items.length` returns every item (no sampling needed).
+function sampleWithoutReplacement<T>(items: readonly T[], count: number, rng: SeededRandom): T[] {
+  const pool = [...items];
+  const n = Math.min(count, pool.length);
+  for (let i = 0; i < n; i++) {
+    const j = i + Math.floor(rng.next() * (pool.length - i));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, n);
 }
 
 // Ranks the user against one trial's field scores and looks up a payout.
@@ -201,6 +238,7 @@ export function runSimulation(
   sport: SportConfig,
   seed: number,
   trialCount: number = DEFAULT_TRIAL_COUNT,
+  maxFieldSample: number = MAX_FIELD_SAMPLE,
 ): SimResult {
   if (!isLineupComplete(lineup, sport)) {
     throw new Error(`runSimulation: lineup is not a complete ${sport.rosterSize}-player roster`);
@@ -211,13 +249,22 @@ export function runSimulation(
 
   const rng = new SeededRandom(seed);
   const payouts = payoutByRank(contest.payouts);
+
+  // Above maxFieldSample lineups, score every trial against a seeded
+  // uniform sample instead of the whole field -- see MAX_FIELD_SAMPLE's
+  // own comment. lineupWeight is recomputed against the SAMPLE size (not
+  // left at the full field's own value) so the user's effective place
+  // still scales to contest.fieldSize, the real entry count.
+  const scoredLineups = field.lineups.length > maxFieldSample ? sampleWithoutReplacement(field.lineups, maxFieldSample, rng) : field.lineups;
+  const lineupWeight = field.lineups.length > maxFieldSample ? contest.fieldSize / scoredLineups.length : field.lineupWeight;
+
   const results: TrialResult[] = [];
 
   for (let trial = 1; trial <= trialCount; trial++) {
     const outcomes = drawSlateOutcomes(players, vegas, rng, sport.domeTeams);
     const userScore = scoreLineup(lineup, outcomes);
-    const fieldScores = field.lineups.map((fieldLineup) => scoreLineup(fieldLineup, outcomes));
-    const { place, payout } = computeEffectivePlaceAndPayout(userScore, fieldScores, field.lineupWeight, payouts);
+    const fieldScores = scoredLineups.map((fieldLineup) => scoreLineup(fieldLineup, outcomes));
+    const { place, payout } = computeEffectivePlaceAndPayout(userScore, fieldScores, lineupWeight, payouts);
     results.push({ trial, userScore, place, payout });
   }
 

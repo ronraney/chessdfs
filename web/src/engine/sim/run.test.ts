@@ -7,6 +7,36 @@ import type { SlateVegas } from "./draws";
 import type { SimulatedField } from "./field";
 import { type TrialResult, aggregateResults, computeEffectivePlaceAndPayout, runSimulation, scoreLineup } from "./run";
 
+function buildLineupWithProj(prefix: string, side: "HOME" | "AWAY", proj: number): Player[] {
+  const opp = side === "HOME" ? "AWAY" : "HOME";
+  const slots: Array<[string, string]> = [
+    ["qb", "QB"],
+    ["rb1", "RB"],
+    ["rb2", "RB"],
+    ["wr1", "WR"],
+    ["wr2", "WR"],
+    ["wr3", "WR"],
+    ["te", "TE"],
+    ["flex", "WR"],
+    ["dst", "DST"],
+  ];
+  return slots.map(([suffix, position]) =>
+    new Player({
+      id: `${prefix}-${suffix}`,
+      name: `${prefix}-${suffix}`,
+      positions: [position],
+      team: side,
+      opp,
+      salary: 5000,
+      proj,
+      ownSmall: 0.1,
+      ownLarge: 0.1,
+      floor: proj * 0.6,
+      ceiling: proj * 1.6,
+    }),
+  );
+}
+
 const NFL = loadSportConfig(nflConfig);
 const NO_VEGAS: SlateVegas = new Map();
 
@@ -173,5 +203,60 @@ describe("runSimulation", () => {
   it("rejects an empty field", () => {
     const emptyField: SimulatedField = { lineups: [], lineupWeight: 1 };
     expect(() => runSimulation(lineup, contest, 10, emptyField, allPlayers, NO_VEGAS, NFL, 2026, 25)).toThrow();
+  });
+});
+
+describe("runSimulation -- field sampling above maxFieldSample", () => {
+  // A deliberately astronomical score gap (proj 1 vs proj 100,000, across
+  // all 9 roster slots) so the field strictly outscores the user EVERY
+  // trial no matter how extreme the draw (even every field player at its
+  // own worst-case clipped z and every user player at its own best-case --
+  // the field's floor still dwarfs the user's ceiling by orders of
+  // magnitude) -- isolates the lineupWeight/sample-size arithmetic from
+  // the correlated-draw randomness, rather than needing to predict exact
+  // scores.
+  const userLineup = buildLineupWithProj("u", "AWAY", 1);
+  const strongFieldLineup = buildLineupWithProj("f", "HOME", 100000);
+  const FIELD_SIZE = 20;
+  const field: SimulatedField = {
+    // All 20 lineups are the literal SAME Player objects -- every possible
+    // 5-of-20 sample is interchangeable, so this isolates the lineupWeight
+    // recompute from which particular lineups got sampled.
+    lineups: Array.from({ length: FIELD_SIZE }, () => strongFieldLineup),
+    // Deliberately WRONG for a 20-lineup field at fieldSize 100 (true
+    // value would be 100/20=5) -- if runSimulation used this value as-is
+    // instead of recomputing against the sample size, the place below
+    // would come out wildly different (5*999+1=4996, not 101).
+    lineupWeight: 999,
+  };
+  const allPlayers = [...userLineup, ...strongFieldLineup];
+  const contest = new ContestConfig({
+    fieldSize: 100,
+    payouts: [new PayoutTier({ rank: 101, amount: 50 })],
+  });
+
+  it("recomputes lineupWeight against the sample size, not the field's own (possibly stale) value", () => {
+    const maxFieldSample = 5;
+    const result = runSimulation(userLineup, contest, 10, field, allPlayers, NO_VEGAS, NFL, 7, 50, maxFieldSample);
+    // Field always outscores the user -> weightAhead = maxFieldSample *
+    // (fieldSize/maxFieldSample) = fieldSize = 100 exactly, every trial ->
+    // place = ceil(100) + 1 = 101, with no variance across trials.
+    expect(result.finishPercentiles.P50).toBe(101);
+    expect(result.finishPercentiles.P10).toBe(101);
+    expect(result.finishPercentiles.P90).toBe(101);
+  });
+
+  it("a field at or below maxFieldSample is scored in full, using the field's own lineupWeight as given", () => {
+    const smallField: SimulatedField = { lineups: field.lineups.slice(0, 4), lineupWeight: 999 };
+    // 4 lineups <= maxFieldSample (5) -- no sampling, no recompute:
+    // weightAhead = 4 * 999 = 3996 -> place = 3997.
+    const result = runSimulation(userLineup, contest, 10, smallField, allPlayers, NO_VEGAS, NFL, 7, 50, 5);
+    expect(result.finishPercentiles.P50).toBe(3997);
+  });
+
+  it("the same seed produces the same result through the sampling path", () => {
+    const result1 = runSimulation(userLineup, contest, 10, field, allPlayers, NO_VEGAS, NFL, 2026, 30, 5);
+    const result2 = runSimulation(userLineup, contest, 10, field, allPlayers, NO_VEGAS, NFL, 2026, 30, 5);
+    expect(result1).toEqual(result2);
   });
 });

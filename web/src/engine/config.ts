@@ -280,31 +280,31 @@ export interface ContestPreset {
   contest: ContestConfig;
 }
 
-// Builds a real payout table from a preset's summary anchors
-// (prize_pool/pct_to_first/cash_line) when the preset hasn't already been
-// given an explicit one -- real (non-empty) `payouts` data on a preset
-// always wins, same as nfl-dfs's own "real data coexists with synthetic"
-// convention for Sim_Payout_Curve. contests.json currently has
+// Builds a real payout table from a preset's four summary anchors
+// (prize_pool/pct_to_first/min_cash/cash_line) when the preset hasn't
+// already been given an explicit one -- real (non-empty) `payouts` data on
+// a preset always wins, same as nfl-dfs's own "real data coexists with
+// synthetic" convention for Sim_Payout_Curve. contests.json currently has
 // `payouts: []` for every preset, so every one of them is synthesized
 // today; a future preset with a real table typed in directly would be
-// left untouched. min_cash is NOT read here -- generatePayoutCurve's
-// follow-up task (exact rank-1 fit) dropped it as a curve-shaping input
-// entirely (see that file's own header for why); cash_line alone still
-// decides how many ranks pay. The three anchors used are required
-// together -- isFinite on each, not just "truthy" (cash_line is never 0
-// for a real contest, but a missing field reads as `undefined`, which
-// isFinite correctly rejects).
+// left untouched. min_cash is back as a required anchor (round 2 of this
+// task): generatePayoutCurve now pins it as the bottom-of-the-ladder floor
+// instead of letting it drift, so all four fields are load-bearing again.
+// Required together -- isFinite on each, not just "truthy" (none of these
+// is ever legitimately 0 for a real contest, but a missing field reads as
+// `undefined`, which isFinite correctly rejects).
 function presetPayouts(preset: RawContestPreset): RawPayoutTier[] {
   if (preset.payouts.length > 0) return preset.payouts;
-  const { prize_pool, pct_to_first, cash_line } = preset;
+  const { prize_pool, pct_to_first, min_cash, cash_line } = preset;
   if (
     !(typeof prize_pool === "number" && isFinite(prize_pool)) ||
     !(typeof pct_to_first === "number" && isFinite(pct_to_first)) ||
+    !(typeof min_cash === "number" && isFinite(min_cash)) ||
     !(typeof cash_line === "number" && isFinite(cash_line))
   ) {
     return preset.payouts; // still empty -- not enough real data to synthesize from
   }
-  return generatePayoutCurve(prize_pool, pct_to_first, cash_line);
+  return generatePayoutCurve(prize_pool, pct_to_first, min_cash, cash_line);
 }
 
 export function loadContestPresets(data: readonly RawContestPreset[]): ContestPreset[] {
