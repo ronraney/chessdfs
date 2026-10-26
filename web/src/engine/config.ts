@@ -8,6 +8,7 @@
 // loadSportConfig.
 
 import { FieldTier } from "./models";
+import { generatePayoutCurve } from "./sim/payouts";
 import type { SportConfig } from "./sport";
 
 export const FIELD_TIER_MID_MIN = 2000;
@@ -279,13 +280,38 @@ export interface ContestPreset {
   contest: ContestConfig;
 }
 
+// Builds a real payout table from a preset's four summary anchors
+// (prize_pool/pct_to_first/min_cash/cash_line, Sim 3's own task) when the
+// preset hasn't already been given an explicit one -- real (non-empty)
+// `payouts` data on a preset always wins, same as nfl-dfs's own "real data
+// coexists with synthetic" convention for Sim_Payout_Curve. contests.json
+// currently has `payouts: []` for every preset, so every one of them is
+// synthesized today; a future preset with a real table typed in directly
+// would be left untouched. All four anchors are required together --
+// isFinite on each, not just "truthy" (min_cash/cash_line are never 0 for
+// a real contest, but a missing field reads as `undefined`, which isFinite
+// correctly rejects).
+function presetPayouts(preset: RawContestPreset): RawPayoutTier[] {
+  if (preset.payouts.length > 0) return preset.payouts;
+  const { prize_pool, pct_to_first, min_cash, cash_line } = preset;
+  if (
+    !(typeof prize_pool === "number" && isFinite(prize_pool)) ||
+    !(typeof pct_to_first === "number" && isFinite(pct_to_first)) ||
+    !(typeof min_cash === "number" && isFinite(min_cash)) ||
+    !(typeof cash_line === "number" && isFinite(cash_line))
+  ) {
+    return preset.payouts; // still empty -- not enough real data to synthesize from
+  }
+  return generatePayoutCurve(prize_pool, pct_to_first, min_cash, cash_line);
+}
+
 export function loadContestPresets(data: readonly RawContestPreset[]): ContestPreset[] {
   return data.map((preset) => ({
     name: preset.name,
     buyIn: preset.buy_in,
     contest: loadContestConfig({
       field_size: preset.entries,
-      payouts: preset.payouts,
+      payouts: presetPayouts(preset),
       cap: preset.cap,
       max_entries_scale: preset.max_entries_scale,
       small_max_entries: preset.small_max_entries,
