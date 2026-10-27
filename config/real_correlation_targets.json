@@ -1,33 +1,67 @@
 {
-  "_comment": "Real-world NFL stat correlation targets, measured from nflverse-data (github.com/nflverse/nflverse-data: player_stats, stats_team, schedules releases), 2021-2025 regular seasons. Not consumed by any code yet -- a diagnosis-task deliverable (measurement only, no sim changes) for comparing against engine/sim/draws.ts's realized correlations. DraftKings Classic (full-PPR) fantasy points computed from raw counting stats, not nflverse's own fantasy_points_ppr column (which uses a different -2 INT / -2 fumble-lost / no-yardage-bonus formula). Team roles (QB1/RB1/WR1/WR2/TE1) ranked per team per week by SEASON-TO-DATE cumulative volume (attempts for QB1, carries for RB1, targets for WR1/WR2/TE1) from STRICTLY PRIOR weeks of that same season -- not that week's own volume and not that week's points -- so a role reflects who the team's established starter already was entering the game, not who happened to get usage (or score) in the very game being correlated. A player only qualifies for a role once their prior-weeks cumulative volume is > 0, which structurally excludes week 1 of every season (no season-to-date history yet) from every role-based pair; DST has no such dependency (it's a team-week stat, not a ranked role) so DST-only pairs keep week 1. This replaces an EARLIER version of this file (ranked by that week's own volume, a lookahead/circularity bug this task's own prompt called out) -- every real_r below changed; sim_r did not (engine/sim/draws.ts unchanged since that version, re-used rather than re-run). DST = that team's own defense/special-teams scoring (sacks, interceptions, fumble recoveries off the opponent, defensive + special-teams TDs, safeties, blocked kicks, tiered points-allowed bonus -- opponent's score in that game, via schedules' home_score/away_score). Opponent pairs join same-game rows on (season, week, opponent_team); each game contributes one row per team side (Pearson r is symmetric in the pair, so this doesn't bias the result, just doubles N). `n` is that pair's own available (season,week) sample after dropping any row missing either side's role. sim_r is engine/sim/draws.ts's drawSlateOutcomes realized Pearson r, measured on data/samples/DraftKings NFL DFS Projections -- Main Slate (6).csv (20,000 trials, all 20 teams pooled, roles by salary rank within each team) -- unchanged from the prior measurement.",
+  "_comment": "Real-world NFL stat correlation targets, measured from nflverse-data (github.com/nflverse/nflverse-data: player_stats, stats_team, schedules releases), 2021-2025 regular seasons. Consumed by engine/sim/draws.ts (the Gaussian-copula per-game correlation matrix, replacing the old latent-factor model) -- role order in `roles` is the row/column order of both matrices. DraftKings Classic (full-PPR) fantasy points computed from raw counting stats, not nflverse's own fantasy_points_ppr column. Team roles (QB1/RB1/RB2/WR1/WR2/WR3/TE1/TE2) ranked per team per week by SEASON-TO-DATE cumulative volume (attempts for QB1, carries for RB1/RB2, targets for WR1/WR2/WR3/TE1/TE2) from STRICTLY PRIOR weeks of that same season -- a role only qualifies once its prior-weeks cumulative volume is > 0, which structurally excludes week 1 of every season from every role-based pair. DST has no such dependency (a team-week stat, not a ranked role) so DST keeps week 1. `same_team_matrix` is the 9x9 Pearson r among a team's own 9 roles (diagonal 1.0 by construction). `opponent_matrix[i][j]` is role i's own-team points vs role j's OPPONENT-team points that same game -- measured symmetric (opponent_matrix[i][j] == opponent_matrix[j][i]) because every game contributes one row per team side to the same pooled dataframe, so this isn't asserted, it's what .corr() returned. `pair_n` is each pair's own available (season,week) sample size after dropping rows missing either side's role. The full 18x18 block matrix [[same_team_matrix, opponent_matrix],[opponent_matrix^T, same_team_matrix]] (one team's 9 roles + the opponent's 9 roles, same game) was checked for positive-semidefiniteness directly (not assumed): min eigenvalue 0.3109 -- already PSD, no nearest-PSD correction was needed (confirmed via eigenvalue-clip-and-reconstruct nearest-correlation-matrix check: largest entrywise change was ~8e-16, floating-point noise). Since a principal submatrix of a PSD matrix is itself always PSD, every game's own role matrix (whichever subset of these 9 roles that game's two teams actually have filled, e.g. a team with only 2 real WRs has no WR3 that game) is PSD automatically -- draws.ts still runs its own nearest-PSD check per game as the task requires, as a safety net, but it is expected to be a no-op on this data.",
   "source": "nflverse-data (player_stats, stats_team, schedules releases)",
   "seasons": [2021, 2022, 2023, 2024, 2025],
   "season_type": "REG",
   "role_ranking_method": "season_to_date_prior_weeks",
+  "roles": ["QB1", "RB1", "RB2", "WR1", "WR2", "WR3", "TE1", "TE2", "DST"],
   "role_qualifying_team_weeks": {
     "QB1": 2006,
     "RB1": 2044,
+    "RB2": 1936,
     "WR1": 2046,
     "WR2": 2044,
-    "TE1": 2025
+    "WR3": 1948,
+    "TE1": 2025,
+    "TE2": 1375,
+    "DST": 2718
+  },
+  "full_matrix_psd_check": {
+    "min_eigenvalue": 0.3109,
+    "already_psd": true,
+    "largest_change_from_nearest_psd_correction": 8.33e-16
+  },
+  "same_team_matrix": [
+    [1.0, 0.0893, 0.0357, 0.3672, 0.3467, 0.2441, 0.2758, 0.1313, -0.0485],
+    [0.0893, 1.0, -0.1431, 0.0011, 0.0303, -0.0285, -0.0294, 0.0007, 0.0798],
+    [0.0357, -0.1431, 1.0, 0.0106, -0.06, -0.0267, -0.0198, 0.0155, 0.0298],
+    [0.3672, 0.0011, 0.0106, 1.0, 0.0338, 0.0017, 0.0069, -0.0323, 0.0039],
+    [0.3467, 0.0303, -0.06, 0.0338, 1.0, -0.0022, -0.0292, -0.0158, -0.0355],
+    [0.2441, -0.0285, -0.0267, 0.0017, -0.0022, 1.0, 0.0063, -0.0419, -0.0657],
+    [0.2758, -0.0294, -0.0198, 0.0069, -0.0292, 0.0063, 1.0, -0.0776, -0.0516],
+    [0.1313, 0.0007, 0.0155, -0.0323, -0.0158, -0.0419, -0.0776, 1.0, -0.071],
+    [-0.0485, 0.0798, 0.0298, 0.0039, -0.0355, -0.0657, -0.0516, -0.071, 1.0]
+  ],
+  "opponent_matrix": [
+    [0.1966, 0.0395, 0.0051, 0.0893, 0.075, 0.0913, 0.0501, 0.1128, -0.4108],
+    [0.0395, -0.0808, -0.0576, -0.0293, 0.01, 0.0559, 0.0254, 0.0008, -0.2989],
+    [0.0051, -0.0576, -0.0113, -0.0082, 0.0066, -0.0174, -0.0315, 0.0245, -0.1249],
+    [0.0893, -0.0293, -0.0082, 0.0926, 0.016, 0.0479, 0.033, 0.0066, -0.1882],
+    [0.075, 0.01, 0.0066, 0.016, 0.0592, 0.0732, 0.036, 0.0694, -0.1461],
+    [0.0913, 0.0559, -0.0174, 0.0479, 0.0732, 0.0282, 0.0115, 0.0304, -0.0514],
+    [0.0501, 0.0254, -0.0315, 0.033, 0.036, 0.0115, 0.0304, 0.0191, -0.0781],
+    [0.1128, 0.0008, 0.0245, 0.0066, 0.0694, 0.0304, 0.0191, -0.0268, -0.0549],
+    [-0.4108, -0.2989, -0.1249, -0.1882, -0.1461, -0.0514, -0.0781, -0.0549, -0.304]
+  ],
+  "pair_n": {
+    "QB1-RB1": 2004, "QB1-RB2": 1899, "QB1-WR1": 2006, "QB1-WR2": 2004, "QB1-WR3": 1910, "QB1-TE1": 1985, "QB1-TE2": 1344, "QB1-DST": 2006,
+    "RB1-RB2": 1936, "RB1-WR1": 2044, "RB1-WR2": 2042, "RB1-WR3": 1946, "RB1-TE1": 2023, "RB1-TE2": 1373, "RB1-DST": 2044,
+    "RB2-WR1": 1936, "RB2-WR2": 1934, "RB2-WR3": 1838, "RB2-TE1": 1917, "RB2-TE2": 1305, "RB2-DST": 1936,
+    "WR1-WR2": 2044, "WR1-WR3": 1948, "WR1-TE1": 2025, "WR1-TE2": 1375, "WR1-DST": 2046,
+    "WR2-WR3": 1948, "WR2-TE1": 2023, "WR2-TE2": 1373, "WR2-DST": 2044,
+    "WR3-TE1": 1929, "WR3-TE2": 1309, "WR3-DST": 1948,
+    "TE1-TE2": 1375, "TE1-DST": 2025, "TE2-DST": 1375,
+    "QB1-oppQB1": 1968, "QB1-oppRB1": 2004, "QB1-oppRB2": 1897, "QB1-oppWR1": 2006, "QB1-oppWR2": 2004, "QB1-oppWR3": 1910, "QB1-oppTE1": 1985, "QB1-oppTE2": 1348, "QB1-oppDST": 2006,
+    "RB1-oppQB1": 2004, "RB1-oppRB1": 2042, "RB1-oppRB2": 1934, "RB1-oppWR1": 2044, "RB1-oppWR2": 2042, "RB1-oppWR3": 1946, "RB1-oppTE1": 2023, "RB1-oppTE2": 1375, "RB1-oppDST": 2044,
+    "RB2-oppQB1": 1897, "RB2-oppRB1": 1934, "RB2-oppRB2": 1836, "RB2-oppWR1": 1936, "RB2-oppWR2": 1934, "RB2-oppWR3": 1842, "RB2-oppTE1": 1917, "RB2-oppTE2": 1312, "RB2-oppDST": 1936,
+    "WR1-oppQB1": 2006, "WR1-oppRB1": 2044, "WR1-oppRB2": 1936, "WR1-oppWR1": 2046, "WR1-oppWR2": 2044, "WR1-oppWR3": 1948, "WR1-oppTE1": 2025, "WR1-oppTE2": 1375, "WR1-oppDST": 2046,
+    "WR2-oppQB1": 2004, "WR2-oppRB1": 2042, "WR2-oppRB2": 1934, "WR2-oppWR1": 2044, "WR2-oppWR2": 2042, "WR2-oppWR3": 1946, "WR2-oppTE1": 2023, "WR2-oppTE2": 1373, "WR2-oppDST": 2044,
+    "WR3-oppQB1": 1910, "WR3-oppRB1": 1946, "WR3-oppRB2": 1842, "WR3-oppWR1": 1948, "WR3-oppWR2": 1946, "WR3-oppWR3": 1858, "WR3-oppTE1": 1929, "WR3-oppTE2": 1312, "WR3-oppDST": 1948,
+    "TE1-oppQB1": 1985, "TE1-oppRB1": 2023, "TE1-oppRB2": 1917, "TE1-oppWR1": 2025, "TE1-oppWR2": 2023, "TE1-oppWR3": 1929, "TE1-oppTE1": 2004, "TE1-oppTE2": 1361, "TE1-oppDST": 2025,
+    "TE2-oppQB1": 1348, "TE2-oppRB1": 1375, "TE2-oppRB2": 1312, "TE2-oppWR1": 1375, "TE2-oppWR2": 1373, "TE2-oppWR3": 1312, "TE2-oppTE1": 1361, "TE2-oppTE2": 922, "TE2-oppDST": 1375,
+    "DST-oppQB1": 2006, "DST-oppRB1": 2044, "DST-oppRB2": 1936, "DST-oppWR1": 2046, "DST-oppWR2": 2044, "DST-oppWR3": 1948, "DST-oppTE1": 2025, "DST-oppTE2": 1375, "DST-oppDST": 2718
   },
   "sim_slate": "DraftKings NFL DFS Projections -- Main Slate (6).csv",
   "sim_trials": 20000,
-  "computed": "2026-10-27",
-  "pairs": [
-    { "pair": "QB-WR1", "kind": "same_team", "n": 2006, "real_r": 0.3672, "sim_r": 0.7642, "gap": 0.3970 },
-    { "pair": "QB-WR2", "kind": "same_team", "n": 2004, "real_r": 0.3467, "sim_r": 0.7259, "gap": 0.3792 },
-    { "pair": "QB-TE1", "kind": "same_team", "n": 1985, "real_r": 0.2758, "sim_r": 0.6633, "gap": 0.3875 },
-    { "pair": "QB-RB1", "kind": "same_team", "n": 2004, "real_r": 0.0893, "sim_r": 0.6716, "gap": 0.5823 },
-    { "pair": "WR1-WR2", "kind": "same_team", "n": 2044, "real_r": 0.0338, "sim_r": 0.7184, "gap": 0.6846 },
-    { "pair": "WR1-TE1", "kind": "same_team", "n": 2025, "real_r": 0.0069, "sim_r": 0.5629, "gap": 0.5560 },
-    { "pair": "RB1-WR1", "kind": "same_team", "n": 2044, "real_r": 0.0011, "sim_r": 0.6365, "gap": 0.6354 },
-    { "pair": "RB1-DST", "kind": "same_team", "n": 2044, "real_r": 0.0798, "sim_r": 0.0564, "gap": -0.0234 },
-    { "pair": "QB-DST", "kind": "same_team", "n": 2006, "real_r": -0.0485, "sim_r": 0.0373, "gap": 0.0858 },
-    { "pair": "QB-oppQB", "kind": "opponent", "n": 1968, "real_r": 0.1966, "sim_r": 0.3979, "gap": 0.2013 },
-    { "pair": "QB-oppWR1", "kind": "opponent", "n": 2006, "real_r": 0.0893, "sim_r": 0.4122, "gap": 0.3229 },
-    { "pair": "QB-oppRB1", "kind": "opponent", "n": 2004, "real_r": 0.0395, "sim_r": 0.3407, "gap": 0.3012 },
-    { "pair": "DST-oppQB", "kind": "opponent", "n": 2006, "real_r": -0.4108, "sim_r": -0.2651, "gap": 0.1457 },
-    { "pair": "DST-oppRB1", "kind": "opponent", "n": 2044, "real_r": -0.2989, "sim_r": -0.2208, "gap": 0.0781 }
-  ]
+  "computed": "2026-10-27"
 }

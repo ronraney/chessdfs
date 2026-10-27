@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Player } from "../models";
 import { SeededRandom } from "../rng";
-import { drawOutcome, drawSlateOutcomes, type SlateVegas } from "./draws";
+import { TEMPLATE_PSD_REPORT, assignRoles, drawOutcome, drawSlateOutcomes, nearestPSD, tryCholesky, type SlateVegas } from "./draws";
 
 function makePlayer(
   id: string,
@@ -64,7 +64,6 @@ describe("drawOutcome", () => {
   });
 
   it("extends the right tail beyond P85 at k=1", () => {
-    // At u=1.0, k=1: ceiling + (ceiling - median) * 1 * (1.0-0.85)/0.15 = ceiling + (ceiling-median)
     expect(drawOutcome(10, 18, 28, 0, 1.0)).toBeCloseTo(28 + (28 - 18), 10);
   });
 
@@ -74,37 +73,151 @@ describe("drawOutcome", () => {
   });
 });
 
+describe("assignRoles", () => {
+  it("ranks QB1/RB1-2/WR1-3/TE1-2/DST by proj within team+position; everyone past the cutoff is other", () => {
+    const players = [
+      makePlayer("qb-a", "QB", "AAA", "BBB", 10, 20, 30),
+      makePlayer("rb-a1", "RB", "AAA", "BBB", 5, 15, 25),
+      makePlayer("rb-a2", "RB", "AAA", "BBB", 5, 10, 20),
+      makePlayer("rb-a3", "RB", "AAA", "BBB", 2, 4, 8), // past the RB2 cutoff -- "other"
+      makePlayer("wr-a1", "WR", "AAA", "BBB", 5, 18, 28),
+      makePlayer("wr-a2", "WR", "AAA", "BBB", 4, 12, 20),
+      makePlayer("wr-a3", "WR", "AAA", "BBB", 3, 8, 14),
+      makePlayer("wr-a4", "WR", "AAA", "BBB", 1, 3, 6), // past WR3 -- "other"
+      makePlayer("te-a1", "TE", "AAA", "BBB", 3, 10, 18),
+      makePlayer("te-a2", "TE", "AAA", "BBB", 2, 5, 10),
+      makePlayer("dst-a", "DST", "AAA", "BBB", 1, 7, 14),
+    ];
+    const roles = assignRoles(players);
+    expect(roles.get("qb-a")).toBe("QB1");
+    expect(roles.get("rb-a1")).toBe("RB1");
+    expect(roles.get("rb-a2")).toBe("RB2");
+    expect(roles.get("rb-a3")).toBeUndefined();
+    expect(roles.get("wr-a1")).toBe("WR1");
+    expect(roles.get("wr-a2")).toBe("WR2");
+    expect(roles.get("wr-a3")).toBe("WR3");
+    expect(roles.get("wr-a4")).toBeUndefined();
+    expect(roles.get("te-a1")).toBe("TE1");
+    expect(roles.get("te-a2")).toBe("TE2");
+    expect(roles.get("dst-a")).toBe("DST");
+  });
+
+  it("ties keep the pool's own original order (stable sort)", () => {
+    const players = [
+      makePlayer("wr-first", "WR", "AAA", "BBB", 5, 10, 18),
+      makePlayer("wr-second", "WR", "AAA", "BBB", 5, 10, 18), // identical proj, listed after
+    ];
+    const roles = assignRoles(players);
+    expect(roles.get("wr-first")).toBe("WR1");
+    expect(roles.get("wr-second")).toBe("WR2");
+  });
+
+  it("an unmodeled position (e.g. K) is never assigned a role", () => {
+    const players = [makePlayer("k-a", "K", "AAA", "BBB", 2, 8, 12)];
+    expect(assignRoles(players).get("k-a")).toBeUndefined();
+  });
+
+  it("ranks independently per team -- a second team's roles don't collide with the first's", () => {
+    const players = [
+      makePlayer("qb-a", "QB", "AAA", "BBB", 10, 20, 30),
+      makePlayer("qb-b", "QB", "BBB", "AAA", 10, 25, 30),
+    ];
+    const roles = assignRoles(players);
+    expect(roles.get("qb-a")).toBe("QB1");
+    expect(roles.get("qb-b")).toBe("QB1");
+  });
+});
+
+describe("tryCholesky / nearestPSD", () => {
+  it("tryCholesky factors a valid correlation matrix (L L^T reconstructs it)", () => {
+    const m = [
+      [1, 0.5, 0.2],
+      [0.5, 1, 0.3],
+      [0.2, 0.3, 1],
+    ];
+    const L = tryCholesky(m);
+    expect(L).not.toBeNull();
+    const n = m.length;
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        let sum = 0;
+        for (let k = 0; k < n; k++) sum += L![i][k] * L![j][k];
+        expect(sum).toBeCloseTo(m[i][j], 9);
+      }
+    }
+  });
+
+  it("tryCholesky returns null for a matrix that isn't positive-definite", () => {
+    // Off-diagonal magnitude > 1 is never a valid correlation -- not PSD.
+    const broken = [
+      [1, 1.5],
+      [1.5, 1],
+    ];
+    expect(tryCholesky(broken)).toBeNull();
+  });
+
+  it("nearestPSD repairs a broken matrix into one that IS positive-definite, with a nonzero reported change", () => {
+    const broken = [
+      [1, 1.5],
+      [1.5, 1],
+    ];
+    const { matrix, largestChange } = nearestPSD(broken);
+    expect(largestChange).toBeGreaterThan(0);
+    expect(matrix[0][0]).toBeCloseTo(1, 6);
+    expect(matrix[1][1]).toBeCloseTo(1, 6);
+    expect(tryCholesky(matrix)).not.toBeNull();
+  });
+
+  it("nearestPSD leaves an already-valid correlation matrix (almost) unchanged", () => {
+    const m = [
+      [1, 0.3],
+      [0.3, 1],
+    ];
+    const { largestChange } = nearestPSD(m);
+    expect(largestChange).toBeLessThan(1e-6);
+  });
+});
+
+describe("TEMPLATE_PSD_REPORT", () => {
+  it("the real, measured role x role template (real_correlation_targets.json) is already PSD -- no correction needed", () => {
+    expect(TEMPLATE_PSD_REPORT.wasAlreadyPsd).toBe(true);
+    expect(TEMPLATE_PSD_REPORT.largestChange).toBeLessThan(1e-9);
+  });
+});
+
 describe("drawSlateOutcomes: known triples over many draws", () => {
-  it("recovers roughly the right P15/P50/P85 for an isolated player", () => {
-    const wr = makePlayer("wr1", "WR", "AAA", "BBB", 5, 12, 20);
+  it("recovers roughly the right P15/P50/P85 for an 'other' player (no role, no vegas)", () => {
+    // Ranked behind wr1/wr2/wr3 (proj 16/15/14) on its own team -- past the
+    // WR1-3 cutoff, so genuinely "other": zero correlation, zero mean
+    // shift, nothing but its own independent draw through drawOutcome.
+    const other = makePlayer("other", "WR", "AAA", "BBB", 5, 12, 20);
+    const wr1 = makePlayer("wr1", "WR", "AAA", "BBB", 5, 16, 24);
+    const wr2 = makePlayer("wr2", "WR", "AAA", "BBB", 5, 15, 23);
+    const wr3 = makePlayer("wr3", "WR", "AAA", "BBB", 5, 14, 22);
     const dummyOpp = makePlayer("dummy1", "WR", "BBB", "AAA", 5, 12, 20);
-    const players = [wr, dummyOpp];
+    const players = [other, wr1, wr2, wr3, dummyOpp];
 
     const rng = new SeededRandom(12345);
     const N = 20000;
     const samples: number[] = [];
     for (let i = 0; i < N; i++) {
       const out = drawSlateOutcomes(players, NO_VEGAS, rng);
-      samples.push(out.get("wr1")!);
+      samples.push(out.get("other")!);
     }
     samples.sort((a, b) => a - b);
     const p15 = samples[Math.floor(N * 0.15)];
     const p50 = samples[Math.floor(N * 0.5)];
     const p85 = samples[Math.floor(N * 0.85)];
 
-    // The latent model layers regime shocks (shootout/script) on top of the
-    // raw percentile curve, so empirical percentiles track the ETR anchors
-    // closely but not exactly -- same structural reason nfl-dfs's own
-    // calibration harness measures its OWN empirical P95 rather than
-    // assuming the raw anchor. Tolerance is generous but still meaningfully
-    // bounds the median tightly and confirms P15 < P50 < P85 ordering.
-    expect(p50).toBeGreaterThan(10);
-    expect(p50).toBeLessThan(15);
+    // No regime layering left in this model -- an "other" player with no
+    // Vegas input is a plain mean-0, unit-variance normal through
+    // drawOutcome, so empirical percentiles should track the ETR anchors
+    // tightly.
+    expect(p50).toBeCloseTo(12, 0);
     expect(p15).toBeLessThan(p50);
     expect(p85).toBeGreaterThan(p50);
-    expect(p15).toBeGreaterThan(0);
-    expect(p15).toBeLessThan(8);
-    expect(p85).toBeGreaterThan(18);
+    expect(p15).toBeCloseTo(12 - (12 - 5), 0);
+    expect(p85).toBeCloseTo(20, 0);
   });
 });
 
@@ -128,8 +241,8 @@ describe("drawSlateOutcomes: determinism", () => {
   });
 });
 
-describe("drawSlateOutcomes: correlation structure", () => {
-  it("teammates are positively correlated", () => {
+describe("drawSlateOutcomes: role correlation structure", () => {
+  it("same-team QB1/WR1 are positively correlated, roughly matching the measured target", () => {
     const qb = makePlayer("qb1", "QB", "AAA", "BBB", 12, 18, 28);
     const wr = makePlayer("wr1", "WR", "AAA", "BBB", 5, 10, 18);
     const oppRb = makePlayer("rb1", "RB", "BBB", "AAA", 6, 12, 20);
@@ -146,40 +259,58 @@ describe("drawSlateOutcomes: correlation structure", () => {
       wrPts.push(out.get("wr1")!);
     }
 
+    // Measured target (real_correlation_targets.json): QB1-WR1 sim_r
+    // isn't pinned to the real_r itself (that's the whole point of
+    // Cholesky-drawing from this matrix rather than copying it verbatim
+    // -- drawOutcome's own piecewise curve, not a raw normal, is what
+    // actually gets correlated), so this just confirms the right sign and
+    // rough strength, not an exact value.
     expect(pearsonR(qbPts, wrPts)).toBeGreaterThan(0.2);
   });
 
-  it("DST is negatively correlated with the opposing RB", () => {
-    // DST (AAA) and RB (BBB) are on OPPOSING sides of the same game -- the
-    // negative correlation channel is DST's negative wGame loading vs RB's
-    // positive wGame loading on the one zGame factor they share, not a
-    // same-team relationship (same-team RB<->DST is the OPPOSITE sign in
-    // nfl-dfs's own validated asymmetry -- see module header).
+  it("DST is negatively correlated with the opposing QB1 (measured target -0.41)", () => {
     const dst = makePlayer("dst1", "DST", "AAA", "BBB", 2, 7, 14);
-    const oppRb = makePlayer("rb1", "RB", "BBB", "AAA", 6, 12, 20);
-    const players = [dst, oppRb];
+    const oppQb = makePlayer("qb1", "QB", "BBB", "AAA", 12, 18, 28);
+    const players = [dst, oppQb];
 
     const rng = new SeededRandom(99);
     const N = 10000;
     const dstPts: number[] = [];
-    const rbPts: number[] = [];
+    const qbPts: number[] = [];
     for (let i = 0; i < N; i++) {
       const out = drawSlateOutcomes(players, NO_VEGAS, rng);
       dstPts.push(out.get("dst1")!);
-      rbPts.push(out.get("rb1")!);
+      qbPts.push(out.get("qb1")!);
     }
 
-    expect(pearsonR(dstPts, rbPts)).toBeLessThan(-0.05);
+    expect(pearsonR(dstPts, qbPts)).toBeLessThan(-0.1);
+  });
+
+  it("an 'other' player (past the modeled-role cutoff) has ~zero correlation with a teammate's role-player", () => {
+    const qb = makePlayer("qb1", "QB", "AAA", "BBB", 12, 18, 28);
+    const wr1 = makePlayer("wr1", "WR", "AAA", "BBB", 5, 15, 24);
+    const wr2 = makePlayer("wr2", "WR", "AAA", "BBB", 5, 14, 23);
+    const wr3 = makePlayer("wr3", "WR", "AAA", "BBB", 5, 13, 22);
+    const wr4 = makePlayer("wr4", "WR", "AAA", "BBB", 5, 10, 18); // "other"
+    const oppFiller = makePlayer("dummy", "WR", "BBB", "AAA", 5, 10, 18);
+    const players = [qb, wr1, wr2, wr3, wr4, oppFiller];
+
+    const rng = new SeededRandom(2024);
+    const N = 15000;
+    const qbPts: number[] = [];
+    const wr4Pts: number[] = [];
+    for (let i = 0; i < N; i++) {
+      const out = drawSlateOutcomes(players, NO_VEGAS, rng);
+      qbPts.push(out.get("qb1")!);
+      wr4Pts.push(out.get("wr4")!);
+    }
+
+    expect(Math.abs(pearsonR(qbPts, wr4Pts))).toBeLessThan(0.05);
   });
 });
 
-describe("drawSlateOutcomes: Vegas total", () => {
+describe("drawSlateOutcomes: Vegas/dome/spread shift the mean, not shared variance", () => {
   it("a high Vegas total raises that game's mean scoring vs neutral", () => {
-    // totalShift is a deviation FROM THE SLATE AVERAGE (nfl-dfs's own
-    // design), so a single-game slate is self-referential -- that game's
-    // total always equals the average of itself, and the shift is always
-    // zero regardless of the number entered. A second game is required to
-    // give the average something to deviate from.
     const game1 = [
       makePlayer("qb1", "QB", "AAA", "BBB", 12, 18, 28),
       makePlayer("wr1", "WR", "AAA", "BBB", 5, 10, 18),
@@ -193,7 +324,6 @@ describe("drawSlateOutcomes: Vegas total", () => {
       makePlayer("dst2", "DST", "DDD", "CCC", 2, 7, 14),
     ];
     const players = [...game1, ...game2];
-
     const N = 8000;
 
     const neutralRng = new SeededRandom(2026);
@@ -203,8 +333,6 @@ describe("drawSlateOutcomes: Vegas total", () => {
       for (const p of game1) neutralGame1Sum += out.get(p.id)!;
     }
 
-    // game1 at a high total (60), game2 at a below-average total (40) --
-    // gives the slate average (50) something real to deviate from.
     const skewedTotals: SlateVegas = new Map([
       ["AAA", { total: 60 }],
       ["BBB", { total: 60 }],
@@ -220,76 +348,74 @@ describe("drawSlateOutcomes: Vegas total", () => {
 
     expect(highGame1Sum / N).toBeGreaterThan(neutralGame1Sum / N);
   });
-});
 
-describe("drawSlateOutcomes: dome", () => {
-  it("a dome game leans more on the shared zGame factor than a non-dome game", () => {
-    // Dome only scales wGame (the shared-per-game loading), not wTeam --
-    // so the cleanest place to see it is a CROSS-team pair (no shared
-    // zTeam at all) sharing only the game's zGame factor. Game1 (AAA
-    // hosting BBB) is flagged dome; game2 (CCC hosting DDD) is an
-    // identical control, non-dome -- AAA is the HOME team (isHome: true),
-    // exactly the team dome status keys off of.
-    const qbA = makePlayer("qbA", "QB", "AAA", "BBB", 12, 18, 28, true);
-    const qbB = makePlayer("qbB", "QB", "BBB", "AAA", 12, 18, 28, false);
-    const qbC = makePlayer("qbC", "QB", "CCC", "DDD", 12, 18, 28, true);
-    const qbD = makePlayer("qbD", "QB", "DDD", "CCC", 12, 18, 28, false);
-    const players = [qbA, qbB, qbC, qbD];
-    const domeTeams = new Set(["AAA"]);
-
-    const rng = new SeededRandom(2468);
+  it("Vegas total does NOT change same-team correlation (mean shift only, not shared variance)", () => {
+    const qb = makePlayer("qb1", "QB", "AAA", "BBB", 12, 18, 28);
+    const wr = makePlayer("wr1", "WR", "AAA", "BBB", 5, 10, 18);
+    const oppQb = makePlayer("qb2", "QB", "BBB", "AAA", 12, 18, 28);
+    const oppWr = makePlayer("wr2", "WR", "BBB", "AAA", 5, 10, 18);
+    const players = [qb, wr, oppQb, oppWr];
     const N = 10000;
-    const aPts: number[] = [];
-    const bPts: number[] = [];
-    const cPts: number[] = [];
-    const dPts: number[] = [];
-    for (let i = 0; i < N; i++) {
-      const out = drawSlateOutcomes(players, NO_VEGAS, rng, domeTeams);
-      aPts.push(out.get("qbA")!);
-      bPts.push(out.get("qbB")!);
-      cPts.push(out.get("qbC")!);
-      dPts.push(out.get("qbD")!);
+
+    function corrAt(vegas: SlateVegas, seed: number): number {
+      const rng = new SeededRandom(seed);
+      const qbPts: number[] = [];
+      const wrPts: number[] = [];
+      for (let i = 0; i < N; i++) {
+        const out = drawSlateOutcomes(players, vegas, rng);
+        qbPts.push(out.get("qb1")!);
+        wrPts.push(out.get("wr1")!);
+      }
+      return pearsonR(qbPts, wrPts);
     }
 
-    const domeCorr = pearsonR(aPts, bPts);
-    const controlCorr = pearsonR(cPts, dPts);
-    expect(domeCorr).toBeGreaterThan(controlCorr);
+    const neutral = corrAt(NO_VEGAS, 55);
+    const high: SlateVegas = new Map([
+      ["AAA", { total: 60 }],
+      ["BBB", { total: 60 }],
+    ]);
+    const highCorr = corrAt(high, 55);
+    expect(Math.abs(highCorr - neutral)).toBeLessThan(0.05);
   });
 
-  it("dome keys off the home team only, not either team in the matchup: NO @ NYG is not a dome game, NYG @ NO is", () => {
-    // Cross-team wGame-only pairs again (see the test above for why) --
-    // dome's measurable effect is a higher cross-team correlation than a
-    // domeTeams-empty control drawn from the identical matchup.
-    const domeTeams = new Set(["NO"]);
-    const rng = new SeededRandom(70118);
+  it("a dome game raises mean scoring but does NOT change cross-team correlation", () => {
+    const qbA = makePlayer("qbA", "QB", "AAA", "BBB", 12, 18, 28, true);
+    const qbB = makePlayer("qbB", "QB", "BBB", "AAA", 12, 18, 28, false);
+    const players = [qbA, qbB];
+    const domeTeams = new Set(["AAA"]);
     const N = 10000;
 
-    function crossTeamCorr(homeTeam: string, awayTeam: string, domes: ReadonlySet<string>): number {
-      const home = makePlayer("home", "QB", homeTeam, awayTeam, 12, 18, 28, true);
-      const away = makePlayer("away", "QB", awayTeam, homeTeam, 12, 18, 28, false);
-      const homePts: number[] = [];
-      const awayPts: number[] = [];
-      for (let i = 0; i < N; i++) {
-        const out = drawSlateOutcomes([home, away], NO_VEGAS, rng, domes);
-        homePts.push(out.get("home")!);
-        awayPts.push(out.get("away")!);
-      }
-      return pearsonR(homePts, awayPts);
+    const neutralRng = new SeededRandom(321);
+    let neutralSum = 0;
+    const neutralAPts: number[] = [];
+    const neutralBPts: number[] = [];
+    for (let i = 0; i < N; i++) {
+      const out = drawSlateOutcomes(players, NO_VEGAS, neutralRng, EMPTY_DOME);
+      neutralSum += out.get("qbA")!;
+      neutralAPts.push(out.get("qbA")!);
+      neutralBPts.push(out.get("qbB")!);
     }
+    const domeRng = new SeededRandom(321);
+    let domeSum = 0;
+    const aPts: number[] = [];
+    const bPts: number[] = [];
+    for (let i = 0; i < N; i++) {
+      const out = drawSlateOutcomes(players, NO_VEGAS, domeRng, domeTeams);
+      domeSum += out.get("qbA")!;
+      aPts.push(out.get("qbA")!);
+      bPts.push(out.get("qbB")!);
+    }
+    expect(domeSum / N).toBeGreaterThan(neutralSum / N);
 
-    // "NO @ NYG": NO away, NYG hosts -- NYG isn't a dome team, so this
-    // reads identically to a plain non-dome control even with domeTeams
-    // naming NO (NO is only the away team here, never consulted).
-    const noAtNyg = crossTeamCorr("NYG", "NO", domeTeams);
-    const nonDomeControl = crossTeamCorr("NYG", "NO", EMPTY_DOME);
-    expect(noAtNyg).toBeCloseTo(nonDomeControl, 1);
-
-    // "NYG @ NO": NYG away, NO hosts -- NO (Caesars Superdome) IS a dome
-    // team, so this game IS dome -- a real correlation boost vs. the same
-    // matchup with no dome list at all.
-    const nygAtNo = crossTeamCorr("NO", "NYG", domeTeams);
-    const domeControl = crossTeamCorr("NO", "NYG", EMPTY_DOME);
-    expect(nygAtNo).toBeGreaterThan(domeControl);
+    // Each is the lone QB on its own team, so both are role "QB1" --
+    // qbA/qbB ARE correlated (the measured QB1-oppQB1 target, ~0.2), not
+    // zero. The point of this test is that dome doesn't change THAT
+    // correlation -- only the mean -- so compare dome's correlation
+    // against the identical pair's own neutral-run correlation, not
+    // against zero.
+    const neutralCorr = pearsonR(neutralAPts, neutralBPts);
+    const domeCorr = pearsonR(aPts, bPts);
+    expect(Math.abs(domeCorr - neutralCorr)).toBeLessThan(0.05);
   });
 
   it("an empty domeTeams set draws every game as non-dome (default, unchanged from before dome existed)", () => {
