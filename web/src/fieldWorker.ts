@@ -35,24 +35,38 @@ export interface FieldWorkerRequest {
   // back out of the cache is recomputed there, not here (see
   // fieldCacheStore.ts's resolveCachedField).
   readonly representativeFieldSize: number;
+  // The attempt CAP, not a guaranteed attempt count -- see field.ts's own
+  // `generateSimulatedField` comment. buildFieldCache.ts now passes a much
+  // bigger number than the old flat DEFAULT_SAMPLE_SIZE here.
   readonly sampleSize: number;
   readonly seed: number;
+  // Stop early once this many distinct lineups are found -- this task's
+  // own "5,000 distinct lineups (config setting)".
+  readonly targetDistinct: number;
 }
 
 export type FieldWorkerResponse =
-  | { readonly type: "progress"; readonly completed: number; readonly total: number }
+  | { readonly type: "progress"; readonly completed: number; readonly total: number; readonly distinct: number; readonly targetDistinct: number }
   | { readonly type: "done"; readonly lineupIds: readonly (readonly string[])[] };
 
 addEventListener("message", (event: MessageEvent<FieldWorkerRequest>) => {
-  const { playerFields, representativeFieldSize, sampleSize, seed } = event.data;
+  const { playerFields, representativeFieldSize, sampleSize, seed, targetDistinct } = event.data;
   const players = playerFields.map((fields) => new Player(fields));
   const contest = new ContestConfig({ fieldSize: representativeFieldSize, payouts: [] });
   const rng = new SeededRandom(seed);
 
-  const field = generateSimulatedField(players, contest, NFL, sampleSize, rng, (completed, total) => {
-    const progress: FieldWorkerResponse = { type: "progress", completed, total };
-    postMessage(progress);
-  });
+  const field = generateSimulatedField(
+    players,
+    contest,
+    NFL,
+    sampleSize,
+    rng,
+    (completed, total, distinct, targetDistinctEcho) => {
+      const progress: FieldWorkerResponse = { type: "progress", completed, total, distinct, targetDistinct: targetDistinctEcho };
+      postMessage(progress);
+    },
+    targetDistinct,
+  );
 
   const lineupIds = field.lineups.map((lineup) => lineup.map((p) => p.id));
   const done: FieldWorkerResponse = { type: "done", lineupIds };

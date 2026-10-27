@@ -8,7 +8,7 @@
 // ever clicking the button that reaches it, same as BuildScreen's tests
 // never drive Black out of book far enough to invoke stockfishEngine.
 import { FieldTier, type Player, type PlayerFields } from "./engine/models";
-import { DEFAULT_SAMPLE_SIZE } from "./engine/sim/field";
+import { DEFAULT_TARGET_DISTINCT_LINEUPS } from "./engine/sim/field";
 import { saveCachedFieldIds } from "./fieldCacheStore";
 import type { FieldWorkerRequest, FieldWorkerResponse } from "./fieldWorker";
 
@@ -26,6 +26,28 @@ const REPRESENTATIVE_FIELD_SIZE: Record<FieldTier, number> = {
   [FieldTier.LARGE]: 50000,
 };
 
+// This task's own target: every tier's cached field should contain at
+// least this many DISTINCT 9-player combinations, not just this many
+// accepted attempts.
+export const TARGET_DISTINCT_LINEUPS = DEFAULT_TARGET_DISTINCT_LINEUPS;
+
+// The attempt CAP -- "stop at a sensible attempt cap and report the
+// shortfall" (this task's own wording). Measured on the real sample slate
+// (301 players, data/samples/NFL Weekly DFS System - Projections.csv):
+// distinct-lineup count grows roughly logarithmically in attempts (the
+// ownership-bias objective keeps re-finding the same handful of best-
+// scoring combos well before exposure caps force real variety) -- ~624
+// distinct at 1,000 attempts, ~2,671 at 10,000 (Mid tier), and a log-curve
+// fit through those points puts 5,000 distinct at roughly 135,000+
+// attempts, which at the ~10ms/attempt measured here would take 20+
+// minutes PER TIER. 10,000 attempts (~100s/tier measured) is this
+// session's own judgment call for "sensible" -- a real improvement over
+// the old flat 1,000 (roughly 4x the distinct count), without turning
+// "Build fields" into a many-minutes-per-tier wait. Flagged as a guess,
+// not spec'd: Ron may want this tuned differently once he's felt the
+// actual wait in a real browser.
+export const BUILD_ATTEMPT_CAP = 10000;
+
 // A fixed seed for every admin-triggered build -- there's no per-build
 // "seed" concept exposed anywhere in this app yet, and this task only
 // asked for determinism-by-construction (SeededRandom), not a specific
@@ -35,14 +57,14 @@ const BUILD_SEED = 20261019;
 function runOneTier(
   playerFields: readonly PlayerFields[],
   tier: FieldTier,
-  onProgress: (completed: number, total: number) => void,
+  onProgress: (completed: number, total: number, distinct: number, targetDistinct: number) => void,
 ): Promise<readonly (readonly string[])[]> {
   return new Promise((resolve, reject) => {
     const worker = new Worker(new URL("./fieldWorker.ts", import.meta.url), { type: "module" });
     worker.addEventListener("message", (event: MessageEvent<FieldWorkerResponse>) => {
       const message = event.data;
       if (message.type === "progress") {
-        onProgress(message.completed, message.total);
+        onProgress(message.completed, message.total, message.distinct, message.targetDistinct);
         return;
       }
       worker.terminate();
@@ -55,8 +77,9 @@ function runOneTier(
     const request: FieldWorkerRequest = {
       playerFields,
       representativeFieldSize: REPRESENTATIVE_FIELD_SIZE[tier],
-      sampleSize: DEFAULT_SAMPLE_SIZE,
+      sampleSize: BUILD_ATTEMPT_CAP,
       seed: BUILD_SEED,
+      targetDistinct: TARGET_DISTINCT_LINEUPS,
     };
     worker.postMessage(request);
   });
@@ -86,11 +109,13 @@ function toPlayerFields(p: Player): PlayerFields {
 export async function buildAndCacheFields(
   signature: string,
   players: readonly Player[],
-  onProgress: (tier: FieldTier, completed: number, total: number) => void,
+  onProgress: (tier: FieldTier, completed: number, total: number, distinct: number, targetDistinct: number) => void,
 ): Promise<void> {
   const playerFields = players.map(toPlayerFields);
   for (const tier of BUILD_TIERS) {
-    const lineupIds = await runOneTier(playerFields, tier, (completed, total) => onProgress(tier, completed, total));
+    const lineupIds = await runOneTier(playerFields, tier, (completed, total, distinct, targetDistinct) =>
+      onProgress(tier, completed, total, distinct, targetDistinct),
+    );
     saveCachedFieldIds(signature, tier, lineupIds);
   }
 }

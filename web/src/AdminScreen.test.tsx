@@ -307,7 +307,7 @@ describe("AdminScreen -- simulated fields cache", () => {
     const user = userEvent.setup();
     await logInWithSavedSlate(user);
 
-    expect(screen.getByText("LARGE: 3 lineups cached")).toBeInTheDocument();
+    expect(screen.getByText("LARGE: 3 lineups cached (3 distinct, short of the 5000 target by 4997)")).toBeInTheDocument();
     expect(screen.getByText("SMALL: not built yet")).toBeInTheDocument();
   });
 
@@ -331,7 +331,7 @@ describe("AdminScreen -- simulated fields cache", () => {
 
     const user = userEvent.setup();
     await logInWithSavedSlate(user);
-    expect(screen.getByText("LARGE: 1 lineups cached")).toBeInTheDocument();
+    expect(screen.getByText("LARGE: 1 lineups cached (1 distinct, short of the 5000 target by 4999)")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Clear projections" }));
 

@@ -196,23 +196,52 @@ function sampleTeamsWithoutReplacement(rng: SeededRandom, teams: readonly string
   return picked;
 }
 
+// nfl-dfs's/this port's own default distinct-lineup target (this task's
+// own wording: "5,000 distinct lineups (config setting)") -- how many
+// genuinely DIFFERENT 9-player combinations the field should contain
+// before generateSimulatedField stops early, distinct from `sampleSize`
+// (now read as the attempt CAP -- see that param's own comment).
+export const DEFAULT_TARGET_DISTINCT_LINEUPS = 5000;
+
 /**
- * Generates a simulated field of `sampleSize` lineups: the contest's
- * OTHER entrants, not the current build -- the pool passed in is every
- * available player, with no awareness of (or filtering by) whatever
- * either side has locked in the current chess-dfs build.
+ * Generates a simulated field of up to `sampleSize` ATTEMPTS: the
+ * contest's OTHER entrants, not the current build -- the pool passed in
+ * is every available player, with no awareness of (or filtering by)
+ * whatever either side has locked in the current chess-dfs build.
  */
 export function generateSimulatedField(
   players: readonly Player[],
   contest: ContestConfig,
   sport: SportConfig,
+  // The attempt CAP (same role `sampleSize` always had -- every exposure/
+  // ownership-bias/min-exposure-floor formula below is still anchored to
+  // this exact number, unchanged, per this task's own "keep ownership
+  // targeting and exposure caps as they are"). The loop may stop BEFORE
+  // using up every attempt once `targetDistinct` is reached -- see that
+  // param below. Measured on the real sample slate (301 players): with a
+  // REAL player pool, the distinct-lineup count grows roughly
+  // logarithmically in attempts (~624 distinct at 1,000 attempts, ~2,671
+  // at 10,000) -- the ownership-bias objective keeps re-finding the same
+  // handful of best-scoring combos well before exposure caps force real
+  // variety, so reaching a big distinct target can need FAR more attempts
+  // than `sampleSize` used to be (1,000) alone.
   sampleSize: number,
   rng: SeededRandom,
-  // Optional, called once per attempt (accepted or skipped) with attempts
-  // completed so far -- added this session so a caller running this off
-  // the main thread (fieldWorker.ts) can report build progress without
-  // this function itself doing any I/O (still no DOM/postMessage here).
-  onProgress?: (completed: number, total: number) => void,
+  // Called once per attempt (accepted or skipped) with attempts completed
+  // so far, the attempt cap, distinct lineups found so far, and the
+  // distinct target -- a caller running this off the main thread
+  // (fieldWorker.ts) uses this to report build progress without this
+  // function itself doing any I/O (still no DOM/postMessage here). Extra
+  // trailing args are backward compatible with a 2-arg (completed, total)
+  // callback (TS's own callback-parameter-count variance allows this).
+  onProgress?: (completed: number, total: number, distinct: number, targetDistinct: number) => void,
+  // Stop once this many DISTINCT 9-player combinations have been found,
+  // even if `sampleSize` attempts remain -- omitted (the default)
+  // reproduces the old behavior exactly: run every one of `sampleSize`
+  // attempts, no early stop. Doesn't change which lineups get built or
+  // how (same MILP/noise/exposure-cap logic every attempt) -- only when
+  // the loop stops asking for more.
+  targetDistinct?: number,
 ): SimulatedField {
   const tier = contest.fieldTier();
   const cap = contest.effectiveCap(sport);
@@ -291,9 +320,17 @@ export function generateSimulatedField(
   const stackEligibleTeams = [...qbsByTeam.keys()].filter((team) => (catchersByTeam.get(team)?.length ?? 0) >= 2);
 
   const lineups: Player[][] = [];
+  // Every ACCEPTED attempt's own 9-player id set, sorted -- not deduped
+  // into `lineups` itself (a combo accepted 30 times across 30 attempts
+  // still occupies 30 slots there, same as always: that repetition IS the
+  // combo's simulated frequency/exposure, load-bearing for run.ts's trial
+  // loop). This set exists ONLY to decide when to stop asking for more.
+  const distinctKeys = new Set<string>();
+  const effectiveTarget = targetDistinct ?? Infinity;
 
-  for (let attempt = 0; attempt < sampleSize; attempt++) {
-    onProgress?.(attempt, sampleSize);
+  let attempt = 0;
+  for (; attempt < sampleSize && distinctKeys.size < effectiveTarget; attempt++) {
+    onProgress?.(attempt, sampleSize, distinctKeys.size, targetDistinct ?? sampleSize);
     const pool = players.filter((p) => {
       if (playerAtCap.has(p.id)) return false;
       if (positionOf(p) === "QB" && qbAtCap.has(p.id)) return false;
@@ -347,6 +384,12 @@ export function generateSimulatedField(
     if (lineup === null) continue; // infeasible this attempt -- skipped, no retry/relaxation
 
     lineups.push(lineup);
+    distinctKeys.add(
+      lineup
+        .map((p) => p.id)
+        .sort()
+        .join(","),
+    );
 
     const qb = lineup.find((p) => positionOf(p) === "QB");
     if (qb) {
@@ -361,7 +404,7 @@ export function generateSimulatedField(
     }
   }
 
-  onProgress?.(sampleSize, sampleSize);
+  onProgress?.(attempt, sampleSize, distinctKeys.size, targetDistinct ?? sampleSize);
 
   // nfl-dfs's own way (this task's follow-up spec): entrants / lineups
   // ACTUALLY built, not / sampleSize -- only differs when attempts are

@@ -10,7 +10,7 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import "./App.css";
 import { NFL } from "./appData";
-import { buildAndCacheFields, BUILD_TIERS } from "./buildFieldCache";
+import { buildAndCacheFields, BUILD_TIERS, TARGET_DISTINCT_LINEUPS } from "./buildFieldCache";
 import { SlateValidationError, validateSlateCsv } from "./engine/loaders";
 import type { FieldTier, Player } from "./engine/models";
 import { VegasValidationError, validateVegasCsv } from "./engine/sim/vegasCsv";
@@ -118,13 +118,26 @@ function summarizeSavedVegas(players: readonly Player[] | null): VegasSummary | 
 // slate's own signature -- {} (nothing shown as cached) whenever there's
 // no slate loaded at all, same "null in, null/empty out" shape as the
 // other summarize* helpers above.
-function computeFieldCacheStatus(csv: string | null): Partial<Record<FieldTier, number>> {
+// `accepted` is every stored attempt (duplicates included -- that
+// repetition IS each combo's simulated frequency, see field.ts's own
+// comment); `distinct` re-derives the DIFFERENT-combos count from the
+// same stored ids (no separate storage needed) so the status line can
+// report this task's own target/shortfall without a cache-format change.
+interface FieldCacheTierStatus {
+  accepted: number;
+  distinct: number;
+}
+
+function computeFieldCacheStatus(csv: string | null): Partial<Record<FieldTier, FieldCacheTierStatus>> {
   if (csv === null) return {};
   const signature = slateSignature(csv);
-  const status: Partial<Record<FieldTier, number>> = {};
+  const status: Partial<Record<FieldTier, FieldCacheTierStatus>> = {};
   for (const tier of BUILD_TIERS) {
     const ids = getCachedFieldIds(signature, tier);
-    if (ids !== null) status[tier] = ids.length;
+    if (ids !== null) {
+      const distinct = new Set(ids.map((lineupIds) => [...lineupIds].sort().join(","))).size;
+      status[tier] = { accepted: ids.length, distinct };
+    }
   }
   return status;
 }
@@ -138,10 +151,10 @@ function AdminScreen() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [vegas, setVegas] = useState<VegasSummary | null>(() => summarizeSavedVegas(getSavedSlatePlayers()));
   const [vegasUploadError, setVegasUploadError] = useState<string | null>(null);
-  const [fieldCacheStatus, setFieldCacheStatus] = useState<Partial<Record<FieldTier, number>>>(() =>
+  const [fieldCacheStatus, setFieldCacheStatus] = useState<Partial<Record<FieldTier, FieldCacheTierStatus>>>(() =>
     computeFieldCacheStatus(getSavedProjectionsCsv()),
   );
-  const [buildProgress, setBuildProgress] = useState<{ tier: FieldTier; completed: number; total: number } | null>(null);
+  const [buildProgress, setBuildProgress] = useState<{ tier: FieldTier; distinct: number; targetDistinct: number } | null>(null);
   const [buildError, setBuildError] = useState<string | null>(null);
 
   function handleSubmitPassword(event: FormEvent<HTMLFormElement>): void {
@@ -203,8 +216,8 @@ function AdminScreen() {
     const signature = slateSignature(csv);
     setBuildError(null);
     try {
-      await buildAndCacheFields(signature, slatePlayers, (tier, completed, total) => {
-        setBuildProgress({ tier, completed, total });
+      await buildAndCacheFields(signature, slatePlayers, (tier, _completed, _total, distinct, targetDistinct) => {
+        setBuildProgress({ tier, distinct, targetDistinct });
       });
       setFieldCacheStatus(computeFieldCacheStatus(csv));
     } catch (e) {
@@ -342,9 +355,9 @@ function AdminScreen() {
             {buildProgress !== null && (
               <div className="status">
                 <p>
-                  Building {buildProgress.tier}: {buildProgress.completed}/{buildProgress.total}
+                  Building {buildProgress.tier}: {buildProgress.distinct}/{buildProgress.targetDistinct} distinct lineups
                 </p>
-                <progress value={buildProgress.completed} max={buildProgress.total} />
+                <progress value={buildProgress.distinct} max={buildProgress.targetDistinct} />
               </div>
             )}
             {buildError !== null && (
@@ -353,9 +366,17 @@ function AdminScreen() {
               </p>
             )}
             <div className="status">
-              {BUILD_TIERS.map((tier) => (
-                <p key={tier}>{tier}: {fieldCacheStatus[tier] !== undefined ? `${fieldCacheStatus[tier]} lineups cached` : "not built yet"}</p>
-              ))}
+              {BUILD_TIERS.map((tier) => {
+                const tierStatus = fieldCacheStatus[tier];
+                if (tierStatus === undefined) return <p key={tier}>{tier}: not built yet</p>;
+                const shortfall = TARGET_DISTINCT_LINEUPS - tierStatus.distinct;
+                return (
+                  <p key={tier}>
+                    {tier}: {tierStatus.accepted} lineups cached ({tierStatus.distinct} distinct
+                    {shortfall > 0 ? `, short of the ${TARGET_DISTINCT_LINEUPS} target by ${shortfall}` : `, meets the ${TARGET_DISTINCT_LINEUPS} target`})
+                  </p>
+                );
+              })}
             </div>
           </>
         )}

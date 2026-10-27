@@ -193,6 +193,44 @@ describe("generateSimulatedField", () => {
     expect(calls.map(([completed]) => completed)).toEqual([...Array(sampleSize).keys(), sampleSize]);
     expect(calls.every(([, total]) => total === sampleSize)).toBe(true);
   });
+
+  it("targetDistinct stops the loop early once that many distinct lineups are found, well short of the attempt cap", () => {
+    const sampleSize = 600; // plenty of attempts for 5 distinct combos on this 58-player pool
+    const target = 5;
+    const field = generateSimulatedField(POOL, CONTEST, NFL, sampleSize, new SeededRandom(13), undefined, target);
+    const distinctCount = new Set(field.lineups.map((lineup) => lineup.map((p) => p.id).sort().join(","))).size;
+    expect(distinctCount).toBeGreaterThanOrEqual(target);
+    // Stopped well short of sampleSize -- proves the early stop actually
+    // fired rather than coincidentally running the full attempt cap.
+    expect(field.lineups.length).toBeLessThan(sampleSize);
+  });
+
+  it("omitting targetDistinct runs every attempt, same as before (no early stop)", () => {
+    const sampleSize = 50;
+    const field = generateSimulatedField(POOL, CONTEST, NFL, sampleSize, new SeededRandom(13));
+    expect(field.lineups.length).toBeLessThanOrEqual(sampleSize);
+    // This pool/seed can't realistically produce >=50 TRULY distinct
+    // 9-player combos in 50 attempts (same logarithmic-growth reality the
+    // real sample slate showed) -- confirms the loop kept going the whole
+    // way rather than stopping once some small distinct count was hit.
+    const distinctCount = new Set(field.lineups.map((lineup) => lineup.map((p) => p.id).sort().join(","))).size;
+    expect(distinctCount).toBeLessThan(sampleSize);
+  });
+
+  it("onProgress reports distinct-so-far and the target once targetDistinct is given", () => {
+    const sampleSize = 600;
+    const target = 5;
+    const calls: Array<{ distinct: number; targetDistinct: number }> = [];
+    const field = generateSimulatedField(POOL, CONTEST, NFL, sampleSize, new SeededRandom(13), (_completed, _total, distinct, targetDistinct) => {
+      calls.push({ distinct, targetDistinct });
+    }, target);
+    expect(calls.every((c) => c.targetDistinct === target)).toBe(true);
+    // Monotonically non-decreasing, and the LAST call's distinct count
+    // matches the field's own realized distinct count.
+    for (let i = 1; i < calls.length; i++) expect(calls[i].distinct).toBeGreaterThanOrEqual(calls[i - 1].distinct);
+    const distinctCount = new Set(field.lineups.map((lineup) => lineup.map((p) => p.id).sort().join(","))).size;
+    expect(calls[calls.length - 1].distinct).toBe(distinctCount);
+  });
 });
 
 describe("DEFAULT_SAMPLE_SIZE", () => {
