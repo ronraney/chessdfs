@@ -1,0 +1,26 @@
+{
+  "_comment": "Real-world NFL stat correlation targets, measured from nflverse-data (github.com/nflverse/nflverse-data: player_stats, stats_team, schedules releases), 2021-2025 regular seasons. Not consumed by any code yet -- a diagnosis-task deliverable (measurement only, no sim changes) for comparing against engine/sim/draws.ts's realized correlations. DraftKings Classic (full-PPR) fantasy points computed from raw counting stats, not nflverse's own fantasy_points_ppr column (which uses a different -2 INT / -2 fumble-lost / no-yardage-bonus formula). Roles ranked per team per week: QB1 by attempts, RB1 by carries, WR1/WR2 by targets (top 2), TE1 by targets, DST = that team's own defense/special-teams scoring (sacks, interceptions, fumble recoveries off the opponent, defensive + special-teams TDs, safeties, blocked kicks, tiered points-allowed bonus -- opponent's score in that game, via schedules' home_score/away_score). Opponent pairs join same-game rows on game_id. sim_r is engine/sim/draws.ts's drawSlateOutcomes realized Pearson r, measured on data/samples/DraftKings NFL DFS Projections -- Main Slate (6).csv (20,000 trials, all 20 teams pooled, roles by salary rank within each team).",
+  "source": "nflverse-data (player_stats, stats_team, schedules releases)",
+  "seasons": [2021, 2022, 2023, 2024, 2025],
+  "season_type": "REG",
+  "team_weeks": 2174,
+  "sim_slate": "DraftKings NFL DFS Projections -- Main Slate (6).csv",
+  "sim_trials": 20000,
+  "computed": "2026-10-27",
+  "pairs": [
+    { "pair": "QB-WR1", "kind": "same_team", "real_r": 0.4525, "sim_r": 0.7642, "gap": 0.3117 },
+    { "pair": "QB-WR2", "kind": "same_team", "real_r": 0.4028, "sim_r": 0.7259, "gap": 0.3231 },
+    { "pair": "QB-TE1", "kind": "same_team", "real_r": 0.3070, "sim_r": 0.6633, "gap": 0.3563 },
+    { "pair": "QB-RB1", "kind": "same_team", "real_r": 0.0833, "sim_r": 0.6716, "gap": 0.5883 },
+    { "pair": "WR1-WR2", "kind": "same_team", "real_r": 0.1919, "sim_r": 0.7184, "gap": 0.5265 },
+    { "pair": "WR1-TE1", "kind": "same_team", "real_r": -0.0121, "sim_r": 0.5629, "gap": 0.5750 },
+    { "pair": "RB1-WR1", "kind": "same_team", "real_r": 0.0095, "sim_r": 0.6365, "gap": 0.6270 },
+    { "pair": "RB1-DST", "kind": "same_team", "real_r": 0.0778, "sim_r": 0.0564, "gap": -0.0214 },
+    { "pair": "QB-DST", "kind": "same_team", "real_r": -0.0571, "sim_r": 0.0373, "gap": 0.0944 },
+    { "pair": "QB-oppQB", "kind": "opponent", "real_r": 0.1895, "sim_r": 0.3979, "gap": 0.2084 },
+    { "pair": "QB-oppWR1", "kind": "opponent", "real_r": 0.0926, "sim_r": 0.4122, "gap": 0.3196 },
+    { "pair": "QB-oppRB1", "kind": "opponent", "real_r": 0.0451, "sim_r": 0.3407, "gap": 0.2956 },
+    { "pair": "DST-oppQB", "kind": "opponent", "real_r": -0.4091, "sim_r": -0.2651, "gap": 0.1440 },
+    { "pair": "DST-oppRB1", "kind": "opponent", "real_r": -0.3059, "sim_r": -0.2208, "gap": 0.0851 }
+  ]
+}
