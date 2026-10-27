@@ -74,6 +74,14 @@ import {
   switchKing,
   type ChessMove,
 } from "./engine/rules";
+import type { SlateVegas } from "./engine/sim/draws";
+import type { SimulatedField } from "./engine/sim/field";
+import { validateVegasCsv } from "./engine/sim/vegasCsv";
+import type { SimResult } from "./engine/sim/run";
+import { NO_FIELD_CACHED_MESSAGE, resolveCachedField, slateSignature } from "./fieldCacheStore";
+import { getSavedProjectionsCsv } from "./projectionsStore";
+import { getSavedVegasCsv } from "./vegasStore";
+import { runSimInWorker } from "./simRunner";
 import { stockfishEngine } from "./stockfishEngine";
 import PickPanel, { type PickMoveContext } from "./PickPanel";
 import type { ChosenOpening } from "./SetupScreen";
@@ -139,6 +147,21 @@ interface Props {
 // nothing; Black's dead end is caught before any setState for it), so it's
 // already exactly the right snapshot.
 type Ending = { kind: "stopped" } | { kind: "complete" } | { kind: "deadEnd"; side: Side };
+
+// Sim 4: one side's own Monte Carlo sim status -- "idle" (never triggered
+// this build) renders nothing at all (SideColumn), the rest render a
+// message or the real numbers. `isBestFinish` is known the moment a run
+// starts (it only depends on whether THIS side's own lineup was already
+// complete, not on anything the sim itself produces), so every non-idle
+// variant carries it, including "noField" -- the "(best finish)" label
+// shouldn't flicker on/off depending on whether a field happens to be
+// cached.
+type SideSimState =
+  | { kind: "idle" }
+  | { kind: "noField"; isBestFinish: boolean }
+  | { kind: "running"; isBestFinish: boolean }
+  | { kind: "done"; result: SimResult; isBestFinish: boolean }
+  | { kind: "error"; message: string; isBestFinish: boolean };
 
 // The finish screen's "how it ended" headline -- RULES.md/dfs_chess/cli.py
 // give the dead-end wording verbatim ("Black has hit a dead end."/"You
@@ -429,13 +452,40 @@ export default function BuildScreen({
     };
   }, []);
 
+  // Sim 4: one SideSimState per side, plus the live Worker each one is
+  // currently waiting on (so a new run can terminate the old one -- "if a
+  // new sim starts, cancel the old one") and a monotonic run id (so a
+  // stale worker's response, in flight at the moment a newer run starts,
+  // is ignored even though terminate() should already prevent it from
+  // ever posting -- belt and suspenders, cheap to keep).
+  const [whiteSim, setWhiteSim] = useState<SideSimState>({ kind: "idle" });
+  const [blackSim, setBlackSim] = useState<SideSimState>({ kind: "idle" });
+  const whiteSimWorkerRef = useRef<Worker | null>(null);
+  const blackSimWorkerRef = useRef<Worker | null>(null);
+  const simRunIdRef = useRef(0);
+
+  useEffect(() => {
+    return () => {
+      whiteSimWorkerRef.current?.terminate();
+      blackSimWorkerRef.current?.terminate();
+    };
+  }, []);
+
   // Stable for the component's lifetime -- re-seeding every render (or
   // every Black move) would break play's own book-line commitment logic,
   // which depends on one continuously-advancing PRNG sequence. useState's
   // lazy initializer (not useRef's eager argument) is what keeps
   // Math.random() from being called -- impurely -- on every render; only
-  // the first render's call is ever used.
-  const [rng] = useState<SeededRandom>(() => new SeededRandom(Math.floor(Math.random() * 2 ** 31)));
+  // the first render's call is ever used. `buildSeed` is split out as its
+  // own captured value (Sim 4) rather than reading it back off `rng` --
+  // `rng` is a LIVE, continuously-advancing generator reserved for Black's
+  // own book/random choices; consuming it to seed a sim run would perturb
+  // Black's subsequent play non-deterministically depending on whether
+  // "Sim my core" was ever clicked. "Derive from the build's own seed" is
+  // satisfied by reusing this one fixed number for every sim run this
+  // build ever makes, not by drawing a fresh one per click.
+  const [buildSeed] = useState<number>(() => Math.floor(Math.random() * 2 ** 31));
+  const [rng] = useState<SeededRandom>(() => new SeededRandom(buildSeed));
   const familyRanks = useMemo(() => Object.fromEntries(RANKED_FAMILIES.map((f) => [f.name, f.rank])), []);
   const targetRank = useMemo(() => preset.contest.targetRank(LAST_RANK), [preset]);
 
@@ -850,6 +900,13 @@ export default function BuildScreen({
     setEnding({ kind: "stopped" });
   }
   const canStop = pendingMove === null && !blackMoving && ending === null;
+  // Sim 4 "Sim my core" -- same gating as Stop (nothing mid-flight to
+  // leave the sim's lineup snapshot stale under it), plus not already
+  // simming (re-clicking while running is still allowed by
+  // runSimForBothSides itself -- cancel-and-restart -- this just avoids
+  // encouraging rapid-fire clicks that would only ever cancel each other).
+  const simRunning = whiteSim.kind === "running" || blackSim.kind === "running";
+  const canSim = pendingMove === null && !blackMoving && ending === null && !simRunning;
 
   // Task 40 "Take back": pops the one `pastStates` entry commit() pushed
   // right before White's last move -- restoring it undoes that move AND
@@ -919,6 +976,130 @@ export default function BuildScreen({
     [players, preset, state.whiteMoves, state.blackMoves],
   );
   const blackOptimalStats = pointsFromOptimal(slateOptimal, blackBestCompletion);
+
+  // Sim 4's own field/Vegas inputs. The projections CSV text (not just the
+  // already-parsed `players`) is only needed for slateSignature -- read
+  // fresh via projectionsStore rather than threaded down as a new prop,
+  // same pattern AdminScreen.tsx already uses for the identical lookup.
+  // `cachedField` is null for either real reason (no projections saved at
+  // all -- shouldn't happen once a build is actually in progress, but
+  // checked anyway rather than assumed -- or nothing built in Admin yet
+  // for this slate+tier) and both render the same "Build fields in Admin
+  // first." message, so they're not distinguished further here.
+  const cachedField = useMemo((): SimulatedField | null => {
+    const csv = getSavedProjectionsCsv();
+    return csv === null ? null : resolveCachedField(slateSignature(csv), preset.contest, players);
+  }, [preset, players]);
+  // Vegas is OPTIONAL for the sim, not a hard requirement (draws.ts's own
+  // drawSlateOutcomes degrades to nfl-dfs's neutral per-game defaults for
+  // any team with no Vegas row, same convention AdminScreen's own "they'll
+  // use neutral defaults" note documents) -- confirmed by reading
+  // draws.ts directly before building this, not assumed. A missing OR
+  // invalid-for-this-slate Vegas CSV (e.g. saved against a different
+  // slate, so validateVegasCsv's own off-slate-team check throws) both
+  // fall back to an empty map rather than blocking the sim -- flagged
+  // here, not silently buried, since it's a judgment call this task left
+  // open ("if it can [run without it], say so in your report").
+  const slateVegas: SlateVegas = useMemo(() => {
+    const csv = getSavedVegasCsv();
+    if (csv === null) return new Map();
+    try {
+      return validateVegasCsv(csv, new Set(players.map((p) => p.team))).vegas;
+    } catch {
+      return new Map();
+    }
+  }, [players]);
+
+  // Dispatches one side's sim to a fresh Worker, wiring its result back
+  // into `setSim` -- shared by both sides in runSimForBothSides below
+  // rather than duplicated, since the only per-side difference is which
+  // lineup/setter/worker-ref is involved, all passed in as plain params.
+  // `rememberWorker` (not the ref directly) sidesteps needing a shared
+  // ref type for two refs of the same shape -- simpler than it sounds.
+  function dispatchSim(
+    lineup: readonly Player[],
+    isBestFinish: boolean,
+    field: SimulatedField,
+    setSim: (next: SideSimState) => void,
+    rememberWorker: (worker: Worker) => void,
+    runId: number,
+  ): void {
+    setSim({ kind: "running", isBestFinish });
+    try {
+      const { worker, done } = runSimInWorker({
+        lineup,
+        contest: preset.contest,
+        entryFee: preset.buyIn,
+        field,
+        players,
+        vegas: slateVegas,
+        seed: buildSeed,
+      });
+      rememberWorker(worker);
+      done
+        .then((result) => {
+          if (simRunIdRef.current === runId) setSim({ kind: "done", result, isBestFinish });
+        })
+        .catch((e: unknown) => {
+          if (simRunIdRef.current === runId) setSim({ kind: "error", message: errorMessage(e), isBestFinish });
+        });
+    } catch (e) {
+      // new Worker(...) itself throwing (e.g. no Worker global at all --
+      // this codebase's test environment) is caught here, not left to
+      // crash the render/effect that called this.
+      setSim({ kind: "error", message: errorMessage(e), isBestFinish });
+    }
+  }
+
+  // Runs the sim for BOTH sides at once -- the finish screen's own
+  // auto-trigger effect (below) and the mid-build "Sim my core" button
+  // both call this directly, never either side alone (this task's own
+  // wording: "runs it for both sides on demand"). Partial cores sim the
+  // optimizer's own best completion (bestCompletion/blackBestCompletion --
+  // the exact same OptimizerResult "Pts from optimal" already computes
+  // every render, just reading `.lineup` off it here instead of `.total`),
+  // labeled "(best finish)"; an already-complete core's own completion
+  // trivially reduces to its own locked players (nothing left to add), so
+  // the same `.lineup` read is correct either way -- only the LABEL
+  // depends on whether the side was actually partial.
+  function runSimForBothSides(): void {
+    const runId = ++simRunIdRef.current;
+    whiteSimWorkerRef.current?.terminate();
+    blackSimWorkerRef.current?.terminate();
+
+    const whiteIsBestFinish = !isLineupComplete(state.whiteMoves.map((m) => m.player), NFL);
+    const blackIsBestFinish = !isLineupComplete(state.blackMoves.map((m) => m.player), NFL);
+
+    if (cachedField === null || cachedField.lineups.length === 0) {
+      setWhiteSim({ kind: "noField", isBestFinish: whiteIsBestFinish });
+      setBlackSim({ kind: "noField", isBestFinish: blackIsBestFinish });
+      return;
+    }
+    const field = cachedField;
+
+    if (bestCompletion === null) {
+      setWhiteSim({ kind: "error", message: "No feasible lineup found.", isBestFinish: whiteIsBestFinish });
+    } else {
+      dispatchSim(bestCompletion.lineup, whiteIsBestFinish, field, setWhiteSim, (w) => (whiteSimWorkerRef.current = w), runId);
+    }
+
+    if (blackBestCompletion === null) {
+      setBlackSim({ kind: "error", message: "No feasible lineup found.", isBestFinish: blackIsBestFinish });
+    } else {
+      dispatchSim(blackBestCompletion.lineup, blackIsBestFinish, field, setBlackSim, (w) => (blackSimWorkerRef.current = w), runId);
+    }
+  }
+
+  // Auto-runs exactly once per ending -- `ending` is set once (setEnding)
+  // and never updated again for the lifetime of a given finish screen, so
+  // this fires on the stopped/complete/dead-end transition and never
+  // again on its own (re-running only ever happens via the button, which
+  // isn't rendered once `ending !== null` anyway).
+  useEffect(() => {
+    if (ending !== null) runSimForBothSides();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately keyed on `ending` alone; see comment above.
+  }, [ending]);
+
   const [family, variation] = chosenLine !== null ? splitFamily(chosenLine.name) : ["Your own opening", ""];
   const entryTier = preset.contest.entryTier(LAST_RANK);
   // Task 40 finish screen: the opening actually reached by the end of the
@@ -1007,6 +1188,7 @@ export default function BuildScreen({
           stats={whiteStats}
           moves={state.whiteMoves}
           optimalStats={optimalStats}
+          sim={whiteSim}
         />
         <div className="board-column">
           {ending !== null ? (
@@ -1018,6 +1200,8 @@ export default function BuildScreen({
               whiteStats={whiteStats}
               whiteOptimalStats={optimalStats}
               blackOptimalStats={blackOptimalStats}
+              whiteSim={whiteSim}
+              blackSim={blackSim}
               onStartAgain={onStartAgain}
               onNewContest={onNewContest}
             />
@@ -1067,6 +1251,11 @@ export default function BuildScreen({
                     Stop with this core
                   </button>
                 )}
+                {state.whiteMoves.length > 0 && (
+                  <button type="button" className="sim-core" disabled={!canSim} onClick={runSimForBothSides}>
+                    {simRunning ? "Simming…" : "Sim my core"}
+                  </button>
+                )}
               </div>
             </>
           )}
@@ -1078,6 +1267,7 @@ export default function BuildScreen({
           stats={blackStats}
           moves={state.blackMoves}
           optimalStats={blackOptimalStats}
+          sim={blackSim}
         />
       </div>
 
@@ -1159,6 +1349,31 @@ function formatPtsFromOptimal(delta: number): string {
   return (rounded === 0 ? 0 : rounded).toFixed(1);
 }
 
+function errorMessage(e: unknown): string {
+  return e instanceof Error ? e.message : "Sim failed.";
+}
+
+// The sim stat block's own eyebrow suffix/value text -- shared by
+// SideColumn and FinishCard so the two never drift apart on wording.
+function simEyebrowSuffix(sim: SideSimState): string {
+  return sim.kind !== "idle" && sim.isBestFinish ? " (best finish)" : "";
+}
+
+function simStatusText(sim: SideSimState): string | null {
+  switch (sim.kind) {
+    case "idle":
+      return null;
+    case "noField":
+      return NO_FIELD_CACHED_MESSAGE;
+    case "running":
+      return "Simming…";
+    case "error":
+      return sim.message;
+    case "done":
+      return null; // the real numbers render separately -- see call sites
+  }
+}
+
 function SideColumn({
   side,
   label,
@@ -1166,6 +1381,7 @@ function SideColumn({
   stats,
   moves,
   optimalStats,
+  sim,
 }: {
   side: "you" | "field";
   label: string;
@@ -1173,6 +1389,7 @@ function SideColumn({
   stats: SideStats;
   moves: readonly Move[];
   optimalStats?: PointsFromOptimal | null;
+  sim: SideSimState;
 }) {
   const openSlots = openSlotLabels(stats);
   return (
@@ -1215,6 +1432,22 @@ function SideColumn({
         </div>
       )}
 
+      {sim.kind !== "idle" && (
+        <div className="side-stat-block">
+          <p className="side-eyebrow">Sim results{simEyebrowSuffix(sim)}</p>
+          {sim.kind === "done" ? (
+            <>
+              <p className="side-sim-roi">{(sim.result.roi * 100).toFixed(1)}%</p>
+              <p className="side-detail">
+                Cash {(sim.result.cashRate * 100).toFixed(1)}% · Top 1% {(sim.result.top1PctRate * 100).toFixed(1)}%
+              </p>
+            </>
+          ) : (
+            <p className="side-detail">{simStatusText(sim)}</p>
+          )}
+        </div>
+      )}
+
       <ul className="locked-players">
         {moves.map((m) => (
           <li key={m.player.id}>
@@ -1247,6 +1480,8 @@ function FinishCard({
   whiteStats,
   whiteOptimalStats,
   blackOptimalStats,
+  whiteSim,
+  blackSim,
   onStartAgain,
   onNewContest,
 }: {
@@ -1257,6 +1492,8 @@ function FinishCard({
   whiteStats: SideStats;
   whiteOptimalStats: PointsFromOptimal | null;
   blackOptimalStats: PointsFromOptimal | null;
+  whiteSim: SideSimState;
+  blackSim: SideSimState;
   onStartAgain: () => void;
   onNewContest: () => void;
 }) {
@@ -1348,6 +1585,26 @@ function FinishCard({
         </p>
         <p>
           Core ownership: <strong>{(whiteStats.ownershipTotal * 100).toFixed(1)}%</strong>
+        </p>
+        <p>
+          Sim ROI{simEyebrowSuffix(whiteSim)}:{" "}
+          <strong>{whiteSim.kind === "done" ? `${(whiteSim.result.roi * 100).toFixed(1)}%` : simStatusText(whiteSim) ?? "—"}</strong>
+          {whiteSim.kind === "done" && (
+            <span className="finish-stat-sub">
+              {" "}
+              Cash {(whiteSim.result.cashRate * 100).toFixed(1)}% · Top 1% {(whiteSim.result.top1PctRate * 100).toFixed(1)}%
+            </span>
+          )}
+        </p>
+        <p>
+          Field sim ROI{simEyebrowSuffix(blackSim)}:{" "}
+          <strong>{blackSim.kind === "done" ? `${(blackSim.result.roi * 100).toFixed(1)}%` : simStatusText(blackSim) ?? "—"}</strong>
+          {blackSim.kind === "done" && (
+            <span className="finish-stat-sub">
+              {" "}
+              Cash {(blackSim.result.cashRate * 100).toFixed(1)}% · Top 1% {(blackSim.result.top1PctRate * 100).toFixed(1)}%
+            </span>
+          )}
         </p>
       </div>
 

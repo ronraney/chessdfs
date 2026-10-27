@@ -33,6 +33,8 @@ import { playBlackMove } from "./engine/build";
 import { loadEtrCsv } from "./engine/loaders";
 import { KingMode, Piece, Player } from "./engine/models";
 import { classify } from "./engine/pieces";
+import { NO_FIELD_CACHED_MESSAGE, saveCachedFieldIds, slateSignature } from "./fieldCacheStore";
+import { saveProjectionsCsv } from "./projectionsStore";
 import { SAMPLE_CSV } from "./testFixtures";
 
 // Bug fix: `playBlackMove` is partially mocked (real implementation kept
@@ -1149,5 +1151,98 @@ describe("BuildScreen -- Field gets Pts from optimal", () => {
     const finishCard = document.querySelector(".finish-card") as HTMLElement;
     expect(within(finishCard).getByText(/^Pts from optimal:/)).toBeInTheDocument();
     expect(within(finishCard).getByText(/^Field pts from optimal:/)).toBeInTheDocument();
+  });
+});
+
+// Sim 4: sim results in the UI. jsdom has no real Worker (the same
+// standing gap fieldWorker.ts/stockfishEngine.ts already live with) --
+// every one of these exercises the real BuildScreen code up to and
+// including `new Worker(...)` itself; what differs from a real browser is
+// only what happens after (a ReferenceError there, caught, surfaces as an
+// "error" sim state instead of a real SimResult). Nothing here saves a
+// projections CSV to localStorage (same `window.localStorage.clear()`
+// beforeEach every other describe block relies on), so `cachedField`
+// always resolves null -- the "no cached field" branch is the one path
+// fully provable in this environment without a real Worker at all.
+describe("BuildScreen -- Sim 4: sim results", () => {
+  it('shows "Sim my core" once a pick locks, and both sides show "Build fields in Admin first." after clicking it', async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    await user.click(chosenContinueButton()); // 1. e4
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await selectTopRow(user, dialog);
+    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+    await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+
+    const simButton = screen.getByRole("button", { name: "Sim my core" });
+    await user.click(simButton);
+
+    await waitFor(() => {
+      expect(within(youColumn()).getByText("Build fields in Admin first.")).toBeInTheDocument();
+      expect(within(fieldColumn()).getByText("Build fields in Admin first.")).toBeInTheDocument();
+    });
+    // Both cores are still partial (one White pawn, one Black reply) --
+    // the label should say so on both sides.
+    expect(within(youColumn()).getByText("Sim results (best finish)")).toBeInTheDocument();
+    expect(within(fieldColumn()).getByText("Sim results (best finish)")).toBeInTheDocument();
+  });
+
+  it('auto-runs on the finish screen and shows "Build fields in Admin first." for both sides with no click needed', async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    await user.click(chosenContinueButton()); // 1. e4
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await selectTopRow(user, dialog);
+    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+    await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+
+    await user.click(screen.getByRole("button", { name: "Stop with this core" }));
+
+    const finishCard = document.querySelector(".finish-card") as HTMLElement;
+    await waitFor(() => {
+      expect(within(finishCard).getByText(/^Sim ROI \(best finish\):/)).toBeInTheDocument();
+      expect(within(finishCard).getByText(/^Field sim ROI \(best finish\):/)).toBeInTheDocument();
+    });
+    expect(within(finishCard).getAllByText("Build fields in Admin first.")).toHaveLength(2); // White's line + Black's line
+  });
+
+  it("a cached field makes the worker dispatch path run without crashing the screen (surfaces as an error, not a thrown exception, since jsdom has no real Worker)", async () => {
+    saveProjectionsCsv(SAMPLE_CSV);
+    saveCachedFieldIds(slateSignature(SAMPLE_CSV), H2H.contest.fieldTier(), [[WHITE_QB.id, BLACK_QB.id]]);
+
+    renderScreen();
+    const user = userEvent.setup();
+    await user.click(chosenContinueButton()); // 1. e4
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await selectTopRow(user, dialog);
+    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+    await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+
+    await user.click(screen.getByRole("button", { name: "Sim my core" }));
+
+    await waitFor(() => {
+      const youText = youColumn().querySelector(".side-detail")?.textContent ?? "";
+      expect(youText).not.toBe("");
+      expect(youText).not.toBe(NO_FIELD_CACHED_MESSAGE);
+    });
+  });
+
+  it("clicking Sim my core twice in a row doesn't crash and settles into one consistent state", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    await user.click(chosenContinueButton()); // 1. e4
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await selectTopRow(user, dialog);
+    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+    await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+
+    const simButton = screen.getByRole("button", { name: "Sim my core" });
+    await user.click(simButton);
+    await user.click(screen.getByRole("button", { name: "Sim my core" }));
+
+    await waitFor(() => {
+      expect(within(youColumn()).getByText("Build fields in Admin first.")).toBeInTheDocument();
+      expect(within(fieldColumn()).getByText("Build fields in Admin first.")).toBeInTheDocument();
+    });
   });
 });

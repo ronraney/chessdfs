@@ -284,6 +284,16 @@
   color: var(--text-h);
 }
 
+/* Sim 4: same size/weight treatment as .side-pts-from-optimal -- a
+   separate class (not reused directly) since the two values are never
+   shown in the same spot but are semantically distinct stats. */
+.side-sim-roi {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 24px;
+  color: var(--text-h);
+}
+
 .locked-players {
   list-style: none;
   margin: 0;
@@ -425,7 +435,9 @@
 /* Task 40 "Take back" + "Stop with this core" -- Task 41 groups them into
    one row, matching the mobile pass's own explicit top-to-bottom order
    (status line, board, Book continues, Take back / Stop, then You, Field,
-   Player | Field). Both buttons keep the same minimum touch target the
+   Player | Field). Sim 4 adds "Sim my core" to the same row -- flex-wrap
+   (below) already handles a third button at narrow widths with no new
+   breakpoint needed. Every button keeps the same minimum touch target the
    rest of the app's controls use (44px). */
 .build-controls {
   display: flex;
@@ -435,7 +447,8 @@
 }
 
 .take-back,
-.stop-with-core {
+.stop-with-core,
+.sim-core {
   min-height: 44px;
   background: transparent;
   border-radius: 6px;
@@ -443,7 +456,8 @@
   font-size: 13px;
 }
 
-.take-back {
+.take-back,
+.sim-core {
   border: 1px solid var(--border);
   color: var(--text-h);
 }
@@ -455,7 +469,8 @@
 }
 
 .take-back:disabled,
-.stop-with-core:disabled {
+.stop-with-core:disabled,
+.sim-core:disabled {
   opacity: 0.5;
 }
 
