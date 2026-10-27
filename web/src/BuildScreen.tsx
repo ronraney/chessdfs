@@ -1187,11 +1187,18 @@ export default function BuildScreen({
 
   const [family, variation] = chosenLine !== null ? splitFamily(chosenLine.name) : ["Your own opening", ""];
   const entryTier = preset.contest.entryTier(LAST_RANK);
+  // The line actually originally picked -- same name/fallback the banner's
+  // own family/variation split (above) is derived from, kept as one
+  // unsplit string here for the finish screen's "Chosen:" row.
+  const chosenOpeningLabel = chosenLine !== null ? chosenLine.name : "Your own opening";
   // Task 40 finish screen: the opening actually reached by the end of the
   // build (openingLine's own live name off `history`), not necessarily the
   // one originally chosen -- falls back to the chosen line's own name (or
   // "Your own opening") if the final position matches no book line at all.
-  const finalOpeningLabel = openingLine(history, BOOK)?.name ?? (chosenLine !== null ? chosenLine.name : "Your own opening");
+  // This task labels the finish screen's row "Final position:" to make
+  // clear it can differ from "Chosen:" (chosenOpeningLabel) once a build
+  // deviates off its chosen line.
+  const finalOpeningLabel = openingLine(history, BOOK)?.name ?? chosenOpeningLabel;
 
   // The banner's own move list: the chosen line's reference (played moves
   // solid, the rest a preview of where it's headed) while still on it;
@@ -1280,7 +1287,8 @@ export default function BuildScreen({
           {ending !== null ? (
             <FinishCard
               ending={ending}
-              openingLabel={finalOpeningLabel}
+              chosenOpeningLabel={chosenOpeningLabel}
+              finalOpeningLabel={finalOpeningLabel}
               history={history}
               whiteMoves={state.whiteMoves}
               whiteFilledPlayers={whiteFilledPlayers}
@@ -1575,7 +1583,8 @@ function SideColumn({
 // already exactly the right snapshot for every ending, dead ends included.
 function FinishCard({
   ending,
-  openingLabel,
+  chosenOpeningLabel,
+  finalOpeningLabel,
   history,
   whiteMoves,
   whiteFilledPlayers,
@@ -1590,7 +1599,8 @@ function FinishCard({
   onNewContest,
 }: {
   ending: Ending;
-  openingLabel: string;
+  chosenOpeningLabel: string;
+  finalOpeningLabel: string;
   history: readonly string[];
   whiteMoves: readonly Move[];
   whiteFilledPlayers: readonly Player[];
@@ -1624,7 +1634,7 @@ function FinishCard({
   }, []);
 
   async function copyLineup(): Promise<void> {
-    await navigator.clipboard.writeText(lineupText(entries, slots, whiteStats, openingLabel, history));
+    await navigator.clipboard.writeText(lineupText(entries, slots, whiteStats, finalOpeningLabel, history));
     setCopied(true);
     if (copiedTimerRef.current !== null) clearTimeout(copiedTimerRef.current);
     copiedTimerRef.current = setTimeout(() => setCopied(false), 1500);
@@ -1634,7 +1644,10 @@ function FinishCard({
     <div className="finish-card">
       <p className="finish-ended-line">{endingHeadline(ending)}</p>
       <p className="finish-opening">
-        <span className="side-eyebrow">Opening</span> {openingLabel}
+        <span className="side-eyebrow">Chosen:</span> {chosenOpeningLabel}
+      </p>
+      <p className="finish-opening">
+        <span className="side-eyebrow">Final position:</span> {finalOpeningLabel}
       </p>
 
       {/* Task 41: a 5-column table doesn't fit 360px gracefully -- this

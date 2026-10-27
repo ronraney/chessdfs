@@ -41,10 +41,29 @@ first-match winner. A move's **pick list** is `engine/picklist.ts`'s
 `pickList`/`dfs_chess/picklist.py`'s `pick_list` — the pool's eligible,
 unlocked, roster/salary-feasible players, sorted by that piece's own GPP
 metric (`engine/metrics.ts`/`dfs_chess/metrics.py`'s `sortMetric`: King/Rook
-by projection, Queen by ceiling, Bishop by leverage, Knight by floor value,
-Pawn by value), and capped per-piece (`sport.json`'s `list_caps`: 12 for
-Queen/Rook/Bishop/Knight, none for King/Pawn). **The cap is applied after**
-removing taken/infeasible players, not before.
+by projection, Queen by ceiling, Bishop by **relativeLeverage** (TS only —
+see below), Knight by floor value, Pawn by value), and capped per-piece
+(`sport.json`'s `list_caps`: 12 for Queen/Rook/Bishop/Knight, none for
+King/Pawn). **The cap is applied after** removing taken/infeasible
+players, not before.
+
+**Bishop gained a TS-only "quality floor" this session**, on top of its
+unchanged RB/WR/TE >= $5,000 band (`classify`/`pieces.ts` itself is
+untouched — this lives entirely in `picklist.ts`): a candidate also needs
+`value` (proj/salary x 1000) at or above the median (`sport.
+bishopValuePercentile`, default 0.5, config-settable) of every Bishop-
+band-eligible player at his own position, computed from the WHOLE slate
+`playersPool` before locked/taken players are removed. Bishop's sort also
+changed: `metrics.relativeLeverage` discounts `value` by ownership
+*relative to the highest ownership at his own position across the whole
+slate* (`metrics.highestOwnershipByPosition`), not the old flat field-
+size-only `leverage` (still there, still tested, just no longer what
+sorts Bishop). `PickPanel`/`BuildScreen.tsx` thread the whole player pool
+through (`playersPool` prop) so the pick modal's own display + defensive
+re-sort use the same metric the engine used to build the list. Python's
+`pick_list` has no equivalent to either change (TS only, per the task) —
+`parity.test.ts` now excludes its one Bishop-cap fixture scenario
+(`pick_list_caps_bishop_at_12`) as a documented divergence.
 
 **Rook is team-based ("Rook = correlation")**: eligible as RB/WR/TE on
 the moving side's own locked QB's team, any salary — or, if that side's QB
@@ -93,6 +112,35 @@ whiteFilledPlayers` together (`whiteRoster`) so Copy lineup's totals and the
 sim both pick up a fill for free — the sim needed literally no new code,
 since `runSimForBothSides` already used `bestCompletion.lineup` for White
 whenever the move-locked core was incomplete (Sim 4, same session).
+
+**Black's out-of-book move is Stockfish-assisted (TS app only, a prior
+session)**: `src/stockfishEngine.ts` runs the npm `stockfish` package
+(11.0.0 classical/pre-NNUE, ~9MB) in a dedicated Web Worker, loaded from a
+fixed URL (`/stockfish/stockfish.js`, which locates its own `.wasm`
+relative to itself) rather than through Vite's module graph. Those two
+runtime files live in `public/stockfish/` (gitignored) and are copied
+there from `node_modules/stockfish/src/` by `scripts/sync-stockfish.mjs`'s
+exported `syncStockfish()`. **This session fixed a real bug Ron hit in a
+real browser**: `public/stockfish/` only existed when `npm run dev`/
+`build`/`test` ran (each chains `npm run sync-stockfish` first) — anything
+else that starts Vite skipped it, so the file was genuinely missing, and
+Vite's dev server served its own `index.html` (200, `text/html`) for the
+unmatched request instead of a 404, which `WebAssembly.instantiate()` saw
+as a corrupt file. Fix: `vite.config.ts` now calls `syncStockfish()`
+directly at config-module-eval time (confirmed by repro that a
+`buildStart` plugin hook fires too late — Vite snapshots `publicDir`
+before any plugin hook runs). Also fixed a genuine hang: `getReadyWorker()`
+had no timeout waiting for `"uciok"`, so a worker whose WASM init failed
+silently (no `error` event) could hang that promise — and every future
+`analyze()` call — forever; added `READY_TIMEOUT_MS` (10s). Black's
+uniform-random DFS-legal fallback already existed and never needed
+changing; what's new is `build.ts`'s `engineFailed` flag (`chooseEngineMove`/
+`playBlackMove`/`MoveResult`), which distinguishes a genuine engine failure
+from the engine just having no usable opinion — `BuildScreen.tsx` now shows
+"Engine unavailable — Field moving without Stockfish." (sticky for the
+rest of the build) only for the former. **Confirmed this session: no
+"tight-finish warning" exists anywhere in the codebase** (TS, Python,
+tests, docs, `design/`) — not built, per the task.
 
 **Monte Carlo sim port, `web/src/engine/sim/`** (pure TS, no I/O, no
 unseeded randomness, seeded via `SeededRandom`/`rng.next()`): ported from
@@ -228,37 +276,44 @@ never asked for it.
 
 ## Where We Are
 
-- **237 pytest passing, 506 npm tests passing** (was 463 at session start;
-  +43 across 7 commits this session).
-- **Seven commits this session, all pushed to `origin/main`**:
-  1. `173000e` "Sim 3: trial loop, scoring, payouts (TS only)" —
-     `engine/sim/run.ts`, `engine/sim/payouts.ts` (both new), `config.ts`
-     wiring.
-  2. `53e38e2` "Sim 3 fixes: top1PctRate, exact-rank-1 payout curve, timing"
-     — renamed `top1Rate`→`top1PctRate` (redefined to top-1%-of-entries,
-     not place-1-only) + added `winRate`; payout curve rewrite #1
-     (Pct_To_First-only, exact rank-1, dropped `minCash` as an input).
-  3. `0366e38` "Sim 3 fixes round 2: 3-pin payout floor curve, field
-     sampling cap" — payout curve rewrite #2 (the final 3-pin version,
-     restored `minCash`); `MAX_FIELD_SAMPLE` field-sampling cap in `run.ts`.
-  4. `2673699` "Sim 4: sim results in the UI (TS only)" — `simWorker.ts`,
-     `simRunner.ts` (both new), `BuildScreen.tsx`/`.css` wiring.
-  5. `9786b82` "Vegas upload: accept full team names" — `vegasCsv.ts` full-
-     name mapping table (later superseded's LA/LAR hardcode, see commit 7).
-  6. `ad11333` "Vegas upload: LA/LAR alias + skip off-slate teams" —
-     `TEAM_ALIAS_GROUPS`; off-slate-skip/slate-missing-errors behavior
-     reversal; `AdminScreen.tsx`/`.test.tsx` fixture rework (sample slate
-     needs full 22-team Vegas coverage now, not a 2-team partial upload).
-  7. `a293274` "Fill out my core button" — `BuildScreen.tsx`/`.css` only.
+- **237 pytest passing, 519 npm tests passing** (was 506 at this session's
+  start; +13 across 2 commits this session).
+- **Two commits this session, both pushed to `origin/main`**:
+  1. `689845c` "Rule change -- Bishop: relative leverage with a quality
+     floor" — Bishop's new value-floor eligibility + relative-ownership
+     sort (see Project Context above); `sport.ts`, `metrics.ts`,
+     `picklist.ts`, `PickPanel.tsx`/`BuildScreen.tsx` prop threading,
+     `parity.test.ts` exclusion. 506 → 516 npm tests.
+  2. `79bbdd2` "Rule change -- Fix Stockfish wasm load, Black never hangs
+     on engine failure" — the `.wasm`-serves-HTML fix (`vite.config.ts`,
+     `scripts/sync-stockfish.mjs`), `stockfishEngine.ts`'s ready-handshake
+     timeout, `build.ts`'s `engineFailed` flag, `BuildScreen.tsx`'s
+     "Engine unavailable" status line; confirmed no tight-finish warning
+     exists. 516 → 519 npm tests (net, after one known full-suite-load
+     timing flake in `BuildScreen.secondMove.test.tsx` retried clean in
+     isolation — longstanding, unrelated to this session's changes).
 - Python engine untouched all session (every task was explicitly TS-only).
+- Prior session (sim3/sim4/Vegas/fill-out-core, 7 commits, 463→506 npm
+  tests) — see `sessions/1026/10262026-sim3-sim4-vegas-fixes-fill-out-core.md`.
 
 ## Where We're Headed
 
-1. **Real-browser verification — attempted this session, blocked on a
-   concrete, fixable thing.** No project run-skill exists for launching
-   this app; `chromium-cli` isn't installed. Playwright DOES resolve (via a
-   scratch `npm install playwright` — the package itself installs fine,
-   and a matching Chromium binary is already cached at
+1. **Real-browser verification of THIS session's Stockfish fix is now the
+   top priority** — Ron reported the `.wasm`-serves-HTML bug from an
+   actual browser; the fix (vite.config.ts/sync-stockfish.mjs/
+   stockfishEngine.ts/build.ts/BuildScreen.tsx, see Project Context) was
+   verified by reproducing the exact bug against a live Vite dev server
+   via curl (byte-for-byte match) and by unit tests with a fake throwing
+   engine, but the real Worker/WebAssembly failure path itself has never
+   been exercised in an actual browser. Once a build is underway in a real
+   browser: confirm Stockfish actually loads and Black moves promptly
+   out-of-book (no hang); if it's ever made to fail again, confirm "Engine
+   unavailable — Field moving without Stockfish." shows and stays sticky.
+2. **Real-browser verification generally — attempted in a prior session,
+   blocked on a concrete, fixable thing.** No project run-skill exists for
+   launching this app; `chromium-cli` isn't installed. Playwright DOES
+   resolve (via a scratch `npm install playwright` — the package itself
+   installs fine, and a matching Chromium binary is already cached at
    `~/.cache/ms-playwright/chromium-1248`), but launching it fails: both
    the regular and headless-shell Chromium binaries need `libasound.so.2`,
    not installed in this WSL distro, and installing it needs `sudo` (no
@@ -267,38 +322,39 @@ never asked for it.
    unblock this** — once it's run, retry driving the dev server with
    Playwright directly (`chromium.launch({ args: ['--no-sandbox'] })`,
    `page.goto(...)`) and actually exercise `simWorker.ts`/`fieldWorker.ts`'s
-   real async path for the first time ever in this project. Worth a
-   `/run-skill-generator` pass once it works, so this doesn't need
-   re-discovering next time.
-2. **Sim 4's real-Worker path is the single biggest unverified piece of
-   this session's work** — every test proves the surrounding wiring
+   (and now `stockfishEngine.ts`'s) real async path for the first time
+   ever in this project. Worth a `/run-skill-generator` pass once it
+   works, so this doesn't need re-discovering next time.
+3. **Sim 4's real-Worker path is the single biggest unverified piece of
+   prior-session work** — every test proves the surrounding wiring
    (field/Vegas resolution, worker dispatch, cancellation, UI states)
    without ever letting the Worker actually compute (jsdom has no
-   `Worker`). Once a real browser is available (#1), drive it: upload
+   `Worker`). Once a real browser is available (#2), drive it: upload
    projections + build at least the Small field tier in Admin, start a
    build, lock a pick or two, click "Sim my core," confirm real ROI/Cash/
    Top 1% numbers render (not an error, not "Build fields in Admin
    first."), then confirm the finish screen auto-shows the same.
-3. A calibration parity test for the sim port (outcome draws/correlation
+4. A calibration parity test for the sim port (outcome draws/correlation
    vs. nfl-dfs's own validated rates) — still not started, carried forward
    from the original 6-task Monte Carlo breakdown.
-4. Simulated "Top 10%" metric — still a known gap (top1PctRate/winRate
+5. Simulated "Top 10%" metric — still a known gap (top1PctRate/winRate
    exist; a percentile-of-trials "Top 10%" rate does not).
-5. Ron needs to create **`web/.env`** with his own
+6. Ron needs to create **`web/.env`** with his own
    `VITE_ADMIN_PASSWORD=...` — still not created, deliberately (an `.env`
-   DOES exist as of this session, confirmed present, just flagging that its
-   value was never read/printed per CLAUDE.md's secrets rule).
-6. `CONTINUATION_LIMIT = 8`, `buildFieldCache.ts`'s `BUILD_SEED` and its
+   DOES exist as of a prior session, confirmed present, just flagging that
+   its value was never read/printed per CLAUDE.md's secrets rule).
+7. `CONTINUATION_LIMIT = 8`, `buildFieldCache.ts`'s `BUILD_SEED` and its
    per-tier representative `fieldSize` values (1000/5000/50000) — still
    guessed, not spec'd, unchanged.
-7. PLACED king mode's "silent King move while dragging" path still has no
+8. PLACED king mode's "silent King move while dragging" path still has no
    dedicated test.
-8. If the engine changes, re-run `tools/export_parity.py` and `npm run
-   test` to keep the parity fixture honest.
-9. **`tools/sim_builds.py`** still calls `classify(p, sport)` with the old
-   2-arg signature and assumes Rook is RB-only — unchanged, out of scope,
-   flagged again.
-10. **JAX vs. JAC (Jacksonville's abbreviation) is still genuinely
+9. If the engine changes, re-run `tools/export_parity.py` and `npm run
+   test` to keep the parity fixture honest. (This session's Bishop change
+   didn't need this — it's a TS-only divergence, not a Python-side change.)
+10. **`tools/sim_builds.py`** still calls `classify(p, sport)` with the old
+    2-arg signature and assumes Rook is RB-only — unchanged, out of scope,
+    flagged again.
+11. **JAX vs. JAC (Jacksonville's abbreviation) is still genuinely
     unconfirmed** — no real file in this repo has ever contained that
     team. If a real Vegas/projections file surfaces with Jacksonville on
     it, check which code it actually uses against `vegasCsv.ts`'s own
@@ -306,6 +362,19 @@ never asked for it.
 
 ## Open Items
 
+- **`stockfishEngine.ts`'s real Worker/WASM failure path has never been
+  seen in a real browser** — the fix is verified by a live-server curl
+  repro (the exact wasm-request-returns-HTML bug) and by unit tests with a
+  fake throwing engine, but not end-to-end with the real worker file. See
+  "Where We're Headed" #1.
+- **`engineFailed`/"Engine unavailable" is sticky for the rest of a build
+  once tripped** (deliberate — `stockfishEngine.ts` never retries a failed
+  worker) — unchanged/by design, flagging in case that reads as a bug.
+- **Bishop's multi-position "his own position" handling is unexercised**
+  (this session's value-floor + relative-ownership rule both read
+  `player.positions[0]` only) — every real NFL player and every existing
+  test fixture has exactly one position, so this never actually matters
+  today; flagged as an assumption if that changes.
 - **`DEFAULT_EXCLUDED_FAMILIES` (openings.ts) is used for two different
   questions that don't necessarily have the same answer** — unchanged.
 - **`yalps` is a runtime dependency** — unchanged; load-bearing in
@@ -356,5 +425,7 @@ never asked for it.
   `sessions/1026/10132026-never-moved-captures-field-tiers-and-family-
   ranking.md`.
 - Full narrative for this session:
-  `sessions/1026/10262026-sim3-sim4-vegas-fixes-fill-out-core.md`. Prior
-  sessions in `sessions/1026/` for everything predating today.
+  `sessions/1026/10262026-bishop-quality-floor-and-stockfish-fix.md`. Prior
+  sessions in `sessions/1026/` for everything predating this one, including
+  today's earlier session
+  (`sessions/1026/10262026-sim3-sim4-vegas-fixes-fill-out-core.md`).
