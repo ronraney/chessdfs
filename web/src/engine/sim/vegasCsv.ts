@@ -23,6 +23,82 @@ export const VEGAS_COLUMN_MAP = {
 
 export type VegasColumnMap = typeof VEGAS_COLUMN_MAP;
 
+// Bug fix: a Vegas CSV exported with full team names ("Detroit Lions")
+// instead of abbreviations ("DET") used to fail the off-slate-team check
+// below outright -- the slate's own Team column is always an
+// abbreviation (loadEtrCsv passes the ETR CSV's Team value through
+// verbatim, never a full name), so a full name never matched. Ported in
+// spirit from nfl-dfs's own readVegas()/normalizeTeamName_ (Team AND
+// Opponent both normalized the same way there), but that function's real
+// mapping table is sourced from a live Google Sheet (H26_Teams) this repo
+// has no access to -- this table was built from the 32 real teams' current
+// official full names, not copied from nfl-dfs's own source.
+//
+// Abbreviation set used: ARI, ATL, BAL, BUF, CAR, CHI, CIN, CLE, DAL, DEN,
+// DET, GB, HOU, IND, JAX, KC, LAC, LAR, LV, MIA, MIN, NE, NO, NYG, NYJ,
+// PHI, PIT, SEA, SF, TB, TEN, WAS. Cross-checked against every REAL team
+// code this repo actually has on disk, not asserted from memory alone:
+//   - data/samples/"NFL Weekly DFS System - Projections.csv" (22 teams)
+//     and config/sports/nfl.json's dome_teams (adds ATL, DAL, LAR) confirm
+//     ARI, ATL, CHI, CIN, CLE, DAL, DEN, DET, GB, HOU, IND, LAC, LAR, LV,
+//     MIA, MIN, NE, NO, NYG, NYJ, PIT, SEA, SF, TEN, WAS exactly as above.
+//   - data/samples/repro-slate.csv (a separate real fixture, 20 teams)
+//     confirms BAL, BUF, CAR, KC, PHI, TB exactly as above -- but uses
+//     "LA", not "LAR", for the Rams. FLAGGED, not silently resolved: this
+//     table uses LAR (matching nfl.json's dome_teams, the more central
+//     convention already relied on elsewhere) -- a slate loaded from
+//     repro-slate.csv specifically would still reject "Los Angeles Rams"
+//     as off-slate, since that slate's own Team column reads "LA".
+//   - JAX (Jacksonville) never appears in ANY real file in this repo --
+//     the one team code this table could NOT cross-check against real
+//     data. Chose JAX (the current DK/NFL.com convention) over the older
+//     "JAC" some other sources use; genuinely unconfirmed against an ETR
+//     file either way.
+const FULL_TEAM_NAME_TO_ABBREVIATION: Readonly<Record<string, string>> = {
+  "arizona cardinals": "ARI",
+  "atlanta falcons": "ATL",
+  "baltimore ravens": "BAL",
+  "buffalo bills": "BUF",
+  "carolina panthers": "CAR",
+  "chicago bears": "CHI",
+  "cincinnati bengals": "CIN",
+  "cleveland browns": "CLE",
+  "dallas cowboys": "DAL",
+  "denver broncos": "DEN",
+  "detroit lions": "DET",
+  "green bay packers": "GB",
+  "houston texans": "HOU",
+  "indianapolis colts": "IND",
+  "jacksonville jaguars": "JAX",
+  "kansas city chiefs": "KC",
+  "los angeles chargers": "LAC",
+  "los angeles rams": "LAR",
+  "las vegas raiders": "LV",
+  "miami dolphins": "MIA",
+  "minnesota vikings": "MIN",
+  "new england patriots": "NE",
+  "new orleans saints": "NO",
+  "new york giants": "NYG",
+  "new york jets": "NYJ",
+  "philadelphia eagles": "PHI",
+  "pittsburgh steelers": "PIT",
+  "seattle seahawks": "SEA",
+  "san francisco 49ers": "SF",
+  "tampa bay buccaneers": "TB",
+  "tennessee titans": "TEN",
+  "washington commanders": "WAS",
+};
+
+// Maps a full team name to its abbreviation; an already-abbreviated (or
+// otherwise unrecognized) value passes through unchanged -- abbreviations
+// keep working exactly as before, and a genuinely unknown name still
+// fails the existing off-slate-team check below with the same message it
+// always has, rather than this function inventing a second error path.
+function normalizeTeamName(raw: string): string {
+  const trimmed = raw.trim();
+  return FULL_TEAM_NAME_TO_ABBREVIATION[trimmed.toLowerCase()] ?? trimmed;
+}
+
 export class VegasValidationError extends Error {}
 
 export interface VegasValidationResult {
@@ -48,7 +124,14 @@ export function validateVegasCsv(
     throw new VegasValidationError(`Missing required column(s): ${missingColumns.map((key) => columnMap[key]).join(", ")}.`);
   }
 
-  const rows = parsed.data;
+  // Team and Opponent are both normalized before anything below reads
+  // them -- a full team name in either column becomes its abbreviation
+  // here, once, rather than needing every later check to know about it.
+  const rows: Record<string, string>[] = parsed.data.map((row) => ({
+    ...row,
+    [columnMap.team]: normalizeTeamName(row[columnMap.team] ?? ""),
+    [columnMap.opponent]: normalizeTeamName(row[columnMap.opponent] ?? ""),
+  }));
 
   const missingTeamCount = rows.filter((row) => (row[columnMap.team] ?? "").trim() === "").length;
   if (missingTeamCount > 0) {

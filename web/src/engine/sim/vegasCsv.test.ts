@@ -61,6 +61,84 @@ describe("validateVegasCsv", () => {
       /Vegas row\(s\) for team\(s\) not on the loaded slate: BBB/,
     );
   });
+
+  // Bug fix: full team names ("Detroit Lions") in the Team column used to
+  // be rejected outright as off-slate, since the slate's own Team column
+  // is always an abbreviation ("DET").
+  it("maps a full team name in the Team column to its abbreviation", () => {
+    const rows = [row(1, "Detroit Lions", 24.5, -2.5, 47, "GB"), row(2, "GB", 22, 2.5, 47, "Detroit Lions")];
+    const result = validateVegasCsv(csv(rows), new Set(["DET", "GB"]));
+    expect(result.vegas.get("DET")).toEqual({ total: 47, spread: -2.5 });
+    expect(result.vegas.get("GB")).toEqual({ total: 47, spread: 2.5 });
+    expect(result.missingTeams).toEqual([]);
+  });
+
+  it("maps a full team name in the Opponent column the same way (case-insensitive, whitespace-tolerant)", () => {
+    const rows = [row(1, "DET", 24.5, -2.5, 47, "  green bay packers  "), row(2, "GB", 22, 2.5, 47, "DET")];
+    // Opponent isn't read into the output today, so this only proves the
+    // mapping runs without throwing or corrupting the Team-column result.
+    const result = validateVegasCsv(csv(rows), new Set(["DET", "GB"]));
+    expect(result.vegas.get("DET")).toEqual({ total: 47, spread: -2.5 });
+    expect(result.vegas.get("GB")).toEqual({ total: 47, spread: 2.5 });
+  });
+
+  it("still accepts plain abbreviations unchanged", () => {
+    const result = validateVegasCsv(csv(TWO_TEAM_ROWS), new Set(["AAA", "BBB"]));
+    expect(result.vegas.size).toBe(2);
+  });
+
+  it("still rejects a genuinely unknown team name", () => {
+    const rows = [row(1, "Not A Real Team", 24.5, -2.5, 47, "GB"), row(2, "GB", 22, 2.5, 47, "Not A Real Team")];
+    expect(() => validateVegasCsv(csv(rows), new Set(["GB"]))).toThrow(
+      /Vegas row\(s\) for team\(s\) not on the loaded slate: Not A Real Team/,
+    );
+  });
+
+  it("maps every one of the 32 real full team names to this file's own abbreviation set", () => {
+    const fullNames: Record<string, string> = {
+      "Arizona Cardinals": "ARI",
+      "Atlanta Falcons": "ATL",
+      "Baltimore Ravens": "BAL",
+      "Buffalo Bills": "BUF",
+      "Carolina Panthers": "CAR",
+      "Chicago Bears": "CHI",
+      "Cincinnati Bengals": "CIN",
+      "Cleveland Browns": "CLE",
+      "Dallas Cowboys": "DAL",
+      "Denver Broncos": "DEN",
+      "Detroit Lions": "DET",
+      "Green Bay Packers": "GB",
+      "Houston Texans": "HOU",
+      "Indianapolis Colts": "IND",
+      "Jacksonville Jaguars": "JAX",
+      "Kansas City Chiefs": "KC",
+      "Los Angeles Chargers": "LAC",
+      "Los Angeles Rams": "LAR",
+      "Las Vegas Raiders": "LV",
+      "Miami Dolphins": "MIA",
+      "Minnesota Vikings": "MIN",
+      "New England Patriots": "NE",
+      "New Orleans Saints": "NO",
+      "New York Giants": "NYG",
+      "New York Jets": "NYJ",
+      "Philadelphia Eagles": "PHI",
+      "Pittsburgh Steelers": "PIT",
+      "Seattle Seahawks": "SEA",
+      "San Francisco 49ers": "SF",
+      "Tampa Bay Buccaneers": "TB",
+      "Tennessee Titans": "TEN",
+      "Washington Commanders": "WAS",
+    };
+    const entries = Object.entries(fullNames);
+    expect(entries).toHaveLength(32);
+    const rows = entries.map(([name], i) => row(i + 1, name, 24, 0, 47, entries[(i + 1) % entries.length][0]));
+    const slateTeams = new Set(Object.values(fullNames));
+    const result = validateVegasCsv(csv(rows), slateTeams);
+    for (const [, abbr] of entries) {
+      expect(result.vegas.has(abbr)).toBe(true);
+    }
+    expect(result.missingTeams).toEqual([]);
+  });
 });
 
 describe("validateVegasCsv -> drawSlateOutcomes integration", () => {
