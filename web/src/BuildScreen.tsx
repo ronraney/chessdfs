@@ -105,6 +105,31 @@ const PIECE_GLYPH: Record<Piece, string> = {
   PAWN: "♟",
 };
 
+// "Fill out my core": a player the optimizer added, not locked by any
+// chess move -- there's no Piece for one (no move ever locked it), so
+// this stands in for PIECE_GLYPH/PIECE_LABEL wherever a roster row needs
+// to show which is which. The literal text this task asks for.
+const OPTIMIZER_GLYPH = "✦";
+const OPTIMIZER_LABEL = "(optimizer)";
+
+// One roster row, piece-locked or optimizer-filled -- SideColumn's own
+// list, FinishCard's table, and lineupText all walk the same shape so
+// White's two kinds of roster entry render identically everywhere
+// (ordering: every piece-locked move first, in play order, then every
+// optimizer-filled player after -- matches assignRosterSlots' own "same
+// order as the input array" contract).
+interface RosterEntry {
+  readonly label: string; // PIECE_LABEL[piece], or OPTIMIZER_LABEL
+  readonly glyph: string; // PIECE_GLYPH[piece], or OPTIMIZER_GLYPH
+  readonly player: Player;
+}
+function rosterEntries(moves: readonly Move[], filled: readonly Player[]): RosterEntry[] {
+  return [
+    ...moves.map((m) => ({ label: PIECE_LABEL[m.piece], glyph: PIECE_GLYPH[m.piece], player: m.player })),
+    ...filled.map((p) => ({ label: OPTIMIZER_LABEL, glyph: OPTIMIZER_GLYPH, player: p })),
+  ];
+}
+
 const HOW_IT_WORKS_KEY = "chess-dfs:how-it-works-dismissed";
 const HOW_IT_WORKS_TEXT =
   "You're White. Each move locks a DFS player of that piece's type: pawns are cheap plays, knights TEs, bishops WRs, rooks RBs, queens $7K+ studs, the king your QB. The Field (Black) does the same. Build a 4–5 player core, then stop or keep going.";
@@ -146,7 +171,7 @@ interface Props {
 // produced an ending (checkWhiteDeadEnd's own dead-end case touches
 // nothing; Black's dead end is caught before any setState for it), so it's
 // already exactly the right snapshot.
-type Ending = { kind: "stopped" } | { kind: "complete" } | { kind: "deadEnd"; side: Side };
+type Ending = { kind: "stopped" } | { kind: "complete" } | { kind: "deadEnd"; side: Side } | { kind: "filled" };
 
 // Sim 4: one side's own Monte Carlo sim status -- "idle" (never triggered
 // this build) renders nothing at all (SideColumn), the rest render a
@@ -177,6 +202,8 @@ function endingHeadline(ending: Ending): string {
       return "Your lineup is complete.";
     case "deadEnd":
       return ending.side === Side.BLACK ? "Black has hit a dead end." : "You have hit a dead end.";
+    case "filled":
+      return "Your core was filled out by the optimizer.";
   }
 }
 
@@ -396,6 +423,15 @@ export default function BuildScreen({
   const [ending, setEnding] = useState<Ending | null>(() =>
     checkWhiteDeadEnd(state, NFL, preset.contest, players, kingMode) !== null ? { kind: "deadEnd", side: Side.WHITE } : null,
   );
+  // "Fill out my core" (White only): players the OPTIMIZER added to
+  // White's open slots, distinct from `state.whiteMoves` (which only ever
+  // holds players locked by an actual chess move) -- the engine's own
+  // BuildState has no concept of a player locked any other way, so this
+  // stays pure UI-layer state rather than a new engine mechanism. Empty
+  // until fillOutCore runs; never cleared afterward (Take back is already
+  // disabled once `ending` is set, so there's no path back to editing a
+  // filled core -- see canTakeBack).
+  const [whiteFilledPlayers, setWhiteFilledPlayers] = useState<readonly Player[]>([]);
   // Bug fix: Black's reply threw something OTHER than a genuine "no legal
   // move" (NoLegalBlackMoveError) -- not a dead end, just surfaced as-is so
   // it's visible instead of silently mislabeled. The build doesn't end:
@@ -945,7 +981,14 @@ export default function BuildScreen({
     onStartAgain();
   }
 
-  const whiteStats = sideStats(state.whiteMoves.map((m) => m.player), NFL, preset.contest);
+  // "Fill out my core" feeds Copy lineup -- whiteStats (salary remaining,
+  // ownership, projection, open slots) folds in whiteFilledPlayers so
+  // every display/export that already reads whiteStats picks the filled
+  // roster up for free, with no separate "effective" variable to thread
+  // through everywhere. Empty whiteFilledPlayers (every build, until a
+  // fill happens) makes this identical to the old move-only computation.
+  const whiteRoster = [...state.whiteMoves.map((m) => m.player), ...whiteFilledPlayers];
+  const whiteStats = sideStats(whiteRoster, NFL, preset.contest);
   const blackStats = sideStats(state.blackMoves.map((m) => m.player), NFL, preset.contest);
 
   // The slate's own best possible lineup never depends on `state` at all --
@@ -976,6 +1019,28 @@ export default function BuildScreen({
     [players, preset, state.whiteMoves, state.blackMoves],
   );
   const blackOptimalStats = pointsFromOptimal(slateOptimal, blackBestCompletion);
+
+  // "Fill out my core": commits the optimizer's own best completion
+  // (bestCompletion -- the exact same OptimizerResult "Pts from optimal"
+  // already computes every render) as whiteFilledPlayers, then ends the
+  // build. `newlyFilled` excludes anything already move-locked, since
+  // bestCompletion.lineup is the FULL completed roster (locks included),
+  // not just the players it added.
+  function fillOutCore(): void {
+    if (bestCompletion === null) return; // no feasible completion under the cap -- nothing to fill with
+    const lockedIds = new Set(state.whiteMoves.map((m) => m.player.id));
+    const newlyFilled = bestCompletion.lineup.filter((p) => !lockedIds.has(p.id));
+    setWhiteFilledPlayers(newlyFilled);
+    if (blackTimerRef.current !== null) clearTimeout(blackTimerRef.current);
+    setEnding({ kind: "filled" });
+  }
+  // Disabled once there's nothing left to fill -- `whiteRoster` already
+  // folds in any PRIOR fill (see its own comment above), so a second
+  // click after one successful fill is correctly disabled too, not just
+  // a naturally-complete (every slot move-locked) core. Same pick/
+  // Black-moving safety conditions as Stop/Sim -- mid-build only; always
+  // true by construction on any finish screen.
+  const canFillCore = pendingMove === null && !blackMoving && bestCompletion !== null && !isLineupComplete(whiteRoster, NFL);
 
   // Sim 4's own field/Vegas inputs. The projections CSV text (not just the
   // already-parsed `players`) is only needed for slateSignature -- read
@@ -1187,6 +1252,7 @@ export default function BuildScreen({
           sideName="White"
           stats={whiteStats}
           moves={state.whiteMoves}
+          filled={whiteFilledPlayers}
           optimalStats={optimalStats}
           sim={whiteSim}
         />
@@ -1197,11 +1263,14 @@ export default function BuildScreen({
               openingLabel={finalOpeningLabel}
               history={history}
               whiteMoves={state.whiteMoves}
+              whiteFilledPlayers={whiteFilledPlayers}
               whiteStats={whiteStats}
               whiteOptimalStats={optimalStats}
               blackOptimalStats={blackOptimalStats}
               whiteSim={whiteSim}
               blackSim={blackSim}
+              canFillCore={canFillCore}
+              onFillOutCore={fillOutCore}
               onStartAgain={onStartAgain}
               onNewContest={onNewContest}
             />
@@ -1254,6 +1323,11 @@ export default function BuildScreen({
                 {state.whiteMoves.length > 0 && (
                   <button type="button" className="sim-core" disabled={!canSim} onClick={runSimForBothSides}>
                     {simRunning ? "Simming…" : "Sim my core"}
+                  </button>
+                )}
+                {state.whiteMoves.length > 0 && (
+                  <button type="button" className="fill-out-core" disabled={!canFillCore} onClick={fillOutCore}>
+                    Fill out my core
                   </button>
                 )}
               </div>
@@ -1380,6 +1454,7 @@ function SideColumn({
   sideName,
   stats,
   moves,
+  filled = [],
   optimalStats,
   sim,
 }: {
@@ -1388,9 +1463,13 @@ function SideColumn({
   sideName: string;
   stats: SideStats;
   moves: readonly Move[];
+  // "Fill out my core" (White only) -- Field never has this, so every
+  // existing "field" SideColumn call site keeps compiling unchanged.
+  filled?: readonly Player[];
   optimalStats?: PointsFromOptimal | null;
   sim: SideSimState;
 }) {
+  const rosterRows = rosterEntries(moves, filled);
   const openSlots = openSlotLabels(stats);
   return (
     <div className={`side-column ${side}`}>
@@ -1449,15 +1528,16 @@ function SideColumn({
       )}
 
       <ul className="locked-players">
-        {moves.map((m) => (
-          <li key={m.player.id}>
+        {rosterRows.map((entry) => (
+          <li key={entry.player.id}>
             <span className="locked-glyph" aria-hidden="true">
-              {PIECE_GLYPH[m.piece]}
+              {entry.glyph}
             </span>
             <span className="locked-name">
-              {m.player.name} · {m.player.positions[0]}
+              {entry.player.name} · {entry.player.positions[0]}
+              {entry.label === OPTIMIZER_LABEL && <span className="locked-optimizer"> {OPTIMIZER_LABEL}</span>}
             </span>
-            <span className="locked-salary">${m.player.salary.toLocaleString()}</span>
+            <span className="locked-salary">${entry.player.salary.toLocaleString()}</span>
           </li>
         ))}
       </ul>
@@ -1477,11 +1557,14 @@ function FinishCard({
   openingLabel,
   history,
   whiteMoves,
+  whiteFilledPlayers,
   whiteStats,
   whiteOptimalStats,
   blackOptimalStats,
   whiteSim,
   blackSim,
+  canFillCore,
+  onFillOutCore,
   onStartAgain,
   onNewContest,
 }: {
@@ -1489,22 +1572,29 @@ function FinishCard({
   openingLabel: string;
   history: readonly string[];
   whiteMoves: readonly Move[];
+  whiteFilledPlayers: readonly Player[];
   whiteStats: SideStats;
   whiteOptimalStats: PointsFromOptimal | null;
   blackOptimalStats: PointsFromOptimal | null;
   whiteSim: SideSimState;
   blackSim: SideSimState;
+  canFillCore: boolean;
+  onFillOutCore: () => void;
   onStartAgain: () => void;
   onNewContest: () => void;
 }) {
   const openSlots = openSlotLabels(whiteStats);
   const [copied, setCopied] = useState(false);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Task 43: DK roster slot (QB/RB/WR/TE/FLEX/DST), one per whiteMoves
-  // entry, same order -- see assignRosterSlots' own comment for why WHICH
-  // interchangeable player draws "FLEX" vs. its own dedicated slot is a
-  // cosmetic artifact of the matching search, not lock order.
-  const slots = useMemo(() => assignRosterSlots(whiteMoves.map((m) => m.player), NFL.rosterSlots), [whiteMoves]);
+  // "Fill out my core" entries first, piece-locked moves then optimizer
+  // fills, same order rosterEntries always uses -- Task 43's DK roster
+  // slot (QB/RB/WR/TE/FLEX/DST) assignment runs over the SAME combined
+  // list, one slot per entry, same order; see assignRosterSlots' own
+  // comment for why WHICH interchangeable player draws "FLEX" vs. its own
+  // dedicated slot is a cosmetic artifact of the matching search, not
+  // lock/fill order.
+  const entries = useMemo(() => rosterEntries(whiteMoves, whiteFilledPlayers), [whiteMoves, whiteFilledPlayers]);
+  const slots = useMemo(() => assignRosterSlots(entries.map((e) => e.player), NFL.rosterSlots), [entries]);
 
   useEffect(() => {
     return () => {
@@ -1513,7 +1603,7 @@ function FinishCard({
   }, []);
 
   async function copyLineup(): Promise<void> {
-    await navigator.clipboard.writeText(lineupText(whiteMoves, slots, whiteStats, openingLabel, history));
+    await navigator.clipboard.writeText(lineupText(entries, slots, whiteStats, openingLabel, history));
     setCopied(true);
     if (copiedTimerRef.current !== null) clearTimeout(copiedTimerRef.current);
     copiedTimerRef.current = setTimeout(() => setCopied(false), 1500);
@@ -1542,14 +1632,14 @@ function FinishCard({
             </tr>
           </thead>
           <tbody>
-            {whiteMoves.map((m, i) => (
-              <tr key={m.player.id}>
+            {entries.map((entry, i) => (
+              <tr key={entry.player.id}>
                 <td>{slots[i]}</td>
-                <td>{PIECE_LABEL[m.piece]}</td>
-                <td>{m.player.name}</td>
-                <td>{m.player.positions[0]}</td>
-                <td>{m.player.team}</td>
-                <td>${m.player.salary.toLocaleString()}</td>
+                <td>{entry.label}</td>
+                <td>{entry.player.name}</td>
+                <td>{entry.player.positions[0]}</td>
+                <td>{entry.player.team}</td>
+                <td>${entry.player.salary.toLocaleString()}</td>
               </tr>
             ))}
           </tbody>
@@ -1613,6 +1703,9 @@ function FinishCard({
       <p className="finish-happy">{HAPPY_HUNTING}</p>
 
       <div className="finish-actions">
+        <button type="button" className="fill-out-core" disabled={!canFillCore} onClick={onFillOutCore}>
+          Fill out my core
+        </button>
         <button type="button" onClick={() => void copyLineup()}>
           {copied ? "Copied" : "Copy lineup"}
         </button>
@@ -1628,24 +1721,26 @@ function FinishCard({
 }
 
 // Finish screen's "Copy lineup" -- plain tab-separated text (pastes cleanly
-// into a spreadsheet), one row per locked player matching the on-screen
-// finish-core table (Slot/Piece/Player/Pos/Team/Salary) plus a totals
-// block. "Salary used" has no stored field of its own (SideStats only
-// tracks salaryRemaining) -- it's just the locked players' own salaries
-// summed. `slots` is parallel to `whiteMoves`, from assignRosterSlots.
+// into a spreadsheet), one row per roster entry (piece-locked OR
+// "Fill out my core" optimizer-filled -- see rosterEntries) matching the
+// on-screen finish-core table (Slot/Piece/Player/Pos/Team/Salary) plus a
+// totals block. "Salary used" has no stored field of its own (SideStats
+// only tracks salaryRemaining) -- it's just the roster's own salaries
+// summed (whiteStats itself already folds in any filled players too, see
+// its own comment). `slots` is parallel to `entries`, from assignRosterSlots.
 function lineupText(
-  whiteMoves: readonly Move[],
+  entries: readonly RosterEntry[],
   slots: readonly string[],
   whiteStats: SideStats,
   openingLabel: string,
   history: readonly string[],
 ): string {
-  const rows = whiteMoves.map((m, i) =>
-    [slots[i], PIECE_LABEL[m.piece], m.player.name, m.player.positions[0], m.player.team, `$${m.player.salary.toLocaleString()}`].join(
+  const rows = entries.map((entry, i) =>
+    [slots[i], entry.label, entry.player.name, entry.player.positions[0], entry.player.team, `$${entry.player.salary.toLocaleString()}`].join(
       "\t",
     ),
   );
-  const salaryUsed = whiteMoves.reduce((sum, m) => sum + m.player.salary, 0);
+  const salaryUsed = entries.reduce((sum, entry) => sum + entry.player.salary, 0);
   const totals = [
     `Salary used: $${salaryUsed.toLocaleString()}`,
     `Salary remaining: $${whiteStats.salaryRemaining.toLocaleString()}`,

@@ -330,6 +330,13 @@
   color: var(--text);
 }
 
+/* "Fill out my core" -- marks an optimizer-filled player distinct from
+   one locked by a move, inline in the same name text (no layout change). */
+.locked-optimizer {
+  color: var(--text);
+  font-style: italic;
+}
+
 .side-open {
   font-size: 13px;
   color: var(--text);
@@ -435,10 +442,11 @@
 /* Task 40 "Take back" + "Stop with this core" -- Task 41 groups them into
    one row, matching the mobile pass's own explicit top-to-bottom order
    (status line, board, Book continues, Take back / Stop, then You, Field,
-   Player | Field). Sim 4 adds "Sim my core" to the same row -- flex-wrap
-   (below) already handles a third button at narrow widths with no new
-   breakpoint needed. Every button keeps the same minimum touch target the
-   rest of the app's controls use (44px). */
+   Player | Field). Sim 4 adds "Sim my core," and "Fill out my core" adds
+   a fourth, to the same row -- flex-wrap (below) already handles extra
+   buttons at narrow widths with no new breakpoint needed. Every button
+   keeps the same minimum touch target the rest of the app's controls use
+   (44px). */
 .build-controls {
   display: flex;
   flex-wrap: wrap;
@@ -448,7 +456,8 @@
 
 .take-back,
 .stop-with-core,
-.sim-core {
+.sim-core,
+.fill-out-core {
   min-height: 44px;
   background: transparent;
   border-radius: 6px;
@@ -457,7 +466,8 @@
 }
 
 .take-back,
-.sim-core {
+.sim-core,
+.fill-out-core {
   border: 1px solid var(--border);
   color: var(--text-h);
 }
@@ -470,7 +480,8 @@
 
 .take-back:disabled,
 .stop-with-core:disabled,
-.sim-core:disabled {
+.sim-core:disabled,
+.fill-out-core:disabled {
   opacity: 0.5;
 }
 

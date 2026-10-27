@@ -1246,3 +1246,101 @@ describe("BuildScreen -- Sim 4: sim results", () => {
     });
   });
 });
+
+// "Fill out my core": fills White's open slots with the optimizer's own
+// best completion (the exact same OptimizerResult "Pts from optimal"
+// already computes) and ends the build. One real White pick is locked
+// first in every test below -- the same precondition "Pts from optimal"'s
+// own tests already rely on to guarantee optimalLineup finds a feasible
+// completion under the real sample slate's cap.
+describe("BuildScreen -- Fill out my core", () => {
+  async function lockOnePawn(user: UserEvent): Promise<void> {
+    await user.click(chosenContinueButton()); // 1. e4
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await selectTopRow(user, dialog);
+    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+    await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+  }
+
+  it('fills the open slots, marks them "(optimizer)", and shows the finish screen', async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    await lockOnePawn(user);
+
+    const fillButton = screen.getByRole("button", { name: "Fill out my core" });
+    expect(fillButton).toBeEnabled();
+    await user.click(fillButton);
+
+    expect(screen.getByText("Your core was filled out by the optimizer.")).toBeInTheDocument();
+    const finishCard = document.querySelector(".finish-card") as HTMLElement;
+    // Header row + 9 roster rows (1 locked pawn + 8 optimizer-filled).
+    expect(within(finishCard).getAllByRole("row")).toHaveLength(10);
+    expect(within(finishCard).getAllByText("(optimizer)")).toHaveLength(8);
+  });
+
+  it("the You panel marks optimizer-filled players distinctly from the move-locked one", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    await lockOnePawn(user);
+
+    await user.click(screen.getByRole("button", { name: "Fill out my core" }));
+
+    const you = youColumn();
+    expect(within(you).getAllByRole("listitem")).toHaveLength(9);
+    expect(within(you).getAllByText("(optimizer)")).toHaveLength(8);
+  });
+
+  it("feeds the full (locked + filled) roster to Copy lineup, with optimizer rows marked", async () => {
+    renderScreen();
+    const user = userEvent.setup(); // installs its own navigator.clipboard stub (writeText/readText)
+    await lockOnePawn(user);
+    await user.click(screen.getByRole("button", { name: "Fill out my core" }));
+
+    await user.click(screen.getByRole("button", { name: "Copy lineup" }));
+
+    const text = await waitFor(async () => {
+      const t = await navigator.clipboard.readText();
+      expect(t).not.toBe("");
+      return t;
+    });
+    const lines = text.split("\n");
+    const rosterLines = lines.slice(0, 9); // 9 roster rows before the blank separator + totals
+    const optimizerRows = rosterLines.filter((line) => line.includes("\t(optimizer)\t"));
+    expect(optimizerRows).toHaveLength(8);
+    // "Salary used" must equal the sum of all 9 rows' own salary column --
+    // only true if Copy lineup read the full post-fill roster (whiteStats
+    // already folds in the filled players, see whiteRoster's own
+    // comment); if it had frozen on the pre-fill snapshot, this total
+    // would equal just the one locked pawn's salary instead.
+    const rowSalaries = rosterLines.map((line) => Number(line.split("\t").at(-1)!.replace(/[^0-9]/g, "")));
+    const salaryUsedLine = lines.find((line) => line.startsWith("Salary used:"))!;
+    const salaryUsed = Number(salaryUsedLine.replace(/[^0-9]/g, ""));
+    expect(salaryUsed).toBe(rowSalaries.reduce((sum, s) => sum + s, 0));
+  });
+
+  it("clicking Fill out my core from the Stop finish screen still fills and switches the headline", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    await lockOnePawn(user);
+    await user.click(screen.getByRole("button", { name: "Stop with this core" }));
+    expect(screen.getByText("You stopped with this core.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Fill out my core" }));
+
+    expect(screen.getByText("Your core was filled out by the optimizer.")).toBeInTheDocument();
+    expect(screen.queryByText("You stopped with this core.")).not.toBeInTheDocument();
+    const finishCard = document.querySelector(".finish-card") as HTMLElement;
+    expect(within(finishCard).getAllByText("(optimizer)")).toHaveLength(8);
+  });
+
+  it("is disabled once White's lineup is already complete (via a prior fill)", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    await lockOnePawn(user);
+    await user.click(screen.getByRole("button", { name: "Fill out my core" }));
+
+    // Still rendered on the finish screen (now showing "filled"), but
+    // nothing left to fill -- disabled, not hidden.
+    expect(screen.getByRole("button", { name: "Fill out my core" })).toBeDisabled();
+  });
+});
