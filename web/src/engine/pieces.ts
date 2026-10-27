@@ -35,21 +35,27 @@ export function pieceForChessType(pieceType: PieceSymbol): Piece {
   return CHESS_PIECE_TYPES[pieceType];
 }
 
-// Every piece band `player` qualifies for, by position + salary -- empty
-// only if `sport`'s config is broken (loadSportConfig should have rejected
-// it before this ever runs).
+// Every piece band `player` qualifies for, by position + salary alone --
+// empty only if `sport`'s config is broken (loadSportConfig should have
+// rejected it before this ever runs).
 //
-// `qbTeam` is the moving side's own currently locked QB's team, if any
-// (RULES.md piece table, Rook: "RB/WR/TE on your QB's team, any
-// salary"). A `teamRestricted` band (Rook) only matches when `qbTeam` is
-// null (no QB locked yet -- "list all RB/WR/TE") or equals
-// `player.team`; every other band ignores `qbTeam` entirely.
-export function classify(player: Player, sport: SportConfig, qbTeam: string | null = null): ReadonlySet<Piece> {
+// Rook's own team restriction (`band.teamRestricted` in sport.ts/config)
+// is no longer read here (Rule change "Rook: stack builder" -- the
+// general Rook pool is now any RB/WR/TE, any salary, team-agnostic; which
+// team a candidate is on instead feeds pickList's own stack-tier SORT,
+// not eligibility). Castling's own Rook step keeps the old "QB's
+// teammates only" restriction, enforced explicitly where it's checked
+// (rules.ts's castle(), picklist.ts's castleRookList) rather than through
+// classify -- so `teamRestricted`/`team_restricted` stays in SportConfig/
+// config/sports/nfl.json as data (still loaded, still round-tripped) even
+// though nothing reads it anymore; flagged here rather than ripped out,
+// since removing a schema field is a bigger change than this task asked
+// for.
+export function classify(player: Player, sport: SportConfig): ReadonlySet<Piece> {
   const positions = new Set(player.positions.map((p) => p.toUpperCase()));
   const pieces = new Set<Piece>();
   for (const band of sport.pieceBands) {
     if (!band.matches(positions, player.salary)) continue;
-    if (band.teamRestricted && qbTeam !== null && player.team !== qbTeam) continue;
     pieces.add(band.piece);
   }
   return pieces;

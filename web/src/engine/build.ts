@@ -57,7 +57,7 @@ import type { ContestConfig } from "./config";
 import { BuildState, KingMode, Piece, Player, Side } from "./models";
 import type { BookLine } from "./openings";
 import { bookContinuations, openingName, splitFamily } from "./openings";
-import { castleQbCandidates, pickList } from "./picklist";
+import { castleQbCandidates, castleRookList, pickList } from "./picklist";
 import { pieceForChessType } from "./pieces";
 import type { ChessMove } from "./rules";
 import {
@@ -206,7 +206,8 @@ function bestLegalCastlePlayers(
 
   if (kingMode === KingMode.PLACED) {
     const qbTeam = lockedQbTeam(state, side);
-    const rooks = pickList(Piece.ROOK, playersPool, locked, current, sport, contest, qbTeam);
+    if (qbTeam === null) return null; // no locked QB to restrict the castling Rook to
+    const rooks = castleRookList(playersPool, locked, current, sport, contest, qbTeam);
     return rooks.length > 0 ? [rooks[0]] : null;
   }
 
@@ -215,7 +216,7 @@ function bestLegalCastlePlayers(
   const king = kings[0];
   const lockedWithKing = new Set(locked);
   lockedWithKing.add(king.id);
-  const rooks = pickList(Piece.ROOK, playersPool, lockedWithKing, [...current, king], sport, contest, king.team);
+  const rooks = castleRookList(playersPool, lockedWithKing, [...current, king], sport, contest, king.team);
   return rooks.length > 0 ? [king, rooks[0]] : null;
 }
 

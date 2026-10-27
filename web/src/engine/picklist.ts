@@ -58,16 +58,48 @@ function meetsBishopValueFloor(player: Player, floors: ReadonlyMap<string, numbe
   return floor === undefined || value(player) >= floor;
 }
 
+// Rook's own stack-tier (Rule change "Rook: stack builder"): a player
+// sits in his HIGHEST matching tier only (1 beats 2 beats 3 beats 4) --
+// 1. same team as that side's QB, 2. the QB's own opponent (same game),
+// 3. same team as any OTHER player already in that side's lineup, 4.
+// everyone else. `qbTeam`/`qbOpp` are both null when no QB is locked yet
+// -- tiers 1-2 are skipped entirely then (every candidate falls through
+// to 3 or 4), not defaulted to tier 4 outright.
+function rookTier(
+  player: Player,
+  qbTeam: string | null,
+  qbOpp: string | null,
+  currentPlayers: readonly Player[],
+): 1 | 2 | 3 | 4 {
+  if (qbTeam !== null) {
+    if (player.team === qbTeam) return 1;
+    if (qbOpp !== null && player.team === qbOpp) return 2;
+  }
+  if (currentPlayers.some((cp) => cp.team === player.team)) return 3;
+  return 4;
+}
+
+// The locked QB's own opponent team, derived from `currentPlayers` (the
+// QB itself is always among them whenever `qbTeam` is non-null -- every
+// caller derives both from the same roster/move list) -- null if no QB
+// is locked (qbTeam null) or, defensively, if it somehow isn't found.
+function qbOpponentTeam(qbTeam: string | null, currentPlayers: readonly Player[]): string | null {
+  if (qbTeam === null) return null;
+  const qb = currentPlayers.find((p) => p.team === qbTeam && p.positions.some((pos) => pos.toUpperCase() === "QB"));
+  return qb?.opp ?? null;
+}
+
 // `currentPlayers` is whichever side is picking's own roster so far
 // (never including a hypothetical candidate) -- feasibility is checked
 // as "would `currentPlayers` plus this ONE candidate still be
-// completable," same as every other lock in the build. `qbTeam` only
-// matters for Rook (see pieces.classify); every other piece ignores it.
-// Bishop gets two more TS-only checks on top of classify()'s unchanged
-// RB/WR/TE >= $5,000 band: a per-position value floor (bishopValueFloors)
-// and a sort by value discounted relative to the highest ownership at his
-// own position (metrics.relativeLeverage) -- both computed from the whole
-// `playersPool`, before locked/infeasible players are filtered out.
+// completable," same as every other lock in the build. `qbTeam` feeds
+// Rook's own stack-tier sort (rookTier above); every other piece ignores
+// it. Bishop gets two more TS-only checks on top of classify()'s
+// unchanged RB/WR/TE >= $5,000 band: a per-position value floor
+// (bishopValueFloors) and a sort by value discounted relative to the
+// highest ownership at his own position (metrics.relativeLeverage) --
+// both computed from the whole `playersPool`, before locked/infeasible
+// players are filtered out.
 export function pickList(
   piece: Piece,
   playersPool: readonly Player[],
@@ -83,14 +115,50 @@ export function pickList(
   const candidates = playersPool.filter(
     (p) =>
       !lockedPlayerIds.has(p.id) &&
-      classify(p, sport, qbTeam).has(piece) &&
+      classify(p, sport).has(piece) &&
       (bishopFloors === null || meetsBishopValueFloor(p, bishopFloors)) &&
       lineupStillCompletable([...currentPlayers, p], sport, cap),
   );
-  candidates.sort(
-    (a, b) => sortMetric(piece, b, contest, highestOwnership) - sortMetric(piece, a, contest, highestOwnership),
-  );
+  if (piece === Piece.ROOK) {
+    const qbOpp = qbOpponentTeam(qbTeam, currentPlayers);
+    candidates.sort((a, b) => {
+      const tierA = rookTier(a, qbTeam, qbOpp, currentPlayers);
+      const tierB = rookTier(b, qbTeam, qbOpp, currentPlayers);
+      return tierA !== tierB ? tierA - tierB : b.ceiling - a.ceiling;
+    });
+  } else {
+    candidates.sort(
+      (a, b) => sortMetric(piece, b, contest, highestOwnership) - sortMetric(piece, a, contest, highestOwnership),
+    );
+  }
   const listCap = sport.listCapFor(piece);
+  return listCap === null ? candidates : candidates.slice(0, listCap);
+}
+
+// Castling's own Rook step -- UNCHANGED by Rule change "Rook: stack
+// builder" (which only reworks the general/direct Rook pool above):
+// restricted to the QB's own teammates only, sorted by proj. A dedicated
+// function rather than a flag on pickList, since the two have genuinely
+// diverged (team-restricted eligibility + proj sort here, vs. unrestricted
+// eligibility + stack-tier/ceiling sort there).
+export function castleRookList(
+  playersPool: readonly Player[],
+  lockedPlayerIds: ReadonlySet<string>,
+  currentPlayers: readonly Player[],
+  sport: SportConfig,
+  contest: ContestConfig,
+  qbTeam: string,
+): Player[] {
+  const cap = contest.effectiveCap(sport);
+  const candidates = playersPool.filter(
+    (p) =>
+      !lockedPlayerIds.has(p.id) &&
+      classify(p, sport).has(Piece.ROOK) &&
+      p.team === qbTeam &&
+      lineupStillCompletable([...currentPlayers, p], sport, cap),
+  );
+  candidates.sort((a, b) => sortMetric(Piece.ROOK, b, contest) - sortMetric(Piece.ROOK, a, contest));
+  const listCap = sport.listCapFor(Piece.ROOK);
   return listCap === null ? candidates : candidates.slice(0, listCap);
 }
 
@@ -110,6 +178,6 @@ export function castleQbCandidates(
   return kings.filter((king) => {
     const locked = new Set(lockedPlayerIds);
     locked.add(king.id);
-    return pickList(Piece.ROOK, playersPool, locked, [...currentPlayers, king], sport, contest, king.team).length > 0;
+    return castleRookList(playersPool, locked, [...currentPlayers, king], sport, contest, king.team).length > 0;
   });
 }

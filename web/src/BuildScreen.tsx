@@ -62,7 +62,7 @@ import type { ContestConfig, ContestPreset } from "./engine/config";
 import { BuildState, KingMode, Piece, Side, type Move, type Player } from "./engine/models";
 import { bookContinuations, openingLine, openingName, splitFamily, type BookLine } from "./engine/openings";
 import { optimalLineup } from "./engine/optimizer";
-import { castleQbCandidates, pickList } from "./engine/picklist";
+import { castleQbCandidates, castleRookList, pickList } from "./engine/picklist";
 import { SeededRandom } from "./engine/rng";
 import {
   assignRosterSlots,
@@ -350,23 +350,27 @@ function pendingBaseline(pendingMove: PendingMove, whiteMoves: readonly Move[]):
 
 // The pending pick's own candidate list -- RULES.md piece table: each
 // piece's pick list (engine/picklist.ts's pickList, sorted + capped), not
-// a blanket "every eligible player." Rook (direct or castling) needs the
-// moving side's own locked-QB team (lockedQbTeam); castling's King step
-// additionally restricts to QBs with an eligible teammate
-// (castleQbCandidates) -- RULES.md: "If none, castling is illegal."
+// a blanket "every eligible player." Direct Rook moves ("ordinary"/
+// "captureUnmoved") pass the moving side's own locked-QB team
+// (lockedQbTeam) for the stack-tier sort only (Rule change "Rook: stack
+// builder" -- eligibility is no longer team-restricted at all). Castling
+// is UNCHANGED: its own Rook step (castleRookList) keeps the old "QB's
+// teammates only" restriction; its King step additionally restricts to
+// QBs with an eligible teammate (castleQbCandidates) -- RULES.md: "If
+// none, castling is illegal."
 function candidatesFor(pendingMove: PendingMove, state: BuildState, players: readonly Player[], contest: ContestConfig): Player[] {
   const current = state.whiteMoves.map((m) => m.player);
   switch (pendingMove.kind) {
     case "castleEmergeKing":
       return castleQbCandidates(players, state.lockedPlayerIds, current, NFL, contest);
     case "castleEmergeRook":
-      return pickList(Piece.ROOK, players, state.lockedPlayerIds, [...current, pendingMove.king], NFL, contest, pendingMove.king.team);
+      return castleRookList(players, state.lockedPlayerIds, [...current, pendingMove.king], NFL, contest, pendingMove.king.team);
     case "castlePlacedSwitch":
       return pickList(Piece.KING, players, state.lockedPlayerIds, pendingBaseline(pendingMove, state.whiteMoves), NFL, contest);
     case "castlePlacedRook": {
       const base = pendingMove.baseState;
       const qbTeam = lockedQbTeam(base, Side.WHITE);
-      return pickList(Piece.ROOK, players, base.lockedPlayerIds, base.whiteMoves.map((m) => m.player), NFL, contest, qbTeam);
+      return qbTeam === null ? [] : castleRookList(players, base.lockedPlayerIds, base.whiteMoves.map((m) => m.player), NFL, contest, qbTeam);
     }
     case "ordinary":
       return pickList(pendingMove.piece, players, state.lockedPlayerIds, current, NFL, contest, lockedQbTeam(state, Side.WHITE));

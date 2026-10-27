@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import nflConfig from "../data/config/sports/nfl.json";
 import { ContestConfig } from "./config";
 import { Piece, Player } from "./models";
-import { castleQbCandidates, pickList } from "./picklist";
+import { castleQbCandidates, castleRookList, pickList } from "./picklist";
 import { loadSportConfig } from "./sport";
 
 const NFL = loadSportConfig(nflConfig);
@@ -49,7 +49,7 @@ describe("pickList", () => {
 
   // --- sort: each piece by its own metric (RULES.md piece table) -----------
 
-  it("King and Rook sort by projection", () => {
+  it("King sorts by projection", () => {
     const pool = [makePlayer("qb1", "QB", 6000, 15.0), makePlayer("qb2", "QB", 6200, 25.0)];
     const result = pickList(Piece.KING, pool, new Set(), [], NFL, CONTEST);
     expect(result.map((p) => p.id)).toEqual(["qb2", "qb1"]);
@@ -169,20 +169,82 @@ describe("pickList", () => {
     expect(result).toEqual([]);
   });
 
-  // --- Rook: team-restricted (RULES.md "Rook = correlation") -----------------
+  // --- Rook: stack-tier sort (Rule change "Rook: stack builder") -------------
+  // Any RB/WR/TE, any salary -- no team filter at all (that's the whole
+  // point of this rework: see pieces.test.ts). Sorted by tier (1: QB's own
+  // team, 2: QB's opponent, 3: a team already in the lineup, 4: everyone
+  // else), then by DK Ceiling (not proj) within each tier. "His opponent"
+  // is read off the QB's own `opp` field in `currentPlayers` -- QB's own
+  // team's own `opp` convention (test fixtures use "BBB" throughout via
+  // makePlayer's own default).
 
-  it("Rook is restricted to the QB's team when given", () => {
+  it("eligibility is unrestricted: any team, any salary, with or without a locked QB", () => {
     const teammate = makePlayer("rb1", "RB", 5200, 10.0, 6.0, 16.0, 0.1, 0.1, "CIN");
     const otherTeam = makePlayer("rb2", "RB", 5300, 10.0, 6.0, 16.0, 0.1, 0.1, "DET");
     const result = pickList(Piece.ROOK, [teammate, otherTeam], new Set(), [], NFL, CONTEST, "CIN");
-    expect(result.map((p) => p.id)).toEqual(["rb1"]);
+    expect(new Set(result.map((p) => p.id))).toEqual(new Set(["rb1", "rb2"]));
   });
 
-  it("Rook lists all RB/WR/TE when no QB is locked", () => {
+  it("tier 1 (QB's own team) ranks above tier 4 (everyone else)", () => {
+    const qb = makePlayer("qb1", "QB", 6000, 10.0, 6.0, 16.0, 0.1, 0.1, "CIN");
+    const teammate = makePlayer("rb1", "RB", 5200, 10.0, 6.0, 20.0, 0.1, 0.1, "CIN"); // lower ceiling than...
+    const stranger = makePlayer("rb2", "RB", 5300, 10.0, 6.0, 30.0, 0.1, 0.1, "SEA"); // ...this higher-ceiling stranger
+    const result = pickList(Piece.ROOK, [stranger, teammate], new Set(), [qb], NFL, CONTEST, "CIN");
+    // Tier beats ceiling: the QB's own (lower-ceiling) teammate still
+    // ranks first, ahead of the (higher-ceiling) unrelated stranger.
+    expect(result.map((p) => p.id)).toEqual(["rb1", "rb2"]);
+  });
+
+  it("tier 2 (QB's opponent) ranks between tier 1 and tier 3/4", () => {
+    const qb = makePlayer("qb1", "QB", 6000, 10.0, 6.0, 16.0, 0.1, 0.1, "CIN"); // opp defaults to "BBB"
+    const teammate = makePlayer("rb1", "RB", 5200, 10.0, 6.0, 16.0, 0.1, 0.1, "CIN"); // tier 1
+    const oppPlayer = makePlayer("wr1", "WR", 5100, 10.0, 6.0, 16.0, 0.1, 0.1, "BBB"); // tier 2 -- CIN's opponent
+    const stranger = makePlayer("rb2", "RB", 5300, 10.0, 6.0, 16.0, 0.1, 0.1, "SEA"); // tier 4
+    const result = pickList(Piece.ROOK, [stranger, oppPlayer, teammate], new Set(), [qb], NFL, CONTEST, "CIN");
+    expect(result.map((p) => p.id)).toEqual(["rb1", "wr1", "rb2"]);
+  });
+
+  it("tier 3 (a team already in the lineup) ranks above tier 4, with no QB needed", () => {
+    const lineupTeammate = makePlayer("existing", "TE", 4800, 10.0, 6.0, 16.0, 0.1, 0.1, "SEA");
+    const sameTeamAsLineup = makePlayer("rb1", "RB", 5200, 10.0, 6.0, 16.0, 0.1, 0.1, "SEA"); // tier 3
+    const stranger = makePlayer("rb2", "RB", 5300, 10.0, 6.0, 16.0, 0.1, 0.1, "DET"); // tier 4
+    const result = pickList(Piece.ROOK, [stranger, sameTeamAsLineup], new Set(), [lineupTeammate], NFL, CONTEST, null);
+    expect(result.map((p) => p.id)).toEqual(["rb1", "rb2"]);
+  });
+
+  it("no QB locked yet skips tiers 1-2 entirely -- a QB's-team/opponent match means nothing without one", () => {
+    // Same shape as the tier-1/tier-2 test above, but qbTeam omitted
+    // (null, the default) -- CIN gets no tier-1 boost at all now; both
+    // candidates fall through to tier 3/4 (neither matches an EXISTING
+    // lineup player's team, since the lineup is empty), landing in the
+    // same tier 4 and sorting by ceiling instead.
     const cin = makePlayer("rb1", "RB", 5200, 10.0, 6.0, 16.0, 0.1, 0.1, "CIN");
-    const det = makePlayer("rb2", "RB", 5300, 10.0, 6.0, 16.0, 0.1, 0.1, "DET");
-    const result = pickList(Piece.ROOK, [cin, det], new Set(), [], NFL, CONTEST, null);
-    expect(new Set(result.map((p) => p.id))).toEqual(new Set(["rb1", "rb2"]));
+    const seaHigherCeiling = makePlayer("rb2", "RB", 5300, 10.0, 6.0, 30.0, 0.1, 0.1, "SEA");
+    const result = pickList(Piece.ROOK, [cin, seaHigherCeiling], new Set(), [], NFL, CONTEST);
+    expect(result.map((p) => p.id)).toEqual(["rb2", "rb1"]);
+  });
+
+  it("a player sits in his HIGHEST matching tier only (tier 1 wins even though he'd also match tier 3)", () => {
+    const qb = makePlayer("qb1", "QB", 6000, 10.0, 6.0, 16.0, 0.1, 0.1, "CIN");
+    const otherCin = makePlayer("existing", "TE", 4800, 10.0, 6.0, 16.0, 0.1, 0.1, "CIN"); // already in the lineup, also CIN
+    const candidate = makePlayer("rb1", "RB", 5200, 10.0, 6.0, 16.0, 0.1, 0.1, "CIN"); // matches BOTH tier 1 (QB's team) and tier 3 (lineup's team)
+    const stranger = makePlayer("rb2", "RB", 5300, 10.0, 6.0, 50.0, 0.1, 0.1, "SEA"); // tier 4, highest ceiling of all
+    const result = pickList(Piece.ROOK, [stranger, candidate], new Set(), [qb, otherCin], NFL, CONTEST, "CIN");
+    expect(result.map((p) => p.id)).toEqual(["rb1", "rb2"]); // tier 1, not demoted by also qualifying for tier 3
+  });
+
+  it("within a tier, sorts by DK Ceiling, not projection", () => {
+    const qb = makePlayer("qb1", "QB", 6000, 10.0, 6.0, 16.0, 0.1, 0.1, "CIN");
+    const highProjLowCeiling = makePlayer("a", "RB", 5200, 25.0, 6.0, 18.0, 0.1, 0.1, "CIN");
+    const lowProjHighCeiling = makePlayer("b", "RB", 5300, 10.0, 6.0, 30.0, 0.1, 0.1, "CIN");
+    const result = pickList(Piece.ROOK, [highProjLowCeiling, lowProjHighCeiling], new Set(), [qb], NFL, CONTEST, "CIN");
+    expect(result.map((p) => p.id)).toEqual(["b", "a"]);
+  });
+
+  it("is still capped at 12", () => {
+    const qb = makePlayer("qb1", "QB", 6000, 10.0, 6.0, 16.0, 0.1, 0.1, "CIN");
+    const pool = Array.from({ length: 20 }, (_, i) => makePlayer(`rb${i}`, "RB", 5000 + i, 10.0, 6.0, 16.0 + i, 0.1, 0.1, "CIN"));
+    expect(pickList(Piece.ROOK, pool, new Set(), [qb], NFL, CONTEST, "CIN")).toHaveLength(12);
   });
 });
 
@@ -211,5 +273,31 @@ describe("castleQbCandidates", () => {
     const teammate = makePlayer("rb1", "RB", 5200, 10.0, 6.0, 16.0, 0.1, 0.1, "CIN");
     const result = castleQbCandidates([qb, teammate], new Set([teammate.id]), [], NFL, CONTEST);
     expect(result).toEqual([]);
+  });
+});
+
+// --- castleRookList: castling's own Rook step, UNCHANGED by "Rook: stack
+// builder" (that rework only touches the general/direct Rook pool,
+// pickList above) -- still restricted to the QB's own team, still sorted
+// by proj. -----------------------------------------------------------------
+
+describe("castleRookList", () => {
+  it("is restricted to the QB's own team", () => {
+    const teammate = makePlayer("rb1", "RB", 5200, 10.0, 6.0, 16.0, 0.1, 0.1, "CIN");
+    const otherTeam = makePlayer("rb2", "RB", 5300, 10.0, 6.0, 16.0, 0.1, 0.1, "DET");
+    const result = castleRookList([teammate, otherTeam], new Set(), [], NFL, CONTEST, "CIN");
+    expect(result.map((p) => p.id)).toEqual(["rb1"]);
+  });
+
+  it("sorts by projection, not ceiling", () => {
+    const lowProjHighCeiling = makePlayer("a", "RB", 5200, 10.0, 6.0, 30.0, 0.1, 0.1, "CIN");
+    const highProjLowCeiling = makePlayer("b", "RB", 5300, 25.0, 6.0, 18.0, 0.1, 0.1, "CIN");
+    const result = castleRookList([lowProjHighCeiling, highProjLowCeiling], new Set(), [], NFL, CONTEST, "CIN");
+    expect(result.map((p) => p.id)).toEqual(["b", "a"]);
+  });
+
+  it("is still capped at 12", () => {
+    const pool = Array.from({ length: 20 }, (_, i) => makePlayer(`rb${i}`, "RB", 5000 + i, i, 6.0, 16.0, 0.1, 0.1, "CIN"));
+    expect(castleRookList(pool, new Set(), [], NFL, CONTEST, "CIN")).toHaveLength(12);
   });
 });

@@ -136,10 +136,11 @@ describe("isLegalMove / applyMove", () => {
     expect(state.whiteMoves[0].piece).toBe(Piece.KNIGHT);
   });
 
-  // --- direct Rook move: team-restricted (RULES.md piece table) --------
+  // --- direct Rook move: no team restriction at all (Rule change "Rook:
+  // stack builder" -- team now only feeds pickList's own stack-tier sort,
+  // never isLegalMove's eligibility check) -----------------------------
 
-  it("direct Rook move without a locked QB accepts any RB/WR/TE team", () => {
-    // RULES.md "Direct Rook move": "if not [locked], list all RB/WR/TE."
+  it("direct Rook move accepts any RB/WR/TE team, with no QB locked", () => {
     let state = applyMove(new BuildState(), uci("a2a4"), makePlayer("w1", "WR", 3000), NFL, CONTEST);
     state = applyMove(state, uci("a7a5"), makePlayer("b1", "WR", 3000), NFL, CONTEST);
 
@@ -150,9 +151,7 @@ describe("isLegalMove / applyMove", () => {
     expect(isLegalMove(state, uci("a1a3"), otherTeam, NFL, CONTEST)).toBe(true);
   });
 
-  it("direct Rook move with a locked QB requires a teammate", () => {
-    // RULES.md "Direct Rook move": "if the side's QB is locked, list
-    // his teammates."
+  it("direct Rook move accepts any RB/WR/TE team, even with a QB already locked", () => {
     const qb = makePlayer("qb1", "QB", 6000, "CIN");
     let state = applyMove(new BuildState(), uci("e2e4"), makePlayer("w1", "WR", 3000), NFL, CONTEST);
     state = applyMove(state, uci("e7e5"), makePlayer("b1", "WR", 3000), NFL, CONTEST);
@@ -164,8 +163,11 @@ describe("isLegalMove / applyMove", () => {
     const teammate = makePlayer("rb1", "RB", 5200, "CIN");
     expect(isLegalMove(state, uci("a1a3"), teammate, NFL, CONTEST)).toBe(true);
 
+    // Formerly illegal (not a teammate of the locked QB) -- now legal,
+    // same as the no-QB case: only castling still restricts the Rook to
+    // the QB's own team (see castle()'s own tests below).
     const otherTeam = makePlayer("rb2", "RB", 5300, "DET");
-    expect(isLegalMove(state, uci("a1a3"), otherTeam, NFL, CONTEST)).toBe(false);
+    expect(isLegalMove(state, uci("a1a3"), otherTeam, NFL, CONTEST)).toBe(true);
   });
 
   // --- exclusivity ------------------------------------------------------

@@ -24,8 +24,8 @@ function makePlayer(pos: string, salary: number, team = "AAA"): Player {
   });
 }
 
-function pool(player: Player, nfl = NFL, qbTeam: string | null = null): Set<Piece> {
-  return new Set(classify(player, nfl, qbTeam));
+function pool(player: Player, nfl = NFL): Set<Piece> {
+  return new Set(classify(player, nfl));
 }
 
 describe("classify", () => {
@@ -91,11 +91,12 @@ describe("classify", () => {
     expect(pool(makePlayer("DST", 50000))).toEqual(new Set([Piece.PAWN]));
   });
 
-  it("any non-QB under 5000 with no QB locked is Pawn and Rook", () => {
-    // With no QB locked yet for the moving side (qbTeam null, the
-    // default), Rook's own team restriction doesn't apply -- "list all
-    // RB/WR/TE" (RULES.md "Direct Rook move") -- so an RB/WR/TE under
-    // $5,000 pools as both Pawn and Rook, not Pawn alone.
+  it("any non-QB under 5000 is Pawn and Rook (Rook has no team restriction at all now)", () => {
+    // Rule change "Rook: stack builder" -- Rook's own eligibility is
+    // "any RB/WR/TE, any salary," full stop; an RB/WR/TE under $5,000
+    // pools as both Pawn and Rook regardless of team. (Which team a
+    // candidate is on instead feeds pickList's own stack-tier SORT --
+    // see picklist.test.ts.)
     expect(pool(makePlayer("RB", 2500))).toEqual(new Set([Piece.PAWN, Piece.ROOK]));
     expect(pool(makePlayer("WR", 0))).toEqual(new Set([Piece.PAWN, Piece.ROOK]));
   });
@@ -125,24 +126,11 @@ describe("classify", () => {
     expect(pool(hybrid)).toEqual(new Set([Piece.ROOK, Piece.BISHOP, Piece.KNIGHT]));
   });
 
-  // --- Rook: team-restricted (RULES.md piece table, "Rook = correlation") --
-
-  it("Rook requires a QB-team match when a QB is locked", () => {
-    const teammate = makePlayer("RB", 5200, "CIN");
-    expect(classify(teammate, NFL, "CIN").has(Piece.ROOK)).toBe(true);
-    expect(classify(teammate, NFL, "DET").has(Piece.ROOK)).toBe(false);
-  });
-
-  it("Rook ignores team when no QB is locked yet", () => {
-    const anyone = makePlayer("WR", 3000, "SEA");
-    expect(classify(anyone, NFL, null).has(Piece.ROOK)).toBe(true);
-  });
-
-  it("Rook's team restriction does not affect Bishop or Knight", () => {
-    // Only Rook's own band is team-restricted -- a team mismatch
-    // narrows Rook out of the pool without touching any of the
-    // player's other salary-band memberships.
-    const player = makePlayer("TE", 5200, "CIN");
-    expect(classify(player, NFL, "DET")).toEqual(new Set([Piece.BISHOP, Piece.KNIGHT]));
-  });
+  // Rook's old team restriction (classify's own qbTeam param) is gone
+  // entirely -- removed by Rule change "Rook: stack builder", which
+  // replaced it with a stack-tier SORT in picklist.ts's pickList (team
+  // no longer affects classify()'s eligibility at all, for any piece).
+  // That tier logic -- and castling's own Rook step, which keeps the old
+  // team restriction via a dedicated castleRookList -- is covered in
+  // picklist.test.ts, not here.
 });

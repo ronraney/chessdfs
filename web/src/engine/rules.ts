@@ -194,10 +194,11 @@ function movesFor(state: BuildState, side: Side): Move[] {
 }
 
 // The team of `side`'s currently locked QB (King), or null if no King is
-// locked yet for that side -- Rook's own eligibility (RULES.md piece
-// table: "RB/WR/TE on your QB's team, any salary") is relative to this,
-// not a fixed band. `pieces.classify` reads null as "no team filter"
-// (RULES.md "Direct Rook move": "if not [locked], list all RB/WR/TE").
+// locked yet for that side. Direct Rook moves no longer restrict
+// eligibility by this at all (Rule change "Rook: stack builder" -- any
+// RB/WR/TE, any salary); this still feeds picklist.ts's own stack-tier
+// SORT (tier 1: same team as the QB) and castling's own Rook step, which
+// keeps the old team restriction (castleRookList, rules.ts's castle()).
 export function lockedQbTeam(state: BuildState, side: Side): string | null {
   const kingMove = movesFor(state, side).find((m) => m.piece === Piece.KING);
   return kingMove !== undefined ? kingMove.player.team : null;
@@ -309,7 +310,7 @@ export function isLegalMove(
   const piece = pieceForChessType(matched.piece);
 
   if (state.lockedPlayerIds.has(player.id)) return false;
-  if (!classify(player, sport, lockedQbTeam(state, side)).has(piece)) return false;
+  if (!classify(player, sport).has(piece)) return false;
 
   const cap = contest.effectiveCap(sport);
   const current = movesFor(state, side).map((m) => m.player);
@@ -416,9 +417,16 @@ export function castle(
 
   // RULES.md piece table: the Rook must be a teammate of the FINAL QB --
   // the one just chosen (EMERGE) or already locked from setup (PLACED).
+  // Castling's own Rook step is UNCHANGED by Rule change "Rook: stack
+  // builder" (which only drops this restriction for the general/direct
+  // Rook pool) -- enforced here as an explicit team check now that
+  // classify() itself no longer carries any team restriction at all.
   const qbTeam = kingMode === KingMode.EMERGE ? (king as Player).team : lockedQbTeam(state, side);
-  if (!classify(rook, sport, qbTeam).has(Piece.ROOK)) {
+  if (!classify(rook, sport).has(Piece.ROOK)) {
     throw new Error(`${rook.name} does not classify as Rook`);
+  }
+  if (rook.team !== qbTeam) {
+    throw new Error(`${rook.name} is not on the QB's team`);
   }
   if (state.lockedPlayerIds.has(rook.id)) {
     throw new Error(`${rook.name} is already locked`);
@@ -594,7 +602,7 @@ export function isLegalCapture(
 
   if (player === null || state.lockedPlayerIds.has(player.id)) return false;
   const capturedType = pieceForChessType(matched.captured!);
-  if (!classify(player, sport, lockedQbTeam(state, side)).has(capturedType)) return false;
+  if (!classify(player, sport).has(capturedType)) return false;
   return lineupStillCompletable([...current, player], sport, cap);
 }
 
@@ -645,7 +653,7 @@ export function applyCaptureMove(
   } else {
     const capturedType = pieceForChessType(matched.captured!);
     if (player !== null) {
-      if (!classify(player, sport, lockedQbTeam(state, side)).has(capturedType)) {
+      if (!classify(player, sport).has(capturedType)) {
         throw new Error(`${player.name} does not classify as ${capturedType}`);
       }
       if (state.lockedPlayerIds.has(player.id)) {

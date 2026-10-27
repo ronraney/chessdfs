@@ -16,6 +16,16 @@
 // pick_list_caps_bishop_at_12 scenario (still PYTHON's real, unchanged
 // output) no longer has anything in common with TS's own Bishop pick list
 // for that pool. picklist.test.ts carries the TS-only coverage instead.
+//
+// Same reasoning, same precedent, for Rule change "Rook: stack builder"
+// (TS-only, Python frozen): the general/direct Rook pool dropped its old
+// team restriction entirely in favor of a stack-tier sort, so the
+// fixture's pick_list_rook_requires_qb_team scenario (Python's real,
+// unchanged "exclude the other team" expectation) no longer has anything
+// in common with TS's own Rook pick list. picklist.test.ts carries the
+// TS-only stack-tier coverage instead; castling's own Rook step (still
+// team-restricted, unchanged) keeps its existing parity coverage via
+// checkCastleQbCandidates below, untouched by this divergence.
 import type { Move as ChessJsMove, Square } from "chess.js";
 import { Chess } from "chess.js";
 import { readFileSync } from "node:fs";
@@ -124,7 +134,7 @@ interface Scenario {
 }
 
 const scenarios = (parityFixture as { scenarios: Scenario[] }).scenarios.filter(
-  (scenario) => scenario.name !== "pick_list_caps_bishop_at_12",
+  (scenario) => scenario.name !== "pick_list_caps_bishop_at_12" && scenario.name !== "pick_list_rook_requires_qb_team",
 );
 
 describe("parity: Python vs TypeScript", () => {
