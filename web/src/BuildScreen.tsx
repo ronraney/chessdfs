@@ -1359,6 +1359,7 @@ export default function BuildScreen({
           moveContext={pendingMoveContext}
           candidates={pendingCandidates}
           currentPlayers={pendingPlayerBaseline}
+          playersPool={players}
           sport={NFL}
           contest={preset.contest}
           reasons={pendingReasons}

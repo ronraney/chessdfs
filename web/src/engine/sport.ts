@@ -91,6 +91,11 @@ export interface SportConfigFields {
   // dome wGame boost reads this; no bearing on chess-move/pick-list rules
   // at all. Empty for a sport (or a test fixture) with no such concept.
   domeTeams?: ReadonlySet<string>;
+  // Bishop's own eligibility "quality floor" (TS-only rule, no Python
+  // equivalent): the percentile of `value` (picklist.ts's
+  // bishopValueFloors) a player must clear, at his own position, on top
+  // of the unchanged RB/WR/TE >= $5,000 band. 0.5 (the median) by default.
+  bishopValuePercentile?: number;
 }
 
 export class SportConfig {
@@ -100,6 +105,7 @@ export class SportConfig {
   readonly rosterSlots: readonly RosterSlot[];
   readonly listCaps: ReadonlyMap<Piece, number>;
   readonly domeTeams: ReadonlySet<string>;
+  readonly bishopValuePercentile: number;
 
   constructor(fields: SportConfigFields) {
     this.sport = fields.sport;
@@ -108,6 +114,7 @@ export class SportConfig {
     this.rosterSlots = fields.rosterSlots;
     this.listCaps = fields.listCaps ?? new Map();
     this.domeTeams = fields.domeTeams ?? new Set();
+    this.bishopValuePercentile = fields.bishopValuePercentile ?? 0.5;
   }
 
   get rosterSize(): number {
@@ -141,6 +148,7 @@ export interface RawSportConfig {
   roster_slots: RawRosterSlot[];
   list_caps?: Record<string, number>;
   dome_teams?: string[];
+  bishop_value_percentile?: number;
 }
 
 function pieceFromName(name: string): Piece {
@@ -214,5 +222,6 @@ export function loadSportConfig(data: RawSportConfig): SportConfig {
     rosterSlots,
     listCaps,
     domeTeams: new Set(data.dome_teams ?? []),
+    bishopValuePercentile: data.bishop_value_percentile,
   });
 }

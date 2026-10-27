@@ -85,4 +85,19 @@ describe("loadSportConfig", () => {
     expect(sport.domeTeams.has("LV")).toBe(true);
     expect(sport.domeTeams.has("SF")).toBe(false);
   });
+
+  it("defaults bishopValuePercentile to 0.5 (the median) when absent", () => {
+    const config = makeConfig([{ piece: "PAWN", positions: null, min_salary: null, max_salary: null }]);
+    const sport = loadSportConfig(config);
+    expect(sport.bishopValuePercentile).toBe(0.5);
+  });
+
+  it("parses bishop_value_percentile when given", () => {
+    const config: RawSportConfig = {
+      ...makeConfig([{ piece: "PAWN", positions: null, min_salary: null, max_salary: null }]),
+      bishop_value_percentile: 0.6,
+    };
+    const sport = loadSportConfig(config);
+    expect(sport.bishopValuePercentile).toBe(0.6);
+  });
 });

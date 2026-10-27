@@ -8,17 +8,66 @@
 // dfs_chess/picklist.py.
 
 import type { ContestConfig } from "./config";
-import { sortMetric } from "./metrics";
+import { highestOwnershipByPosition, sortMetric, value } from "./metrics";
 import { Piece, type Player } from "./models";
 import { classify } from "./pieces";
 import { lineupStillCompletable } from "./rules";
 import type { SportConfig } from "./sport";
+
+// Linear-interpolation percentile of an ascending-sorted, non-empty array --
+// same formula as engine/sim/run.ts's own private percentile (kept
+// separate; that one serves a different domain, finish-place aggregation).
+function percentile(sortedAscending: readonly number[], p: number): number {
+  const idx = p * (sortedAscending.length - 1);
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  if (lo === hi) return sortedAscending[lo];
+  return sortedAscending[lo] + (sortedAscending[hi] - sortedAscending[lo]) * (idx - lo);
+}
+
+// Bishop's own eligibility "quality floor" (TS-only rule, no Python
+// equivalent): the configured percentile (sport.bishopValuePercentile,
+// default 0.5 = median) of `value`, among every Bishop-band-eligible
+// player in the WHOLE slate `playersPool` -- before removing locked/taken
+// players -- grouped by real-world position.
+function bishopValueFloors(playersPool: readonly Player[], sport: SportConfig): ReadonlyMap<string, number> {
+  const byPosition = new Map<string, number[]>();
+  for (const candidate of playersPool) {
+    if (!classify(candidate, sport).has(Piece.BISHOP)) continue;
+    const position = candidate.positions[0]?.toUpperCase();
+    if (position === undefined) continue;
+    const values = byPosition.get(position) ?? [];
+    values.push(value(candidate));
+    byPosition.set(position, values);
+  }
+  const floors = new Map<string, number>();
+  for (const [position, values] of byPosition) {
+    values.sort((a, b) => a - b);
+    floors.set(position, percentile(values, sport.bishopValuePercentile));
+  }
+  return floors;
+}
+
+// Whether `player` clears his own position's Bishop value floor -- true
+// (no restriction) if his position has no floor at all, which shouldn't
+// happen for a Bishop-band-eligible player (he'd have contributed to his
+// own position's floor) but is handled defensively all the same.
+function meetsBishopValueFloor(player: Player, floors: ReadonlyMap<string, number>): boolean {
+  const position = player.positions[0]?.toUpperCase();
+  const floor = position !== undefined ? floors.get(position) : undefined;
+  return floor === undefined || value(player) >= floor;
+}
 
 // `currentPlayers` is whichever side is picking's own roster so far
 // (never including a hypothetical candidate) -- feasibility is checked
 // as "would `currentPlayers` plus this ONE candidate still be
 // completable," same as every other lock in the build. `qbTeam` only
 // matters for Rook (see pieces.classify); every other piece ignores it.
+// Bishop gets two more TS-only checks on top of classify()'s unchanged
+// RB/WR/TE >= $5,000 band: a per-position value floor (bishopValueFloors)
+// and a sort by value discounted relative to the highest ownership at his
+// own position (metrics.relativeLeverage) -- both computed from the whole
+// `playersPool`, before locked/infeasible players are filtered out.
 export function pickList(
   piece: Piece,
   playersPool: readonly Player[],
@@ -29,13 +78,18 @@ export function pickList(
   qbTeam: string | null = null,
 ): Player[] {
   const cap = contest.effectiveCap(sport);
+  const bishopFloors = piece === Piece.BISHOP ? bishopValueFloors(playersPool, sport) : null;
+  const highestOwnership = piece === Piece.BISHOP ? highestOwnershipByPosition(playersPool, contest) : undefined;
   const candidates = playersPool.filter(
     (p) =>
       !lockedPlayerIds.has(p.id) &&
       classify(p, sport, qbTeam).has(piece) &&
+      (bishopFloors === null || meetsBishopValueFloor(p, bishopFloors)) &&
       lineupStillCompletable([...currentPlayers, p], sport, cap),
   );
-  candidates.sort((a, b) => sortMetric(piece, b, contest) - sortMetric(piece, a, contest));
+  candidates.sort(
+    (a, b) => sortMetric(piece, b, contest, highestOwnership) - sortMetric(piece, a, contest, highestOwnership),
+  );
   const listCap = sport.listCapFor(piece);
   return listCap === null ? candidates : candidates.slice(0, listCap);
 }

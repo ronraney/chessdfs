@@ -29,7 +29,7 @@ import { useMemo, useState } from "react";
 import "./PickPanel.css";
 import { pieceBandLabel, sideStats } from "./buildStats";
 import type { ContestConfig } from "./engine/config";
-import { sortMetric } from "./engine/metrics";
+import { highestOwnershipByPosition, sortMetric } from "./engine/metrics";
 import { Piece, type Player } from "./engine/models";
 import type { SportConfig } from "./engine/sport";
 
@@ -88,6 +88,10 @@ interface Props {
   moveContext: PickMoveContext | null;
   candidates: readonly Player[];
   currentPlayers: readonly Player[];
+  // The whole slate, not just `candidates` -- Bishop's own relativeLeverage
+  // sort needs the highest ownership at a position across every player,
+  // which a pre-filtered candidate list can't answer on its own.
+  playersPool: readonly Player[];
   sport: SportConfig;
   contest: ContestConfig;
   reasons?: ReadonlyMap<string, string>; // player id -> why greyed out; absent means feasible
@@ -132,6 +136,7 @@ export default function PickPanel({
   moveContext,
   candidates,
   currentPlayers,
+  playersPool,
   sport,
   contest,
   reasons = NO_REASONS,
@@ -139,9 +144,16 @@ export default function PickPanel({
   onCancel,
   error,
 }: Props) {
+  const highestOwnership = useMemo(
+    () => (piece === Piece.BISHOP ? highestOwnershipByPosition(playersPool, contest) : undefined),
+    [piece, playersPool, contest],
+  );
   const sorted = useMemo(
-    () => [...candidates].sort((a, b) => sortMetric(piece, b, contest) - sortMetric(piece, a, contest)),
-    [candidates, piece, contest],
+    () =>
+      [...candidates].sort(
+        (a, b) => sortMetric(piece, b, contest, highestOwnership) - sortMetric(piece, a, contest, highestOwnership),
+      ),
+    [candidates, piece, contest, highestOwnership],
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = sorted.find((p) => p.id === selectedId) ?? null;
@@ -210,7 +222,7 @@ export default function PickPanel({
                       {reason !== null && <span className="pick-row-reason"> · {reason}</span>}
                     </span>
                     <span>${player.salary.toLocaleString()}</span>
-                    <span>{sortMetric(piece, player, contest).toFixed(metricDecimals(piece))}</span>
+                    <span>{sortMetric(piece, player, contest, highestOwnership).toFixed(metricDecimals(piece))}</span>
                     <span>{(player.ownFor(tier) * 100).toFixed(1)}%</span>
                   </button>
                 );

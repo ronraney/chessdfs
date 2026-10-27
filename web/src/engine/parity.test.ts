@@ -9,6 +9,13 @@
 // build.ts's own header) while Python keeps the plain uniform-random
 // fallback; nothing to reconcile for a branch that's deliberately allowed
 // to diverge.
+//
+// Also excluded (filtered below, not absent from the fixture): Bishop's
+// "quality floor" + relative-ownership sort (this task) is TS-only --
+// Python's own pick_list has no equivalent, so the fixture's
+// pick_list_caps_bishop_at_12 scenario (still PYTHON's real, unchanged
+// output) no longer has anything in common with TS's own Bishop pick list
+// for that pool. picklist.test.ts carries the TS-only coverage instead.
 import type { Move as ChessJsMove, Square } from "chess.js";
 import { Chess } from "chess.js";
 import { readFileSync } from "node:fs";
@@ -116,7 +123,9 @@ interface Scenario {
   [key: string]: unknown;
 }
 
-const scenarios = (parityFixture as { scenarios: Scenario[] }).scenarios;
+const scenarios = (parityFixture as { scenarios: Scenario[] }).scenarios.filter(
+  (scenario) => scenario.name !== "pick_list_caps_bishop_at_12",
+);
 
 describe("parity: Python vs TypeScript", () => {
   for (const scenario of scenarios) {

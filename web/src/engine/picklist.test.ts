@@ -23,7 +23,9 @@ function makePlayer(
 
 describe("pickList", () => {
   it("excludes locked players", () => {
-    const pool = [makePlayer("rb1", "RB", 5200), makePlayer("rb2", "RB", 5300)];
+    // Same value (so neither trips Bishop's own median floor below) --
+    // this test is about lock exclusion, not the value floor.
+    const pool = [makePlayer("rb1", "RB", 5200), makePlayer("rb2", "RB", 5200)];
     const result = pickList(Piece.BISHOP, pool, new Set(["rb1"]), [], NFL, CONTEST);
     expect(result.map((p) => p.id)).toEqual(["rb2"]);
   });
@@ -60,13 +62,64 @@ describe("pickList", () => {
     expect(result.map((p) => p.id)).toEqual(["b", "a"]);
   });
 
-  it("Bishop sorts by leverage, not value", () => {
+  it("Bishop sorts by relativeLeverage, not value", () => {
     // Same value (proj/salary), but "chalk" (heavily owned) should rank
-    // below the lower-owned player once leverage discounts it.
+    // below the lower-owned player once relativeLeverage discounts it.
     const chalk = makePlayer("chalk", "WR", 5000, 20.0, 6.0, 16.0, 0.5, 0.5);
     const leveraged = makePlayer("leveraged", "WR", 5000, 20.0, 6.0, 16.0, 0.05, 0.05);
     const result = pickList(Piece.BISHOP, [chalk, leveraged], new Set(), [], NFL, CONTEST);
     expect(result.map((p) => p.id)).toEqual(["leveraged", "chalk"]);
+  });
+
+  // --- Bishop: value floor + relative-ownership sort (this task) -----------
+
+  it("Bishop excludes a player below his own position's median value", () => {
+    const below = makePlayer("below", "RB", 5000, 10.0); // value 2.0
+    const high = makePlayer("high", "RB", 5000, 20.0); // value 4.0 -- median of [2.0, 4.0] is 3.0
+    const result = pickList(Piece.BISHOP, [below, high], new Set(), [], NFL, CONTEST);
+    expect(result.map((p) => p.id)).toEqual(["high"]);
+  });
+
+  it("Bishop includes a player exactly at the median ('at or above', not strictly above)", () => {
+    const a = makePlayer("a", "RB", 5000, 10.0); // value 2.0
+    const b = makePlayer("b", "RB", 5000, 10.0); // value 2.0 -- median of [2.0, 2.0, 6.0] is 2.0
+    const c = makePlayer("c", "RB", 5000, 30.0); // value 6.0
+    const result = pickList(Piece.BISHOP, [a, b, c], new Set(), [], NFL, CONTEST);
+    expect(new Set(result.map((p) => p.id))).toEqual(new Set(["a", "b", "c"]));
+  });
+
+  it("Bishop's median is computed separately per position, not combined across RB/WR/TE", () => {
+    // RB's own median (2.0, 3.0 -> 2.5) lets rbHigh through; a median
+    // wrongly combined with WR's much higher values (2.0, 3.0, 20.0, 20.0
+    // -> 11.5) would have excluded him instead.
+    const rbLow = makePlayer("rbLow", "RB", 5000, 10.0); // value 2.0
+    const rbHigh = makePlayer("rbHigh", "RB", 5000, 15.0); // value 3.0
+    const wr1 = makePlayer("wr1", "WR", 5000, 100.0); // value 20.0
+    const wr2 = makePlayer("wr2", "WR", 5000, 100.0); // value 20.0
+    const result = pickList(Piece.BISHOP, [rbLow, rbHigh, wr1, wr2], new Set(), [], NFL, CONTEST);
+    expect(new Set(result.map((p) => p.id))).toEqual(new Set(["rbHigh", "wr1", "wr2"]));
+  });
+
+  it("Bishop's median comes from the whole slate, before removing locked players", () => {
+    // Locking "high" doesn't shrink the pool the median is computed from
+    // down to just "low" (which would trivially pass against his own,
+    // now-single-player median) -- it's still measured against the
+    // ORIGINAL two-player median (3.0), so "low" (2.0) stays excluded.
+    const low = makePlayer("low", "RB", 5000, 10.0); // value 2.0
+    const high = makePlayer("high", "RB", 5000, 20.0); // value 4.0
+    const result = pickList(Piece.BISHOP, [low, high], new Set(["high"]), [], NFL, CONTEST);
+    expect(result).toEqual([]);
+  });
+
+  it("Bishop sorts by value discounted relative to the highest ownership AT HIS OWN POSITION, not a flat field-size discount", () => {
+    // Same value (4.0) for both. "b" sets his position's own ownership
+    // ceiling (ratio 1.0 -> discounted to zero); "a" is owned at exactly
+    // half of it (ratio 0.5), the same discount plain `leverage` would
+    // apply to EITHER of them at a flat 50% ownership.
+    const a = makePlayer("a", "WR", 5000, 20.0, 6.0, 16.0, 0.25, 0.25);
+    const b = makePlayer("b", "WR", 5000, 20.0, 6.0, 16.0, 0.5, 0.5);
+    const result = pickList(Piece.BISHOP, [a, b], new Set(), [], NFL, CONTEST);
+    expect(result.map((p) => p.id)).toEqual(["a", "b"]);
   });
 
   it("Knight sorts by floor value, not projection", () => {
@@ -89,8 +142,12 @@ describe("pickList", () => {
     const pool = Array.from({ length: 20 }, (_, i) => makePlayer(`wr${i}`, "WR", 7000 + i, i));
     expect(pickList(Piece.QUEEN, pool, new Set(), [], NFL, CONTEST)).toHaveLength(12);
     expect(pickList(Piece.ROOK, pool, new Set(), [], NFL, CONTEST)).toHaveLength(12);
-    expect(pickList(Piece.BISHOP, pool, new Set(), [], NFL, CONTEST)).toHaveLength(12);
     expect(pickList(Piece.KNIGHT, pool, new Set(), [], NFL, CONTEST)).toHaveLength(12);
+    // Bishop needs its own pool: identical value (same salary and proj for
+    // every player) so none trips the new median floor below -- this test
+    // is about the cap, not the floor.
+    const bishopPool = Array.from({ length: 20 }, (_, i) => makePlayer(`wr${i}`, "WR", 7000, 10.0));
+    expect(pickList(Piece.BISHOP, bishopPool, new Set(), [], NFL, CONTEST)).toHaveLength(12);
   });
 
   it("King and Pawn are uncapped", () => {
