@@ -261,7 +261,7 @@ export function runSimulation(
   const results: TrialResult[] = [];
 
   for (let trial = 1; trial <= trialCount; trial++) {
-    const outcomes = drawSlateOutcomes(players, vegas, rng, sport.domeTeams);
+    const outcomes = drawSlateOutcomes(players, vegas, rng);
     const userScore = scoreLineup(lineup, outcomes);
     const fieldScores = scoredLineups.map((fieldLineup) => scoreLineup(fieldLineup, outcomes));
     const { place, payout } = computeEffectivePlaceAndPayout(userScore, fieldScores, lineupWeight, payouts);

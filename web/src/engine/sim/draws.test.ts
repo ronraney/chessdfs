@@ -1,25 +1,24 @@
 import { describe, expect, it } from "vitest";
 import { Player } from "../models";
 import { SeededRandom } from "../rng";
-import { TEMPLATE_PSD_REPORT, assignRoles, drawOutcome, drawSlateOutcomes, nearestPSD, tryCholesky, type SlateVegas } from "./draws";
+import {
+  TEMPLATE_PSD_REPORT,
+  assignRoles,
+  drawOutcome,
+  drawSlateOutcomes,
+  internalAnchorForTargetMean,
+  nearestPSD,
+  tryCholesky,
+  type SlateVegas,
+} from "./draws";
 
-function makePlayer(
-  id: string,
-  position: string,
-  team: string,
-  opp: string,
-  floor: number,
-  proj: number,
-  ceiling: number,
-  isHome: boolean = false,
-): Player {
+function makePlayer(id: string, position: string, team: string, opp: string, floor: number, proj: number, ceiling: number): Player {
   return new Player({
     id,
     name: id,
     positions: [position],
     team,
     opp,
-    isHome,
     salary: 5000,
     proj,
     ownSmall: 0.1,
@@ -46,30 +45,81 @@ function pearsonR(xs: readonly number[], ys: readonly number[]): number {
   return num / Math.sqrt(denX * denY);
 }
 
+// Deterministic (no RNG, no Monte Carlo noise) approximation of
+// E[drawOutcome(Z)] for a standard normal Z: u = Phi(Z) is exactly
+// Uniform(0,1), so this is just ∫_0^1 drawOutcome(u) du, approximated by
+// a fine midpoint Riemann sum.
+function empiricalMean(floor: number, targetMean: number, ceiling: number, posMin: number, k?: number): number {
+  const N = 200000;
+  let sum = 0;
+  for (let i = 0; i < N; i++) {
+    const u = (i + 0.5) / N;
+    sum += drawOutcome(floor, targetMean, ceiling, posMin, u, k);
+  }
+  return sum / N;
+}
+
 const NO_VEGAS: SlateVegas = new Map();
-const EMPTY_DOME: ReadonlySet<string> = new Set();
+
+describe("internalAnchorForTargetMean / drawOutcome: mean-targeting", () => {
+  it("the curve's own expected value (not its median) equals the target mean, for an asymmetric player", () => {
+    // ceiling-proj gap (11.1) wider than proj-floor gap (8.8) -- the
+    // common real-world shape that used to bias the mean upward.
+    const avg = empiricalMean(4.1, 12.9, 24, 0);
+    expect(avg).toBeCloseTo(12.9, 2);
+  });
+
+  it("equals the target mean for a DST (posMin = -5)", () => {
+    const avg = empiricalMean(1.0, 6.6, 13.5, -5);
+    expect(avg).toBeCloseTo(6.6, 2);
+  });
+
+  it("equals the target mean across a range of floor/ceiling shapes, including inverted (ceiling closer than floor)", () => {
+    const cases: Array<[number, number, number, number]> = [
+      [5, 12, 20, 0],
+      [10, 15, 18, 0],
+      [2, 20, 45, 0],
+      [8, 10, 12, 0],
+    ];
+    for (const [floor, targetMean, ceiling, posMin] of cases) {
+      expect(empiricalMean(floor, targetMean, ceiling, posMin)).toBeCloseTo(targetMean, 2);
+    }
+  });
+
+  it("the solved anchor differs from the target mean whenever floor/ceiling are asymmetric (the whole point of the fix)", () => {
+    const m = internalAnchorForTargetMean(4.1, 12.9, 24, 0);
+    expect(m).not.toBeCloseTo(12.9, 1);
+    expect(m).toBeGreaterThan(4.1);
+    expect(m).toBeLessThan(24);
+  });
+});
 
 describe("drawOutcome", () => {
-  it("hits floor/median/ceiling exactly at u = P15/P50/P85", () => {
+  it("still hits floor/ceiling exactly at u = P15/P85 regardless of the mean-targeting anchor", () => {
     const triples: Array<[number, number, number]> = [
       [5, 10, 18],
       [12, 18, 28],
       [2, 7, 14],
     ];
-    for (const [floor, median, ceiling] of triples) {
-      expect(drawOutcome(floor, median, ceiling, 0, 0.15)).toBeCloseTo(floor, 10);
-      expect(drawOutcome(floor, median, ceiling, 0, 0.5)).toBeCloseTo(median, 10);
-      expect(drawOutcome(floor, median, ceiling, 0, 0.85)).toBeCloseTo(ceiling, 10);
+    for (const [floor, targetMean, ceiling] of triples) {
+      expect(drawOutcome(floor, targetMean, ceiling, 0, 0.15)).toBeCloseTo(floor, 10);
+      expect(drawOutcome(floor, targetMean, ceiling, 0, 0.85)).toBeCloseTo(ceiling, 10);
     }
-  });
-
-  it("extends the right tail beyond P85 at k=1", () => {
-    expect(drawOutcome(10, 18, 28, 0, 1.0)).toBeCloseTo(28 + (28 - 18), 10);
   });
 
   it("left tail runs from posMin to floor", () => {
     expect(drawOutcome(10, 18, 28, 0, 0)).toBeCloseTo(0, 10);
     expect(drawOutcome(10, 18, 28, -5, 0)).toBeCloseTo(-5, 10);
+  });
+
+  it("right tail approaches a finite asymptote (ceiling + (ceiling - anchor) * k) as u -> 1", () => {
+    const floor = 5;
+    const targetMean = 12;
+    const ceiling = 20;
+    const k = 0.5;
+    const m = internalAnchorForTargetMean(floor, targetMean, ceiling, 0, k);
+    const atOne = drawOutcome(floor, targetMean, ceiling, 0, 1.0, k);
+    expect(atOne).toBeCloseTo(ceiling + (ceiling - m) * k, 10);
   });
 });
 
@@ -118,10 +168,7 @@ describe("assignRoles", () => {
   });
 
   it("ranks independently per team -- a second team's roles don't collide with the first's", () => {
-    const players = [
-      makePlayer("qb-a", "QB", "AAA", "BBB", 10, 20, 30),
-      makePlayer("qb-b", "QB", "BBB", "AAA", 10, 25, 30),
-    ];
+    const players = [makePlayer("qb-a", "QB", "AAA", "BBB", 10, 20, 30), makePlayer("qb-b", "QB", "BBB", "AAA", 10, 25, 30)];
     const roles = assignRoles(players);
     expect(roles.get("qb-a")).toBe("QB1");
     expect(roles.get("qb-b")).toBe("QB1");
@@ -148,7 +195,6 @@ describe("tryCholesky / nearestPSD", () => {
   });
 
   it("tryCholesky returns null for a matrix that isn't positive-definite", () => {
-    // Off-diagonal magnitude > 1 is never a valid correlation -- not PSD.
     const broken = [
       [1, 1.5],
       [1.5, 1],
@@ -186,10 +232,10 @@ describe("TEMPLATE_PSD_REPORT", () => {
 });
 
 describe("drawSlateOutcomes: known triples over many draws", () => {
-  it("recovers roughly the right P15/P50/P85 for an 'other' player (no role, no vegas)", () => {
-    // Ranked behind wr1/wr2/wr3 (proj 16/15/14) on its own team -- past the
-    // WR1-3 cutoff, so genuinely "other": zero correlation, zero mean
-    // shift, nothing but its own independent draw through drawOutcome.
+  it("recovers floor/ceiling at P15/P85 and the MEAN (not median) at proj, for an 'other' player", () => {
+    // Ranked behind wr1/wr2/wr3 (proj 16/15/14) on its own team -- past
+    // the WR1-3 cutoff, so genuinely "other": zero correlation, nothing
+    // but its own independent draw through drawOutcome.
     const other = makePlayer("other", "WR", "AAA", "BBB", 5, 12, 20);
     const wr1 = makePlayer("wr1", "WR", "AAA", "BBB", 5, 16, 24);
     const wr2 = makePlayer("wr2", "WR", "AAA", "BBB", 5, 15, 23);
@@ -204,20 +250,14 @@ describe("drawSlateOutcomes: known triples over many draws", () => {
       const out = drawSlateOutcomes(players, NO_VEGAS, rng);
       samples.push(out.get("other")!);
     }
-    samples.sort((a, b) => a - b);
-    const p15 = samples[Math.floor(N * 0.15)];
-    const p50 = samples[Math.floor(N * 0.5)];
-    const p85 = samples[Math.floor(N * 0.85)];
+    const sorted = [...samples].sort((a, b) => a - b);
+    const p15 = sorted[Math.floor(N * 0.15)];
+    const p85 = sorted[Math.floor(N * 0.85)];
+    const sampleMean = samples.reduce((a, b) => a + b, 0) / N;
 
-    // No regime layering left in this model -- an "other" player with no
-    // Vegas input is a plain mean-0, unit-variance normal through
-    // drawOutcome, so empirical percentiles should track the ETR anchors
-    // tightly.
-    expect(p50).toBeCloseTo(12, 0);
-    expect(p15).toBeLessThan(p50);
-    expect(p85).toBeGreaterThan(p50);
-    expect(p15).toBeCloseTo(12 - (12 - 5), 0);
+    expect(p15).toBeCloseTo(5, 0);
     expect(p85).toBeCloseTo(20, 0);
+    expect(sampleMean).toBeCloseTo(12, 0);
   });
 });
 
@@ -229,12 +269,10 @@ describe("drawSlateOutcomes: determinism", () => {
       makePlayer("rb1", "RB", "BBB", "AAA", 6, 12, 20),
       makePlayer("dst1", "DST", "BBB", "AAA", 2, 7, 14),
     ];
-
     const rng1 = new SeededRandom(777);
     const rng2 = new SeededRandom(777);
     const out1 = drawSlateOutcomes(players, NO_VEGAS, rng1);
     const out2 = drawSlateOutcomes(players, NO_VEGAS, rng2);
-
     for (const p of players) {
       expect(out1.get(p.id)).toBe(out2.get(p.id));
     }
@@ -258,13 +296,6 @@ describe("drawSlateOutcomes: role correlation structure", () => {
       qbPts.push(out.get("qb1")!);
       wrPts.push(out.get("wr1")!);
     }
-
-    // Measured target (real_correlation_targets.json): QB1-WR1 sim_r
-    // isn't pinned to the real_r itself (that's the whole point of
-    // Cholesky-drawing from this matrix rather than copying it verbatim
-    // -- drawOutcome's own piecewise curve, not a raw normal, is what
-    // actually gets correlated), so this just confirms the right sign and
-    // rough strength, not an exact value.
     expect(pearsonR(qbPts, wrPts)).toBeGreaterThan(0.2);
   });
 
@@ -282,7 +313,6 @@ describe("drawSlateOutcomes: role correlation structure", () => {
       dstPts.push(out.get("dst1")!);
       qbPts.push(out.get("qb1")!);
     }
-
     expect(pearsonR(dstPts, qbPts)).toBeLessThan(-0.1);
   });
 
@@ -304,13 +334,12 @@ describe("drawSlateOutcomes: role correlation structure", () => {
       qbPts.push(out.get("qb1")!);
       wr4Pts.push(out.get("wr4")!);
     }
-
     expect(Math.abs(pearsonR(qbPts, wr4Pts))).toBeLessThan(0.05);
   });
 });
 
-describe("drawSlateOutcomes: Vegas/dome/spread shift the mean, not shared variance", () => {
-  it("a high Vegas total raises that game's mean scoring vs neutral", () => {
+describe("drawSlateOutcomes: Vegas/dome no longer affect the draw (removed -- ETR already bakes both in)", () => {
+  it("a skewed Vegas total does NOT raise that game's mean scoring any more", () => {
     const game1 = [
       makePlayer("qb1", "QB", "AAA", "BBB", 12, 18, 28),
       makePlayer("wr1", "WR", "AAA", "BBB", 5, 10, 18),
@@ -346,91 +375,20 @@ describe("drawSlateOutcomes: Vegas/dome/spread shift the mean, not shared varian
       for (const p of game1) highGame1Sum += out.get(p.id)!;
     }
 
-    expect(highGame1Sum / N).toBeGreaterThan(neutralGame1Sum / N);
+    // Same seed, same per-trial random stream, and the Vegas map is now
+    // simply unused -- outcomes should be IDENTICAL, not just "close".
+    expect(highGame1Sum).toBe(neutralGame1Sum);
   });
 
-  it("Vegas total does NOT change same-team correlation (mean shift only, not shared variance)", () => {
-    const qb = makePlayer("qb1", "QB", "AAA", "BBB", 12, 18, 28);
-    const wr = makePlayer("wr1", "WR", "AAA", "BBB", 5, 10, 18);
-    const oppQb = makePlayer("qb2", "QB", "BBB", "AAA", 12, 18, 28);
-    const oppWr = makePlayer("wr2", "WR", "BBB", "AAA", 5, 10, 18);
-    const players = [qb, wr, oppQb, oppWr];
-    const N = 10000;
-
-    function corrAt(vegas: SlateVegas, seed: number): number {
-      const rng = new SeededRandom(seed);
-      const qbPts: number[] = [];
-      const wrPts: number[] = [];
-      for (let i = 0; i < N; i++) {
-        const out = drawSlateOutcomes(players, vegas, rng);
-        qbPts.push(out.get("qb1")!);
-        wrPts.push(out.get("wr1")!);
-      }
-      return pearsonR(qbPts, wrPts);
-    }
-
-    const neutral = corrAt(NO_VEGAS, 55);
-    const high: SlateVegas = new Map([
-      ["AAA", { total: 60 }],
-      ["BBB", { total: 60 }],
-    ]);
-    const highCorr = corrAt(high, 55);
-    expect(Math.abs(highCorr - neutral)).toBeLessThan(0.05);
-  });
-
-  it("a dome game raises mean scoring but does NOT change cross-team correlation", () => {
-    const qbA = makePlayer("qbA", "QB", "AAA", "BBB", 12, 18, 28, true);
-    const qbB = makePlayer("qbB", "QB", "BBB", "AAA", 12, 18, 28, false);
-    const players = [qbA, qbB];
-    const domeTeams = new Set(["AAA"]);
-    const N = 10000;
-
-    const neutralRng = new SeededRandom(321);
-    let neutralSum = 0;
-    const neutralAPts: number[] = [];
-    const neutralBPts: number[] = [];
-    for (let i = 0; i < N; i++) {
-      const out = drawSlateOutcomes(players, NO_VEGAS, neutralRng, EMPTY_DOME);
-      neutralSum += out.get("qbA")!;
-      neutralAPts.push(out.get("qbA")!);
-      neutralBPts.push(out.get("qbB")!);
-    }
-    const domeRng = new SeededRandom(321);
-    let domeSum = 0;
-    const aPts: number[] = [];
-    const bPts: number[] = [];
-    for (let i = 0; i < N; i++) {
-      const out = drawSlateOutcomes(players, NO_VEGAS, domeRng, domeTeams);
-      domeSum += out.get("qbA")!;
-      aPts.push(out.get("qbA")!);
-      bPts.push(out.get("qbB")!);
-    }
-    expect(domeSum / N).toBeGreaterThan(neutralSum / N);
-
-    // Each is the lone QB on its own team, so both are role "QB1" --
-    // qbA/qbB ARE correlated (the measured QB1-oppQB1 target, ~0.2), not
-    // zero. The point of this test is that dome doesn't change THAT
-    // correlation -- only the mean -- so compare dome's correlation
-    // against the identical pair's own neutral-run correlation, not
-    // against zero.
-    const neutralCorr = pearsonR(neutralAPts, neutralBPts);
-    const domeCorr = pearsonR(aPts, bPts);
-    expect(Math.abs(domeCorr - neutralCorr)).toBeLessThan(0.05);
-  });
-
-  it("an empty domeTeams set draws every game as non-dome (default, unchanged from before dome existed)", () => {
+  it("drawSlateOutcomes no longer takes a domeTeams parameter at all -- dome has no effect by construction", () => {
     const players = [
-      makePlayer("qb1", "QB", "AAA", "BBB", 12, 18, 28),
-      makePlayer("wr1", "WR", "AAA", "BBB", 5, 10, 18),
-      makePlayer("rb1", "RB", "BBB", "AAA", 6, 12, 20),
-      makePlayer("dst1", "DST", "BBB", "AAA", 2, 7, 14),
+      makePlayer("qbA", "QB", "AAA", "BBB", 12, 18, 28),
+      makePlayer("qbB", "QB", "BBB", "AAA", 12, 18, 28),
     ];
-    const rngNoDomeArg = new SeededRandom(13);
-    const rngEmptyDome = new SeededRandom(13);
-    const out1 = drawSlateOutcomes(players, NO_VEGAS, rngNoDomeArg);
-    const out2 = drawSlateOutcomes(players, NO_VEGAS, rngEmptyDome, new Set());
-    for (const p of players) {
-      expect(out1.get(p.id)).toBe(out2.get(p.id));
-    }
+    const rng1 = new SeededRandom(321);
+    const rng2 = new SeededRandom(321);
+    const out1 = drawSlateOutcomes(players, NO_VEGAS, rng1);
+    const out2 = drawSlateOutcomes(players, NO_VEGAS, rng2);
+    for (const p of players) expect(out1.get(p.id)).toBe(out2.get(p.id));
   });
 });

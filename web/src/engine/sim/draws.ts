@@ -1,89 +1,128 @@
-// Outcome draws + per-game Gaussian-copula correlation engine. Replaces
-// the old latent-factor model (zGame/zTeam shared factors + shootout/
-// script regime shocks + a DST-splash side channel) with a measured
-// role x role correlation matrix (config/real_correlation_targets.json,
-// 2021-2025 nflverse season-to-date role ranking) and a per-game Cholesky
-// draw. This INTENTIONALLY DIVERGES from nfl-dfs's own sim_draws.js --
-// not a port of this part any more (drawOutcome itself still is, see its
-// own doc comment).
+// Outcome draws + per-game Gaussian-copula correlation engine.
 //
-// Roles: each player is ranked by DK PROJECTION (not real-world season-to-
-// date volume -- that ranking lives only in the measurement script that
-// built the targets file) within their own team+position: QB1, RB1/RB2,
-// WR1/WR2/WR3, TE1/TE2, DST. Anyone else (a punt-value FLEX-only
-// WR4/RB3/etc, or a position the targets file doesn't model) is "other"
-// -- correlation 0 with every other player, including other "other"
-// players on the same team.
+// Mean shifts REMOVED (this task): Vegas total/spread and dome used to
+// shift a player's z-mean before the percentile draw. That double-
+// counted real-world game-environment information the ETR projections
+// (floor/proj/ceiling) already bake in -- Vegas/dome aren't separate
+// unknowns on top of proj, they're part of what produced it. `games:
+// SlateVegas` stays in this function's own signature (Admin's Vegas
+// upload -- vegasCsv.ts/vegasStore.ts -- stays wired end to end) but is
+// now genuinely unused by the draw itself; see sessions/HANDOFF.md for
+// the note. `domeTeams` is gone from the signature entirely (it was the
+// trailing parameter and had no other use once its one consumer -- the
+// dome mean shift -- was removed; run.ts's own call site updated to
+// match).
 //
-// Per game: the two teams' own filled roles (whichever of the 9 a team
-// actually has a player at -- a team with only 2 real WRs simply has no
-// WR3 slot that game) are assembled into one joint correlation matrix:
-// same-team pairs from `same_team_matrix`, cross-team pairs from
-// `opponent_matrix`. This is always a PRINCIPAL SUBMATRIX of the full
-// 18x18 (9 roles x 2 teams) template -- and a principal submatrix of a
-// positive-semidefinite matrix is itself always PSD -- so correcting the
-// FULL template once (see TEMPLATE_PSD_REPORT below) is sufficient; no
-// per-game correction is mathematically possible to need, and
-// gameCholesky() throws (rather than silently mis-drawing) if that
-// invariant is ever somehow violated.
+// drawOutcome FIXED (this task): previously, the piecewise floor/proj/
+// ceiling curve's median (u=0.5) was pinned to proj, which left its
+// MEAN biased above proj whenever the curve isn't symmetric around its
+// own median -- the normal case, since real ceiling-proj gaps usually
+// run wider than proj-floor gaps, and the right-tail extension (k) adds
+// expected value on the upper side with no left-side counterpart.
+// Confirmed empirically in the prior diagnosis task (a non-dome control
+// player's simulated mean ran +1.3 over proj even with every other
+// distortion removed). Fixed by solving, per player, for the INTERNAL
+// anchor value that makes the curve's own expected value (not its
+// median) equal the target mean (DK Proj) -- see
+// `internalAnchorForTargetMean`'s own doc comment for the closed form.
+// P15=floor and P85=ceiling are untouched (those percentile cut points
+// don't depend on the anchor at all), so "~15% below floor, ~15% above
+// ceiling" holds automatically once there's no mean shift upstream to
+// skew it (u is then exactly Uniform(0,1) for every player, role or
+// "other" -- a Cholesky row's own self-correlation is 1 by construction,
+// so a role player's pre-draw z is itself exactly N(0,1), same as an
+// "other" player's plain randNormal draw).
 //
-// Vegas/dome/spread: all three now shift a player's Z-MEAN directly
-// (additive, pre-correlation) rather than feeding a shared latent
-// factor's own mean the way zGame/zTeam used to -- there is no more
-// per-position loading (wg/wt) to dilute them through, so the same
-// constants (VEGAS_WEIGHT, SPREAD_WEIGHT, the dome bump) now apply
-// UNDILUTED to every player in the affected game/team, "other" players
-// included. That is a real, reported behavior change (a stronger
-// per-player effect at the same constant value), not a silent one -- see
-// this task's own session log for the measured sizes.
-//
-// Removed entirely (this task's own "remove the latent game/team/regime
-// shocks"): zGame, zTeam, the per-position g/t loadings, the shootout/
-// script regime draws, and the DST-splash side channel (a rare stochastic
-// override bypassing the percentile draw outright) -- the last of these
-// isn't named explicitly in the task, but it is exactly the kind of ad
-// hoc "regime shock" the new architecture replaces, and has no principled
-// place in a measured-correlation copula; flagged here as a judgment
-// call, not a silent drop.
+// Right tail reshaped (this task): TAIL_K lowered 1.0 -> 0.5 -- the old
+// value put P95/P99 25-45% above a player's own stated ceiling (reported
+// in the prior diagnosis), which read as unrealistically fat for a
+// "ceiling" meant to anchor P85. Still a genuine, deliberately open-
+// ended tail (real boom weeks do exceed a modest ceiling estimate), just
+// a more modest one -- see this task's own session log for the resulting
+// P95/P99 figures against the same 5 sample players as before.
 import correlationTargets from "../../data/config/real_correlation_targets.json";
 import type { SeededRandom } from "../rng";
 import type { Player } from "../models";
 
-// Right-tail extension multiplier. nfl-dfs's SIM_TAIL_K_DEFAULT_ -- lowered
-// from an original, never-calibrated 1.5 to 1.0 per that project's own
-// session history. Reproduced as-is; not re-tuned here.
-const TAIL_K = 1.0;
+// Right-tail extension multiplier. Was nfl-dfs's SIM_TAIL_K_DEFAULT_
+// (1.0, itself already lowered from an original, never-calibrated 1.5);
+// lowered again this task to 0.5 -- see module header.
+const TAIL_K = 0.5;
 const DST_POS_MIN = -5;
 
 const FLOOR_PCT = 0.15;
 const CEILING_PCT = 0.85;
 
 /**
+ * Solves for the internal curve anchor `m` (the value drawOutcome treats
+ * as its own u=0.5 point) such that E[drawOutcome(Z)] for a standard
+ * normal Z equals `targetMean`, given fixed floor/ceiling/posMin/k.
+ *
+ * drawOutcome is piecewise-linear in its anchor argument at every fixed
+ * u (each of the 4 segments is an affine function of the anchor, with a
+ * SLOPE that doesn't depend on floor/ceiling/posMin/anchor itself -- only
+ * on which segment u falls in), and u = Phi(Z) is exactly Uniform(0,1)
+ * for a standard normal Z. That makes E[drawOutcome(Z); anchor] an EXACT
+ * affine function of `anchor` -- closed-form solvable, no iteration:
+ *
+ *   E[outcome] = 0.075*posMin + 0.25*floor + (0.325 + 0.075k)*ceiling
+ *                + (0.35 - 0.075k) * anchor
+ *
+ * (each coefficient is the plain integral of that segment's own
+ * anchor-coefficient over its own u-range, since u is uniform -- derived
+ * once by hand, not approximated). Solving for anchor given a target
+ * mean:
+ *
+ *   anchor = [targetMean - 0.075*posMin - 0.25*floor
+ *             - (0.325 + 0.075k)*ceiling] / (0.35 - 0.075k)
+ *
+ * P15 (floor) and P85 (ceiling) never depend on `anchor` at all -- only
+ * where the curve's OWN u=0.5 point lands shifts, trading "median exactly
+ * at the anchor" for "mean exactly at targetMean" (the task's own
+ * "average draw = DK Proj, not median"). Exported for direct unit
+ * testing of the closed form itself, same "export pure math for fixture
+ * testing" precedent as drawOutcome/tryCholesky/nearestPSD.
+ */
+export function internalAnchorForTargetMean(
+  floor: number,
+  targetMean: number,
+  ceiling: number,
+  posMin: number,
+  k: number = TAIL_K,
+): number {
+  const denom = 0.35 - 0.075 * k;
+  return (targetMean - 0.075 * posMin - 0.25 * floor - (0.325 + 0.075 * k) * ceiling) / denom;
+}
+
+/**
  * Converts a percentile u in [0, 1) to fantasy points via piecewise-linear
- * interpolation through the three ETR anchor points (DK Floor = P15, DK
- * Proj = P50, DK Ceiling = P85), plus a right-tail extension beyond P85.
- * Ported one-for-one from nfl-dfs's drawOutcome_ -- unchanged by this
- * task (only the z/percentile that feeds it changed).
+ * interpolation through floor (P15) and ceiling (P85), plus a right-tail
+ * extension beyond P85, anchored so that its EXPECTED value over a
+ * standard-normal-driven u equals `targetMean` (DK Proj) -- not its
+ * median, per this task's own fix (see internalAnchorForTargetMean's own
+ * doc comment for the derivation). The piecewise shape itself is
+ * otherwise unchanged from nfl-dfs's own drawOutcome_.
  */
 export function drawOutcome(
   floor: number,
-  median: number,
+  targetMean: number,
   ceiling: number,
   posMin: number,
   u: number,
   k: number = TAIL_K,
 ): number {
+  const m = internalAnchorForTargetMean(floor, targetMean, ceiling, posMin, k);
   if (u >= CEILING_PCT) {
     const t = (u - CEILING_PCT) / (1 - CEILING_PCT);
-    return ceiling + (ceiling - median) * k * t;
+    return ceiling + (ceiling - m) * k * t;
   }
   if (u >= 0.5) {
     const t = (u - 0.5) / (CEILING_PCT - 0.5);
-    return median + (ceiling - median) * t;
+    return m + (ceiling - m) * t;
   }
   if (u >= FLOOR_PCT) {
     const t = (u - FLOOR_PCT) / (0.5 - FLOOR_PCT);
-    return floor + (median - floor) * t;
+    return floor + (m - floor) * t;
   }
   const t = u / FLOOR_PCT;
   return posMin + (floor - posMin) * t;
@@ -115,50 +154,28 @@ function normCDF(z: number): number {
   return z >= 0 ? 0.5 * (1 + erf) : 0.5 * (1 - erf);
 }
 
-function isFiniteNum(v: number | undefined): v is number {
-  return typeof v === "number" && Number.isFinite(v);
-}
-
-function mean(values: readonly number[]): number {
-  return values.reduce((a, b) => a + b, 0) / values.length;
-}
-
-function popStdDev(values: readonly number[], avg: number): number {
-  return Math.sqrt(values.reduce((a, v) => a + (v - avg) ** 2, 0) / values.length);
-}
-
 function canonicalGameKey(teamA: string, teamB: string): string {
   return teamA <= teamB ? `${teamA}@${teamB}` : `${teamB}@${teamA}`;
 }
 
-/** Optional Vegas input for one team: this team's own signed spread (see
- * module header for sign convention) and the game's over/under total. */
+/** Optional Vegas input for one team: this team's own signed spread and
+ * the game's over/under total. No longer consumed by drawSlateOutcomes
+ * (see module header) -- kept so Admin's Vegas upload still has a type
+ * to produce. */
 export interface GameVegas {
   total?: number;
   spread?: number;
 }
 
-/** Per-slate Vegas input, keyed by team abbreviation (one entry per team,
- * mirroring nfl-dfs's own per-team Vegas sheet). Any team, or the whole
- * map, may be omitted -- missing total/spread falls back to a neutral
- * default on a per-game basis. */
+/** Per-slate Vegas input, keyed by team abbreviation. Still accepted by
+ * drawSlateOutcomes for API stability (Admin's upload still produces
+ * one), but no longer read by it -- see module header. */
 export type SlateVegas = ReadonlyMap<string, GameVegas>;
-
-const EMPTY_DOME_TEAMS: ReadonlySet<string> = new Set();
 
 interface GameGroup {
   key: string;
   teamX: string;
   teamY: string;
-  // Whichever team's players report isHome -- undefined if no player in
-  // this game does (e.g. a synthetic test pool that never set it), in
-  // which case dome status can't be determined and defaults to false.
-  homeTeam?: string;
-}
-
-interface ResolvedGameVegas {
-  total?: number;
-  spreadX?: number; // teamX's own signed spread; teamY's is its negation
 }
 
 function buildGameGroups(players: readonly Player[]): GameGroup[] {
@@ -166,26 +183,9 @@ function buildGameGroups(players: readonly Player[]): GameGroup[] {
   for (const p of players) {
     const [teamX, teamY] = p.team <= p.opp ? [p.team, p.opp] : [p.opp, p.team];
     const key = canonicalGameKey(teamX, teamY);
-    let g = groups.get(key);
-    if (!g) {
-      g = { key, teamX, teamY };
-      groups.set(key, g);
-    }
-    if (p.isHome) g.homeTeam = p.team;
+    if (!groups.has(key)) groups.set(key, { key, teamX, teamY });
   }
   return [...groups.values()];
-}
-
-function resolveGameVegas(teamX: string, teamY: string, games: SlateVegas): ResolvedGameVegas {
-  const vx = games.get(teamX);
-  const vy = games.get(teamY);
-  const total = isFiniteNum(vx?.total) ? vx.total : isFiniteNum(vy?.total) ? vy.total : undefined;
-  const spreadX = isFiniteNum(vx?.spread)
-    ? vx.spread
-    : isFiniteNum(vy?.spread)
-      ? -vy.spread
-      : undefined;
-  return { total, spreadX };
 }
 
 // ---------------------------------------------------------------------
@@ -243,14 +243,6 @@ const ROLE_INDEX = new Map(ROLES.map((r, i) => [r, i]));
 const SAME_TEAM_MATRIX: readonly (readonly number[])[] = correlationTargets.same_team_matrix;
 const OPPONENT_MATRIX: readonly (readonly number[])[] = correlationTargets.opponent_matrix;
 
-function sameTeamCorr(roleA: string, roleB: string): number {
-  return SAME_TEAM_MATRIX[ROLE_INDEX.get(roleA)!][ROLE_INDEX.get(roleB)!];
-}
-
-function opponentCorr(roleA: string, roleB: string): number {
-  return OPPONENT_MATRIX[ROLE_INDEX.get(roleA)!][ROLE_INDEX.get(roleB)!];
-}
-
 // Cholesky-Banachiewicz. Returns null (not PSD/positive-definite, within
 // `epsilon`) instead of throwing -- the caller decides whether to attempt
 // a nearest-PSD correction or treat null as a hard error. Exported (along
@@ -286,7 +278,12 @@ export function tryCholesky(a: readonly (readonly number[])[], epsilon = 1e-9): 
 function jacobiEigen(a: readonly (readonly number[])[]): { values: number[]; vectors: number[][] } {
   const n = a.length;
   const A = a.map((row) => [...row]);
-  const V = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)));
+  // Explicit number[][] annotation: without it, TS infers the ternary's
+  // own literal-type union (1 | 0) for the inner array, which then
+  // rejects every later plain-`number` assignment below (a pre-existing
+  // type error this task's own `tsc -b` run surfaced -- `npm run test`
+  // alone doesn't type-check, so it had gone uncaught).
+  const V: number[][] = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)));
   const MAX_SWEEPS = 100;
   for (let sweep = 0; sweep < MAX_SWEEPS; sweep++) {
     let offDiagSumSq = 0;
@@ -392,11 +389,10 @@ const FULL_TEMPLATE: readonly (readonly number[])[] = TEMPLATE_CORRECTION?.matri
 
 /** Whether real_correlation_targets.json's measured matrices needed a
  * nearest-PSD correction, and the largest single entry the correction
- * changed (0 if none was needed) -- this task's own "report the largest
- * change." Computed once at module load, not per game/trial: a principal
- * submatrix of a PSD matrix is itself always PSD, so correcting the full
- * template once is sufficient for every game this module will ever slice
- * from it. */
+ * changed (0 if none was needed). Computed once at module load, not per
+ * game/trial: a principal submatrix of a PSD matrix is itself always
+ * PSD, so correcting the full template once is sufficient for every game
+ * this module will ever slice from it. */
 export const TEMPLATE_PSD_REPORT: PsdReport = {
   wasAlreadyPsd: RAW_TEMPLATE_IS_PSD,
   largestChange: TEMPLATE_CORRECTION?.largestChange ?? 0,
@@ -440,23 +436,9 @@ function gameCholesky(slots: readonly RoleSlot[]): number[][] {
   return L;
 }
 
-// Vegas total deviation weight, and spread weight -- SAME constants/
-// formulas as the old latent-factor model's totalShift/spreadShift, now
-// applied directly as a player's own z-MEAN (additive, pre-correlation)
-// instead of a shared zGame/zTeam factor's mean. Undiluted by any
-// per-position loading (there is none left) -- a real, stronger-at-the-
-// same-constant-value effect than before; see this module's own header.
-const VEGAS_WEIGHT = 0.5;
-const SPREAD_WEIGHT = 0.3;
-// Dome bump: the old model's DOME_WGAME_SCALE (1.15x) multiplied the
-// shared-game loading; reused here at the same size (1.15 - 1 = 0.15) as
-// a flat z-mean bump for every player in a dome game instead.
-const DOME_MEAN_SHIFT = 0.15;
 // Composite Z clip -- purely a numerical safety bound on the normCDF
 // approximation (two very different z values both saturating to ~0/1
-// would otherwise quietly lose their relative correlation in the tail),
-// not a regime mechanic; same value/reasoning as before, just no longer
-// needed to counteract regime boosts specifically since those are gone.
+// would otherwise quietly lose their relative correlation in the tail).
 const Z_CLIP = 3.9;
 
 /**
@@ -464,51 +446,21 @@ const Z_CLIP = 3.9;
  * trial via a per-game Gaussian copula (see module header): role
  * assignment by DK-projection rank, a measured role x role correlation
  * matrix per game (config/real_correlation_targets.json), Cholesky-drawn
- * correlated normals, Vegas/dome/spread as direct mean shifts, mapped
- * onto each player's own floor/proj/ceiling curve via drawOutcome.
- * `domeTeams` defaults to empty (every game non-dome).
+ * correlated normals, mapped onto each player's own floor/proj/ceiling
+ * curve via drawOutcome -- no Vegas/dome mean shift (removed; see module
+ * header). `_games` is accepted for API stability (Admin's Vegas upload
+ * still produces one, and callers still pass it through) but genuinely
+ * unused -- underscore-prefixed per this project's own lint rule
+ * (`noUnusedParameters`), not silently dropped.
  */
-export function drawSlateOutcomes(
-  players: readonly Player[],
-  games: SlateVegas,
-  rng: SeededRandom,
-  domeTeams: ReadonlySet<string> = EMPTY_DOME_TEAMS,
-): Map<string, number> {
+export function drawSlateOutcomes(players: readonly Player[], _games: SlateVegas, rng: SeededRandom): Map<string, number> {
   const groups = buildGameGroups(players);
   const roleOf = assignRoles(players);
 
-  const gameVegas = new Map<string, ResolvedGameVegas>();
-  const resolvedTotals: number[] = [];
-  const domeByGame = new Map<string, boolean>();
   const teamIndexInGame = new Map<string, 0 | 1>(); // team -> 0 (teamX) or 1 (teamY), per its own game
   for (const g of groups) {
-    const v = resolveGameVegas(g.teamX, g.teamY, games);
-    gameVegas.set(g.key, v);
-    if (isFiniteNum(v.total) && v.total > 0) resolvedTotals.push(v.total);
-    domeByGame.set(g.key, g.homeTeam !== undefined && domeTeams.has(g.homeTeam));
     teamIndexInGame.set(g.teamX, 0);
     teamIndexInGame.set(g.teamY, 1);
-  }
-  const avgTotal = resolvedTotals.length > 0 ? mean(resolvedTotals) : 45;
-  const totalStd = resolvedTotals.length > 1 ? popStdDev(resolvedTotals, avgTotal) : 5;
-
-  // Per-player mean shift (Vegas total + dome + spread), all additive,
-  // all applied to every player in the affected game/team regardless of
-  // role.
-  const meanShiftByTeam = new Map<string, number>();
-  for (const g of groups) {
-    const v = gameVegas.get(g.key)!;
-    const totalShift = isFiniteNum(v.total) && totalStd > 0 ? (VEGAS_WEIGHT * (v.total - avgTotal)) / totalStd : 0;
-    const domeShift = domeByGame.get(g.key) ? DOME_MEAN_SHIFT : 0;
-    const gameShift = totalShift + domeShift;
-
-    const spreadX = isFiniteNum(v.spreadX) ? v.spreadX : 0;
-    const spreadMag = Math.min(Math.abs(spreadX) / 14, 1.0) * SPREAD_WEIGHT;
-    const spreadShiftX = spreadX < 0 ? spreadMag : -spreadMag; // favorite (negative spread) shifts up
-    const spreadShiftY = -spreadShiftX;
-
-    meanShiftByTeam.set(g.teamX, gameShift + spreadShiftX);
-    meanShiftByTeam.set(g.teamY, gameShift + spreadShiftY);
   }
 
   // Group role-players by game, preserving ROLES order within each team
@@ -545,9 +497,7 @@ export function drawSlateOutcomes(
   const outcomes = new Map<string, number>();
   for (const p of players) {
     const position = p.positions[0] ?? "WR";
-    const meanShift = meanShiftByTeam.get(p.team) ?? 0;
-    const correlatedZ = correlatedZByPlayer.get(p.id) ?? randNormal(rng); // "other": independent draw
-    const z = Math.max(-Z_CLIP, Math.min(Z_CLIP, meanShift + correlatedZ));
+    const z = Math.max(-Z_CLIP, Math.min(Z_CLIP, correlatedZByPlayer.get(p.id) ?? randNormal(rng))); // "other": independent draw
     const u = normCDF(z);
     const posMin = position === "DST" ? DST_POS_MIN : 0;
     outcomes.set(p.id, drawOutcome(p.floor, p.proj, p.ceiling, posMin, u, TAIL_K));

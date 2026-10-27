@@ -1076,9 +1076,9 @@ export default function BuildScreen({
     return csv === null ? null : resolveCachedField(slateSignature(csv), preset.contest, players);
   }, [preset, players]);
   // Vegas is OPTIONAL for the sim, not a hard requirement (draws.ts's own
-  // drawSlateOutcomes degrades to nfl-dfs's neutral per-game defaults for
-  // any team with no Vegas row) -- confirmed by reading draws.ts directly
-  // before building this, not assumed. A missing OR invalid-for-this-
+  // drawSlateOutcomes doesn't consume Vegas data at all any more -- see
+  // that file's own header for why) -- confirmed by reading draws.ts
+  // directly before building this, not assumed. A missing OR invalid-for-this-
   // slate Vegas CSV (e.g. saved against a different slate, so
   // validateVegasCsv's own "a slate team has no Vegas row" check throws --
   // off-slate rows alone no longer throw, see vegasCsv.ts) both fall back
