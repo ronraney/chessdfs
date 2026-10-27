@@ -139,4 +139,49 @@ describe("Start again (Task 40)", () => {
     await waitFor(() => expect(screen.getByLabelText("1 · Contest")).toBeInTheDocument());
     expect((screen.getByLabelText("1 · Contest") as HTMLSelectElement).value).toBe(String(PRESETS.indexOf(h2h)));
   });
+
+  // PRESETS is dynamic now (an admin contest upload replaces it) -- if the
+  // contest "Start again" would restore no longer exists by name (an
+  // admin visit mid-build replaced the whole list), it falls back to the
+  // first contest in the new list, with a notice explaining why.
+  // Heavier than the other App-level tests (a full BuildScreen render,
+  // an admin round trip, a CSV upload, and a SetupScreen re-render all in
+  // one test) -- same explicit timeout bump BuildScreen.secondMove.test.tsx
+  // already uses for its own heaviest tests, which can run past the 5s
+  // default under full-suite worker contention.
+  it("Start again falls back to the first contest with a notice when the chosen one no longer exists", async () => {
+    renderWithSavedSlate();
+    vi.stubEnv("VITE_ADMIN_PASSWORD", PASSWORD);
+    const user = userEvent.setup();
+    const h2h = PRESETS.find((p) => p.name === "H2H")!;
+
+    await user.selectOptions(screen.getByLabelText("1 · Contest"), optionLabel(h2h.name, h2h.contest.fieldSize));
+    await user.click(screen.getByRole("button", { name: "(Play your own opening)" }));
+    expect(await screen.findByRole("button", { name: "Start again" })).toBeInTheDocument();
+
+    act(() => {
+      window.location.hash = "#/admin";
+    });
+    await user.type(await screen.findByLabelText("Password"), PASSWORD);
+    await user.click(screen.getByRole("button", { name: "Log in" }));
+    const newContestCsv = [
+      "Contest_Name,Entry_Fee,Total_Entrants,Total_Prize_Pool,Pct_To_First,Min_Cash_Amount,Cash_Line_Position,Max_Entries_Per_User,Contest_Type",
+      "Totally Different Contest,5,100,1000,0.2,10,20,3,gpp",
+    ].join("\n");
+    await user.upload(
+      screen.getByLabelText("Contests CSV"),
+      new File([newContestCsv], "contests.csv", { type: "text/csv" }),
+    );
+    await waitFor(() => expect(screen.getByText("1 contest loaded.")).toBeInTheDocument());
+
+    act(() => {
+      window.location.hash = "";
+    });
+    await user.click(await screen.findByRole("button", { name: "Start again" }));
+
+    await waitFor(() => expect(screen.getByLabelText("1 · Contest")).toBeInTheDocument());
+    expect(screen.getByText('"H2H" is no longer available -- showing "Totally Different Contest" instead.')).toBeInTheDocument();
+    expect((screen.getByLabelText("1 · Contest") as HTMLSelectElement).value).toBe("0");
+    expect(screen.getByText("Totally Different Contest — 100 entries")).toBeInTheDocument();
+  }, 15000);
 });

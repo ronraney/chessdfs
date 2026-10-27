@@ -73,6 +73,11 @@ interface Props {
   // fresh "New contest" (or the very first visit) omits both.
   initialPresetIndex?: number;
   initialKingMode?: KingMode;
+  // Set when "Start again"'s own previously-chosen contest no longer
+  // exists in the CURRENT PRESETS (an admin contest upload replaced it) --
+  // App.tsx has already fallen back to presetIndex 0 above; this is just
+  // the explanation shown alongside it.
+  contestNotice?: string | null;
 }
 
 interface Selection {
@@ -181,7 +186,7 @@ const ALL_CHIP = "All";
 const MAX_SEARCH_RESULTS = 20;
 const MIN_QUERY_LENGTH = 3;
 
-export default function SetupScreen({ players, onChoose, initialPresetIndex, initialKingMode }: Props) {
+export default function SetupScreen({ players, onChoose, initialPresetIndex, initialKingMode, contestNotice }: Props) {
   const [presetIndex, setPresetIndex] = useState(initialPresetIndex ?? 0);
   const [kingMode, setKingMode] = useState<KingMode>(initialKingMode ?? KingMode.EMERGE);
   const [whiteKingId, setWhiteKingId] = useState<string | null>(null);
@@ -266,6 +271,11 @@ export default function SetupScreen({ players, onChoose, initialPresetIndex, ini
       <div className="setup-layout">
         <section className="setup-left">
           <div className="setup-card contest-card">
+            {contestNotice != null && (
+              <p className="status" role="status">
+                {contestNotice}
+              </p>
+            )}
             <label htmlFor="contest-select" className="setup-eyebrow">
               1 · Contest
             </label>

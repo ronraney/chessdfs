@@ -13,7 +13,7 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 import AdminScreen from "./AdminScreen";
-import { PRESETS } from "./appData";
+import { PRESETS, refreshPresets } from "./appData";
 import BuildScreen from "./BuildScreen";
 import { loadEtrCsv } from "./engine/loaders";
 import type { KingMode } from "./engine/models";
@@ -43,10 +43,25 @@ function App() {
   // choice) carries these into SetupScreen's own initial state; "New
   // contest" (full setup) leaves this null, same as a first-ever visit.
   const [setupDefaults, setSetupDefaults] = useState<{ presetIndex: number; kingMode: KingMode } | null>(null);
+  // PRESETS is now a dynamic list (an admin contest upload, or
+  // contests.json) that can change mid-session -- chosenSetup.preset is
+  // matched back by NAME (not object identity: refreshPresets() always
+  // builds fresh ContestPreset objects, even when nothing actually
+  // changed) against the CURRENT PRESETS. A contest whose name no longer
+  // appears there falls back to the first contest, with a notice shown
+  // on SetupScreen.
+  const [contestNotice, setContestNotice] = useState<string | null>(null);
 
   function startAgain(): void {
     if (chosenSetup !== null) {
-      setSetupDefaults({ presetIndex: PRESETS.indexOf(chosenSetup.preset), kingMode: chosenSetup.kingMode });
+      const matchIndex = PRESETS.findIndex((p) => p.name === chosenSetup.preset.name);
+      if (matchIndex === -1) {
+        setSetupDefaults({ presetIndex: 0, kingMode: chosenSetup.kingMode });
+        setContestNotice(`"${chosenSetup.preset.name}" is no longer available -- showing "${PRESETS[0].name}" instead.`);
+      } else {
+        setSetupDefaults({ presetIndex: matchIndex, kingMode: chosenSetup.kingMode });
+        setContestNotice(null);
+      }
     }
     setChosenSetup(null);
     setScreen("setup");
@@ -54,6 +69,7 @@ function App() {
 
   function newContest(): void {
     setSetupDefaults(null);
+    setContestNotice(null);
     setChosenSetup(null);
     setScreen("setup");
   }
@@ -64,9 +80,11 @@ function App() {
       setIsAdminRoute(admin);
       // Re-read the saved slate on the way back from #/admin -- picks up
       // an upload or a clear made there, within this same mounted App
-      // instance (not just across page reloads).
+      // instance (not just across page reloads). PRESETS is refreshed the
+      // same way, for the same reason.
       if (!admin) {
         setPlayers(loadSavedPlayers());
+        refreshPresets();
       }
     }
     window.addEventListener("hashchange", onHashChange);
@@ -109,6 +127,7 @@ function App() {
       players={players}
       initialPresetIndex={setupDefaults?.presetIndex}
       initialKingMode={setupDefaults?.kingMode}
+      contestNotice={contestNotice}
       onChoose={(chosen) => {
         setChosenSetup(chosen);
         setScreen("build");

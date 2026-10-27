@@ -40,6 +40,20 @@ describe("generatePayoutCurve", () => {
     expect(rows).toEqual([{ rank: 1, amount: 1.8 }]);
   });
 
+  it("builds a flat table (every cash spot pays minCash) when rank 1's pinned amount equals minCash", () => {
+    // rank1 = 1000*0.1 = 100 = minCash exactly -- no curve can decay from
+    // rank 1 down to a floor it's already sitting on, so every place pays
+    // the same flat amount instead (a Double-Up/50/50-style table).
+    const rows = generatePayoutCurve(1000, 0.1, 100, 10);
+    expect(rows).toEqual(Array.from({ length: 10 }, (_, i) => ({ rank: i + 1, amount: 100 })));
+  });
+
+  it("the flat-table case tolerates up to $0.01 of rounding between rank 1's pinned amount and minCash", () => {
+    // rank1 = 1000*0.1 = 100; minCash=100.005 -- within the $0.01 tolerance.
+    const rows = generatePayoutCurve(1000, 0.1, 100.005, 10);
+    expect(rows.every((r) => r.amount === 100.005)).toBe(true);
+  });
+
   it("one row per cashing rank, none beyond the cash line", () => {
     const rows = generatePayoutCurve(10000, 0.2, 60, 50);
     expect(rows.length).toBe(50);

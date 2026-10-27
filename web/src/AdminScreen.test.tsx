@@ -6,11 +6,12 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AdminScreen from "./AdminScreen";
+import { getSavedContestsCsv } from "./contestStore";
 import { FieldTier } from "./engine/models";
 import { getCachedFieldIds, saveCachedFieldIds, slateSignature } from "./fieldCacheStore";
 import { getSavedProjectionsCsv, saveProjectionsCsv } from "./projectionsStore";
 import { loadEtrCsv } from "./engine/loaders";
-import { SAMPLE_CSV, sampleCsvFile } from "./testFixtures";
+import { SAMPLE_CONTEST_CSV, SAMPLE_CSV, sampleContestCsvFile, sampleCsvFile, VALID_CONTEST_CSV } from "./testFixtures";
 import { getSavedVegasCsv } from "./vegasStore";
 
 const SAMPLE_PLAYER_COUNT = loadEtrCsv(SAMPLE_CSV).length;
@@ -247,6 +248,99 @@ describe("AdminScreen -- Vegas upload", () => {
 
     expect(screen.getByText("No Vegas data saved yet.")).toBeInTheDocument();
     expect(getSavedVegasCsv()).toBeNull();
+  });
+});
+
+describe("AdminScreen -- Contests upload", () => {
+  beforeEach(() => {
+    vi.stubEnv("VITE_ADMIN_PASSWORD", PASSWORD);
+    window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  // Unlike Vegas, contests don't depend on a loaded slate at all (a
+  // contest's field size/payout curve has nothing to do with players or
+  // teams) -- the upload control is available right after logging in.
+  it("the Contests upload is available right after logging in, with nothing saved yet", async () => {
+    render(<AdminScreen />);
+    const user = userEvent.setup();
+    await logIn(user);
+    expect(screen.getByLabelText("Contests CSV")).toBeInTheDocument();
+    expect(screen.getByText("No contests saved yet.")).toBeInTheDocument();
+  });
+
+  // The real Sim_Contest sample minus its one unbuildable row (see
+  // testFixtures.ts) -- a genuine upload of real data, not synthesized.
+  it("a valid upload shows the contest count and saves it", async () => {
+    render(<AdminScreen />);
+    const user = userEvent.setup();
+    await logIn(user);
+
+    await user.upload(screen.getByLabelText("Contests CSV"), sampleContestCsvFile(VALID_CONTEST_CSV));
+
+    await waitFor(() => expect(screen.getByText("19 contests loaded.")).toBeInTheDocument());
+    expect(getSavedContestsCsv()).toBe(VALID_CONTEST_CSV);
+  });
+
+  // The real sample file's own "NFL GIANT $25 Double-Up" row has
+  // Pct_To_First=50 (a plain dollar figure, not a (0,1] fraction) --
+  // its payout curve can't be built, so the WHOLE file is rejected,
+  // naming it, same as engine/contestsCsv.test.ts's own coverage of this
+  // exact row.
+  it("the real sample file's Double-Up row rejects the whole upload, naming it, and saves nothing", async () => {
+    render(<AdminScreen />);
+    const user = userEvent.setup();
+    await logIn(user);
+
+    await user.upload(screen.getByLabelText("Contests CSV"), sampleContestCsvFile(SAMPLE_CONTEST_CSV));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Payout curve rejected contest\(s\): NFL GIANT \$25 Double-Up\./);
+    expect(getSavedContestsCsv()).toBeNull();
+  });
+
+  it("a file missing required columns names them and saves nothing", async () => {
+    render(<AdminScreen />);
+    const user = userEvent.setup();
+    await logIn(user);
+
+    const badFile = new File(["Contest_Name,Entry_Fee\nFoo,5"], "junk.csv", { type: "text/csv" });
+    await user.upload(screen.getByLabelText("Contests CSV"), badFile);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /Missing required column\(s\): Total_Entrants, Total_Prize_Pool, Pct_To_First, Min_Cash_Amount, Cash_Line_Position, Max_Entries_Per_User, Contest_Type\./,
+    );
+    expect(getSavedContestsCsv()).toBeNull();
+  });
+
+  it("a rejected upload keeps the previously saved contest list", async () => {
+    render(<AdminScreen />);
+    const user = userEvent.setup();
+    await logIn(user);
+    await user.upload(screen.getByLabelText("Contests CSV"), sampleContestCsvFile(VALID_CONTEST_CSV));
+    await waitFor(() => expect(screen.getByText("19 contests loaded.")).toBeInTheDocument());
+
+    const badFile = new File(["Contest_Name,Entry_Fee\nFoo,5"], "junk.csv", { type: "text/csv" });
+    await user.upload(screen.getByLabelText("Contests CSV"), badFile);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Missing required column/);
+    expect(screen.getByText("19 contests loaded.")).toBeInTheDocument(); // unchanged
+    expect(getSavedContestsCsv()).toBe(VALID_CONTEST_CSV); // unchanged
+  });
+
+  it("Clear contests removes the saved contest list", async () => {
+    render(<AdminScreen />);
+    const user = userEvent.setup();
+    await logIn(user);
+    await user.upload(screen.getByLabelText("Contests CSV"), sampleContestCsvFile(VALID_CONTEST_CSV));
+    await waitFor(() => expect(screen.getByText("19 contests loaded.")).toBeInTheDocument());
+
+    await user.click(screen.getByRole("button", { name: "Clear contests" }));
+
+    expect(screen.getByText("No contests saved yet.")).toBeInTheDocument();
+    expect(getSavedContestsCsv()).toBeNull();
   });
 });
 

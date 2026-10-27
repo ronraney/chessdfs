@@ -97,6 +97,18 @@ export function generatePayoutCurve(prizePool: number, pctToFirst: number, minCa
   }
 
   const rank1 = prizePool * pctToFirst;
+
+  // Flat-payout contests (e.g. Double-Up, 50/50): rank 1's own pinned
+  // amount already equals minCash, so there's no room for ANY decaying
+  // curve between them -- every cashing place just pays minCash flat,
+  // same shape a real Double-Up/50/50 payout table actually has (one
+  // constant amount across the whole cash line, no ladder at all).
+  // $0.01 tolerance absorbs the same kind of rounding a real contest
+  // export's own numbers can carry.
+  if (Math.abs(rank1 - minCash) <= 0.01) {
+    return Array.from({ length: spots }, (_, i) => ({ rank: i + 1, amount: minCash }));
+  }
+
   if (minCash >= rank1) {
     throw new Error(
       `generatePayoutCurve: minCash ($${minCash}) is not less than rank 1's payout ($${rank1}) -- can't build a ` +

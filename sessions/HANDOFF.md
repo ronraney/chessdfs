@@ -1,431 +1,169 @@
-# DFS Chess — Handoff
-Last updated: 2026-10-26
+# Handoff — 2026-10-27
 
-## Project Context
+## Where things stand
 
 DFS Chess is an NFL DraftKings lineup builder that layers chess opening
 strategy onto lineup construction. The user plays White; "the field"
 (Black) plays too, by simulation. The goal is a *core* (typically 4–5
-players), not necessarily a full lineup. Every turn is a real chess move
-on a real chess board: the moved piece's type (King/Queen/Rook/Bishop/
-Knight/Pawn — a salary-tier classification driven by a sport config)
-filters eligible real players by position + salary band, and that side
-locks one. It is a **build, not a game** — "build" in code and docs, never
-"game," except when referring to chess itself.
+players), not necessarily a full lineup. `CLAUDE.md` (never edited by
+Claude; Ron edits it himself) says the task **prompt** is the spec —
+implement it exactly as written; existing code/tests are the record of
+all earlier rules. Git workflow: work on `main`, one commit per task
+after tests pass, push to `origin/main` after every commit, never use
+`AskUserQuestion` (ask inline as plain text).
 
-`CLAUDE.md` (never edited by Claude directly; Ron edits it himself) says the
-task **prompt** is the spec — implement it exactly as written, even where it
-changes earlier behavior; the existing code and tests are the record of all
-earlier rules. Git section: work on `main`, no branches unless asked, check
-`git status` for unexpected uncommitted changes before starting (CLAUDE.md
-and `sessions/` files are routine, not "unexpected" — commit them with
-whatever else the task touched), one commit per task after all tests pass,
-push to `origin/main` after every commit. Rules section also says: never use
-the `AskUserQuestion` tool — ask any question inline, as plain text, instead.
-Python 3.11+, stdlib + pytest + `python-chess` for the original engine;
-`web/` is a Vite + React + TypeScript app (Node v24, npm) built alongside
-it. The TS port of the engine is complete, with a standing parity harness
-proving it matches Python on real, deterministic scenarios. The UI's player
-flow is upload-free: **contest + King mode + opening (one merged setup
-screen) → build → finish**. A hidden admin screen (`#/admin`) handles CSV
-uploads (projections, Vegas), a **"Build fields"** section, and — as of this
-session — the player-facing build screen now DOES read that cache (see Sim 4
-below). Secrets (`LICHESS_API_TOKEN`, `VITE_ADMIN_PASSWORD`) live in
-gitignored `.env` files, never printed. Club (light) and Slate (dark) themes
-exist app-wide, CSS-variable driven, with a header toggle.
+Python 3.11+ engine (`dfs_chess/`) + `web/` (Vite + React + TypeScript,
+Node v24/npm). The TS port of the chess/DFS engine is complete and kept
+in parity with Python via a standing test harness. The Monte Carlo sim
+port (`web/src/engine/sim/`: `draws.ts`, `field.ts`, `payouts.ts`,
+`run.ts`) is also complete and wired into the UI (Sim 4) — this was the
+main subject of this session's five tasks. `web/.env` with
+`VITE_ADMIN_PASSWORD` exists but its value has never been read/printed,
+per CLAUDE.md's secrets rule.
 
-Piece classification is a **pool**, not a single tier: `classify(player,
-sport, qbTeam=None)` returns every piece band a player qualifies for
-(`frozenset[Piece]` in Python, `ReadonlySet<Piece>` in TS), not a
-first-match winner. A move's **pick list** is `engine/picklist.ts`'s
-`pickList`/`dfs_chess/picklist.py`'s `pick_list` — the pool's eligible,
-unlocked, roster/salary-feasible players, sorted by that piece's own GPP
-metric (`engine/metrics.ts`/`dfs_chess/metrics.py`'s `sortMetric`: King/Rook
-by projection, Queen by ceiling, Bishop by **relativeLeverage** (TS only —
-see below), Knight by floor value, Pawn by value), and capped per-piece
-(`sport.json`'s `list_caps`: 12 for Queen/Rook/Bishop/Knight, none for
-King/Pawn). **The cap is applied after** removing taken/infeasible
-players, not before.
+**Environment**: accessed from Windows via `\\wsl.localhost\Ubuntu\...`.
+Plain `npm`/`npx`/`git` through the Windows-side Bash tool fails on this
+UNC path — every such command needs `wsl.exe -- bash -lc "cd ~/chess-dfs/... && ..."`.
+No real browser is launchable here (missing `libasound.so.2`, no
+passwordless sudo) — the whole Sim 4 UI and `simWorker.ts`/`fieldWorker.ts`'s
+real Worker path have still never been exercised end-to-end in an actual
+browser. `python3`/`pip` has internet access confirmed this session
+(reached GitHub/nflverse-data without issue).
 
-**Bishop gained a TS-only "quality floor" this session**, on top of its
-unchanged RB/WR/TE >= $5,000 band (`classify`/`pieces.ts` itself is
-untouched — this lives entirely in `picklist.ts`): a candidate also needs
-`value` (proj/salary x 1000) at or above the median (`sport.
-bishopValuePercentile`, default 0.5, config-settable) of every Bishop-
-band-eligible player at his own position, computed from the WHOLE slate
-`playersPool` before locked/taken players are removed. Bishop's sort also
-changed: `metrics.relativeLeverage` discounts `value` by ownership
-*relative to the highest ownership at his own position across the whole
-slate* (`metrics.highestOwnershipByPosition`), not the old flat field-
-size-only `leverage` (still there, still tested, just no longer what
-sorts Bishop). `PickPanel`/`BuildScreen.tsx` thread the whole player pool
-through (`playersPool` prop) so the pick modal's own display + defensive
-re-sort use the same metric the engine used to build the list. Python's
-`pick_list` has no equivalent to either change (TS only, per the task) —
-`parity.test.ts` now excludes its one Bishop-cap fixture scenario
-(`pick_list_caps_bishop_at_12`) as a documented divergence.
+**Tests**: 237 pytest, 523 npm, both green as of this session's last commit.
 
-**Rook is team-based ("Rook = correlation")**: eligible as RB/WR/TE on
-the moving side's own locked QB's team, any salary — or, if that side's QB
-isn't locked yet, any RB/WR/TE regardless of team. Castling's QB step only
-offers QBs with ≥1 eligible teammate; PLACED king mode's one-time "Switch
-your QB?" offer resolves **before** the Rook pick, not after. Once a
-player is actually locked, their displayed/captured piece is whichever one
-the locking move recorded (`Move.piece`), never re-derived from
-`classify()`. See `config/sports/nfl.json` for the current NFL bands.
+## What happened this session
 
-**Captures are always legal**, in both engines and the TS UI: a historied
-transfer that would overflow the capturing side's roster/salary no longer
-blocks the capture — the captured player instead leaves the opposing side
-and returns to the pool (available to either side), and the capturing
-piece locks no one. An unmoved-piece capture with no fitting replacement
-works the same way: still legal, locks no one. The TS UI shows a notice in
-the status-line spot when a capture returns someone to the pool. **TS UI
-also explains blocked moves**: `dests` includes every legal chess move, not
-just the DFS-legal ones — dropping on a move that's legal chess but
-blocked by the DFS rules still refuses to commit, with the engine's own
-reason shown in the status line.
+Five tasks, four commits (all pushed):
 
-**DK roster slots are a separate concept from pieces, computed on demand**:
-`assignRosterSlots`/`assign_roster_slots` takes a locked roster and returns
-which named DK slot (QB/RB/WR/TE/FLEX/DST) each player occupies, via Kuhn's-
-algorithm bipartite matching. `engine/optimizer.ts`'s exact lineup solver is
-a second, separate consumer of `sport.rosterSlots` — a 0/1 MILP solved by
-**yalps**. "Pts from optimal" (best-completion-vs-slate-optimal delta) is
-shown for both sides. `optimizer.ts` also has a private `pruneDominated`
-pre-pass, tried and REJECTED as a `field.ts` speedup two sessions ago (see
-Open Items) — stays private/unexported.
+1. **Sim ROI sanity check + finish-screen fixes** (`094e2a2`) — added
+   `engine/sim/run.fieldRoiSanity.test.ts` (sims every lineup in a field
+   against that same field; average ROI vs. the plain rake identity).
+   Found no bug in payout units/place-scaling/entry-fee/tie-splitting —
+   the identity holds within a few points once sampled without a
+   self-counting artifact the test's own header explains. Finish screen
+   now shows "Chosen:"/"Final position:" instead of one unlabeled
+   "Opening" row (`BuildScreen.tsx`/`FinishCard`), since those two can
+   differ once a build deviates off its chosen book line. Investigated
+   "Fill out my core"'s disable-when-complete behavior and found it
+   already correct (shared `canFillCore` check is mechanism-agnostic) —
+   no code change needed there.
 
-**"Fill out my core" (new this session, White only)**: a button, in the
-mid-build controls row and on every finish-screen variant, that fills
-White's open slots with `bestCompletion` — the exact same `OptimizerResult`
-"Pts from optimal" already computes, read via `.lineup` instead of `.total`.
-The newly-added players live in new `whiteFilledPlayers` React state, NOT in
-the engine's own `BuildState` — the engine has no concept of a player locked
-any way other than a chess move, so this stays a pure UI-layer addition.
-Filled players render with "(optimizer)" (a new `RosterEntry` shape — label
-+ glyph + player — that `SideColumn`/`FinishCard`/`lineupText` all walk
-instead of `Move[]` directly, so piece-locked and optimizer-filled rows
-render identically everywhere). Clicking it sets a new `Ending` kind,
-`"filled"`, and ends the build. `whiteStats` now reads `state.whiteMoves +
-whiteFilledPlayers` together (`whiteRoster`) so Copy lineup's totals and the
-sim both pick up a fill for free — the sim needed literally no new code,
-since `runSimForBothSides` already used `bestCompletion.lineup` for White
-whenever the move-locked core was incomplete (Sim 4, same session).
+2. **Fuller simulated fields** (`741c957`) — `generateSimulatedField`
+   (`field.ts`) now takes an optional `targetDistinct` and stops early
+   once that many distinct 9-player combos are found, otherwise running
+   up to an attempt cap (same ownership-bias/exposure-cap math, now
+   anchored to the cap instead of a flat 1,000). Admin's "Build fields"
+   uses a 10,000-attempt cap toward a 5,000-distinct target
+   (`buildFieldCache.ts`) and shows distinct-so-far/target progress per
+   tier, plus the final shortfall if the cap is hit first. Measured on
+   the real sample slate: 1,000 attempts only ever found ~600-640
+   distinct lineups per tier; the new cap roughly quadruples that
+   (~2,400-3,000) but still falls short of 5,000 — distinct count grows
+   logarithmically in attempts on real data, and 5,000 would need well
+   over 100,000 attempts per tier (~20+ min).
 
-**Black's out-of-book move is Stockfish-assisted (TS app only, a prior
-session)**: `src/stockfishEngine.ts` runs the npm `stockfish` package
-(11.0.0 classical/pre-NNUE, ~9MB) in a dedicated Web Worker, loaded from a
-fixed URL (`/stockfish/stockfish.js`, which locates its own `.wasm`
-relative to itself) rather than through Vite's module graph. Those two
-runtime files live in `public/stockfish/` (gitignored) and are copied
-there from `node_modules/stockfish/src/` by `scripts/sync-stockfish.mjs`'s
-exported `syncStockfish()`. **This session fixed a real bug Ron hit in a
-real browser**: `public/stockfish/` only existed when `npm run dev`/
-`build`/`test` ran (each chains `npm run sync-stockfish` first) — anything
-else that starts Vite skipped it, so the file was genuinely missing, and
-Vite's dev server served its own `index.html` (200, `text/html`) for the
-unmatched request instead of a 404, which `WebAssembly.instantiate()` saw
-as a corrupt file. Fix: `vite.config.ts` now calls `syncStockfish()`
-directly at config-module-eval time (confirmed by repro that a
-`buildStart` plugin hook fires too late — Vite snapshots `publicDir`
-before any plugin hook runs). Also fixed a genuine hang: `getReadyWorker()`
-had no timeout waiting for `"uciok"`, so a worker whose WASM init failed
-silently (no `error` event) could hang that promise — and every future
-`analyze()` call — forever; added `READY_TIMEOUT_MS` (10s). Black's
-uniform-random DFS-legal fallback already existed and never needed
-changing; what's new is `build.ts`'s `engineFailed` flag (`chooseEngineMove`/
-`playBlackMove`/`MoveResult`), which distinguishes a genuine engine failure
-from the engine just having no usable opinion — `BuildScreen.tsx` now shows
-"Engine unavailable — Field moving without Stockfish." (sticky for the
-rest of the build) only for the former. **Confirmed this session: no
-"tight-finish warning" exists anywhere in the codebase** (TS, Python,
-tests, docs, `design/`) — not built, per the task.
+3. **Sim diagnosis, no code changes** — got the real current slate
+   (`data/samples/DraftKings NFL DFS Projections -- Main Slate (6).csv`,
+   the one Ron's example lineup's 141.7 proj actually matches) and ran a
+   full diagnosis: field stack profile (found the field essentially never
+   builds a 3+ stack, and *never* built anything matching the example
+   lineup's 5-player GB mega-stack), correlation measurement (confirmed
+   `draws.ts` is a byte-faithful port of nfl-dfs's own `sim_draws.js` —
+   same weights, same regime constants — but nfl-dfs's own documented
+   `calibrateCorrelation()` targets are badly missed for RB↔DST same-team
+   correlation: realized 4.9%/16.7% vs. targets 26%/63%), and a
+   winning-trials breakdown (84.2% of the example lineup's wins had GB as
+   the slate's top-scoring team — confirming its edge is almost entirely
+   "GB has a huge game").
 
-**Monte Carlo sim port, `web/src/engine/sim/`** (pure TS, no I/O, no
-unseeded randomness, seeded via `SeededRandom`/`rng.next()`): ported from
-`rraney/nfl-dfs` across five sessions now. **The full engine-side port is
-done as of this session** (draws → field → trial loop/payouts); what's left
-is real-browser verification of the new UI layer (see Open Items).
-- `draws.ts` — `drawOutcome` (piecewise-linear percentile curve) +
-  `drawSlateOutcomes` (latent-factor correlation: zGame/zTeam/individual,
-  DST negative game loading, shootout/script regime shocks, dome wGame
-  boost keyed off `Player.isHome`/`sport.domeTeams`). `SlateVegas` keyed by
-  team abbreviation.
-- `vegasCsv.ts` — `validateVegasCsv`. **Rewritten twice this session**:
-  - Full team names ("Detroit Lions") in the Team OR Opponent column are
-    normalized to abbreviations before anything else runs
-    (`FULL_TEAM_NAME_TO_ABBREVIATION`, all 32 teams). Built fresh (nfl-dfs's
-    own table lives in a Google Sheet this repo can't reach) and
-    cross-checked against every real team code actually on disk — JAX
-    (Jacksonville) is the one code that never appears in any real file
-    here, so it's unconfirmed against an ETR file either way (chose JAX
-    over "JAC").
-  - **LA/LAR (the Rams) resolved dynamically, not hardcoded**:
-    `TEAM_ALIAS_GROUPS = [["LA", "LAR"]]` — confirmed real conflicting data
-    on disk (`config/sports/nfl.json`'s `dome_teams` uses "LAR",
-    `data/samples/repro-slate.csv` uses "LA"); whichever alias the CURRENT
-    slate actually uses wins.
-  - **Behavior reversal, this session's own explicit ask**: a Vegas row
-    for a team NOT on the slate is now skipped + noted (`skippedTeams`,
-    replacing the old `missingTeams` field) instead of rejecting the whole
-    upload — a full-week sheet routinely covers teams a given slate isn't
-    using. The FLIP SIDE is now the hard error instead: a SLATE team with
-    NO Vegas row used to be a non-fatal note ("neutral defaults"); it now
-    rejects the upload outright. These two checks are deliberately
-    asymmetric now. Consequence, flagged: there's no "is this a real team"
-    check independent of slate membership, so a typo'd/garbage Team value
-    is silently skipped the same as any other off-slate row.
-- `field.ts` — `generateSimulatedField`: one MILP solve per lineup, porting
-  nfl-dfs's `generateSimulatedFieldMilp_` at its frozen defaults (ownership-
-  bias objective, exposure caps, Minimum Exposure Floor catch-up boost,
-  salary floor `FIELD_MIN_SALARY_` = $48,500, stack targeting at
-  `FIELD_TARGET_NAKED_QB_RATE_` = 0.175 naked-QB rate). Not ported: Field
-  Pace Slack, Dynamic Floor Relaxation (measured accept rate 94.1% on the
-  real slate — high enough neither was needed). `lineupWeight` divides by
-  lineups actually built. `DEFAULT_SAMPLE_SIZE = 1000`. Performance is
-  highly load-sensitive (measured ~14ms/attempt isolated vs. ~230ms/attempt
-  under concurrent load, same machine) — never trust one measurement here.
-- `payouts.ts` (new this session, rewritten twice) — `generatePayoutCurve`.
-  Final design: pins ALL THREE of a contest's real numbers at once. Rank 1
-  pays exactly `pct_to_first × prize_pool`. Every paid place pays at least
-  `min_cash` — a flat floor tier at the bottom (real DK/FD curves have
-  exactly this shape: decaying power law on top, flat min-cash block
-  underneath). The table still sums to exactly `prize_pool` (only the
-  exponent is solved for; rank 1's dollar value is fixed). `cash_line` is
-  still the last paid place. Payouts never increase down the ladder by
-  construction (max of a decreasing curve and a flat floor). Infeasible
-  inputs (floor ≥ rank 1; prize pool too small for the floor; prize pool
-  too large for rank 1 to be biggest) throw naming which constraint broke.
-  Measured against all 19 real `contests.json` presets: every one is
-  feasible, rank-1 ratio and min-cash ratio both exactly 1.000000. Earlier
-  this session, two OTHER curve-shaping methods were tried and superseded
-  (a two-anchor method that left rank-1 only approximate; a rank-1-exact
-  method that left the bottom drifting with no floor at all) — neither is
-  in the code anymore, only the final 3-pin version.
-- `run.ts` (new this session) — `runSimulation(lineup, contest, entryFee,
-  field, players, vegas, sport, seed, trialCount?, maxFieldSample?)`: the
-  trial loop. Draws one correlated outcome per player per trial
-  (`drawSlateOutcomes`), scores the user's lineup + every field lineup,
-  ranks via nfl-dfs's weighted-place method (ties split evenly across the
-  tied place range), pays from the payout table, aggregates to `{ roi,
-  cashRate, winRate, top1PctRate, finishPercentiles }`. `winRate` = fraction
-  of trials finishing 1st exactly; `top1PctRate` = fraction finishing in the
-  contest's own top 1% of ENTRIES (`place <= ceil(entries * 0.01)`) — a
-  frequency, deliberately NOT the same thing as nfl-dfs's similarly-named
-  but dollar-flavored "Top1pct_ROI". `DEFAULT_TRIAL_COUNT = 5000` (nfl-dfs's
-  real live `Config!B3` default, not the 1000 a different quick-manual UI
-  path there falls back to). Above `MAX_FIELD_SAMPLE` (5,000, a config
-  setting, also an optional param) lineups, each trial scores a seeded
-  uniform sample instead of the whole field, with `lineupWeight` recomputed
-  against the sample size — measured Large-tier (50,000 lineups) timing at
-  5,000 trials: ~70s uncapped → **~10s after the cap**, same ballpark as
-  Mid (~8s) and Small (~2.4s).
-- **Sim 4 — results wired into the UI, `simWorker.ts` + `simRunner.ts` +
-  `BuildScreen.tsx`**: shows Sim ROI / Cash % / Top 1% for both sides in the
-  You/Field side panels and the finish screen. Auto-runs on every finish-
-  screen ending; a "Sim my core" button runs it on demand mid-build, both
-  sides at once. Partial cores sim `bestCompletion.lineup` (same mechanism
-  "Fill out my core" now also uses), labeled "(best finish)". Field:
-  `resolveCachedField(slateSignature(csv), contest, players)` — null/empty
-  shows "Build fields in Admin first.", no Worker attempted. Vegas is
-  optional (confirmed `drawSlateOutcomes` degrades to neutral defaults for
-  any uncovered team); missing or invalid-for-this-slate Vegas both fall
-  back to an empty map rather than blocking the sim. Seed: a `buildSeed`
-  split out of the existing `rng` state (captured once at mount, NEVER read
-  from the live, continuously-advancing `rng` itself — that's reserved for
-  Black's own play) feeds every sim run this build ever makes, so the same
-  build gives the same numbers, and both sides are judged against identical
-  simulated draws (apples-to-apples, not incidental). Cancellation: a
-  monotonic run-id + `.terminate()` on the previous worker — no existing
-  precedent in this codebase to follow, invented fresh. `new Worker(...)`
-  itself is wrapped in try/catch (jsdom has no `Worker` at all — confirmed
-  by every existing ending-reaching test passing unchanged). **Not verified
-  in a real browser — see Open Items**, a genuine gap, not assumed fine.
-- Not ported (unchanged): calibration tooling, `sim_correlation.js`/
-  `sim_foundations.js` as whole files, Showdown CPT/FLEX grouping.
+4. **Field stack-size mix** (`bb6ff9d`) — replaced the old binary
+   "naked vs. at-least-2" coin flip with a per-attempt weighted draw from
+   `STACK_SIZE_DISTRIBUTION` (naked 15%, QB+1 30%, QB+2 35%, QB+3-or-more
+   20%); the MILP now pins the drawn size exactly for 1/2, at-least for
+   the 3+ bucket. On the real slate this took the field from zero 4+
+   -player same-team stacks to 177 of 9,402 (1.88%), and dropped the
+   example lineup's Sim ROI from 796.0% to 725.4% (Cash 32.9%, Top1%
+   9.88%, win rate 2.27%) — real movement, though the field's still short
+   of its own 5,000-distinct target so some inflation remains.
 
-**Environment note**: accessed from Windows via the
-`\\wsl.localhost\Ubuntu\...` UNC path. Every git/npm command needs
-`wsl.exe -- bash -lc "cd ~/chess-dfs/... && ..."` — plain `npm run ...`
-through the Windows-side Bash tool fails outright. Commit messages with
-special characters need care: a single-quoted heredoc delimiter (`<<'EOF'`)
-inside `wsl.exe -- bash -lc "..."` does NOT reliably protect `$` or
-backticks — the OUTER double-quoted command string is the culprit, not the
-heredoc. Caught historically by checking `git log -1 --format='%B'` right
-after committing; this session avoided the problem by running `git commit`
-via the Bash tool directly against the already-WSL-mounted UNC path instead
-of through an extra `wsl.exe -- bash -lc` wrapper layer, with no corruption
-seen.
+5. **Real NFL correlation targets, measurement only** (`5fe31d2`) —
+   pulled nflverse-data (player_stats + stats_team + schedules releases,
+   2021-2025 regular seasons), computed DK Classic fantasy points from raw
+   counting stats, and measured real Pearson r for 14 same-team/opponent
+   pairs against the sim's own realized r on the real slate. Saved to
+   `config/real_correlation_targets.json`. Biggest finding: the sim's
+   shared `zTeam` factor makes every same-team skill player move
+   together, but real players mostly *compete* for volume — WR1-WR2,
+   RB1-WR1, WR1-TE1, and QB-RB1 are near-zero in real data (0.01-0.08) but
+   0.56-0.72 in the sim, the single largest miscalibration found across
+   both diagnosis passes this session.
 
-**jsdom (this project's entire test environment) runs no CSS layout
-engine**: `getBoundingClientRect`/`offsetWidth`/`scrollWidth` are always 0,
-`getComputedStyle` never evaluates `@media` queries, **no `ResizeObserver`**
-(stubbed no-op), **no `Worker` implementation at all** (now load-bearing for
-BOTH `fieldWorker.ts` and the new `simWorker.ts`). A real browser is still
-not launchable here — see Open Items for exactly how far this session got
-trying (closer than "not launchable" suggests, but still blocked).
+6. **Contest upload: what happened, report only** — confirmed via git
+   history and session logs that Admin has **never** had a contest
+   upload (CSV or form); `config/contests.json` was hand-transcribed once
+   from `data/samples/NFL Weekly DFS System - Sim_Contest.csv` during Task
+   32 and has been a static, build-time-bundled constant ever since (no
+   localStorage override, unlike projections/Vegas). Reported the exact
+   field shape each contest needs and what restoring an upload would take
+   (new `contestStore.ts` + validator + Admin UI, same pattern as
+   projections/Vegas — but `PRESETS` would need to stop being a static
+   module-level constant, a bigger structural change than the other two
+   uploads needed since they were already designed to be read dynamically).
 
-**A growing list of real-chessground/real-engine `userEvent` tests sit
-close to Vitest's 5000ms default timeout under full-suite parallel load.**
-Each occurrence so far has been genuine, not a removable inefficiency.
-`BuildScreen.secondMove.test.tsx`'s castling test flaked once more this
-session under heavy load, passed clean on retry and in isolation — same
-treatment as before: not touched, since a retry resolves it and the task
-never asked for it.
+## Open items / blockers
 
-## Where We Are
+- **Field is still short of its own 5,000-distinct target** on every
+  tier (measured ~2,400-3,000 at the new 10,000-attempt cap) — reaching
+  5,000 would need a much bigger attempt cap (100,000+) and a multi-minute
+  wait per tier. Not fixed this session; `BUILD_ATTEMPT_CAP`/
+  `TARGET_DISTINCT_LINEUPS` (`buildFieldCache.ts`) are both flagged as
+  judgment calls, not spec'd.
+- **Stack-size realized rates don't exactly match their targets** — naked
+  undershoots (9.7% vs. 15%), QB+1 overshoots (36.2% vs. 30%) — because a
+  "naked-drawn" attempt's fallback solve can coincidentally land with 1-2
+  same-team catchers anyway (nothing forces zero). Not a bug, just how
+  outcome-based bucketing works; flagged, not touched.
+- **RB↔DST same-team correlation is badly miscalibrated** against
+  nfl-dfs's own documented 2021-2025 validation targets (missed by
+  21-46pp) — confirmed pre-existing in nfl-dfs's own original code too,
+  not introduced by the TS port. No fix attempted (diagnosis-only task).
+- **The newly-measured real-world correlation gaps** (`config/
+  real_correlation_targets.json`) are not yet consumed by anything — the
+  file exists purely as a reference/diagnostic artifact. Recalibrating
+  `draws.ts`'s `LATENT_WEIGHTS` against it is a real, well-sourced,
+  not-yet-started follow-up.
+- **Contest upload doesn't exist** — item 6 above is a report Ron can act
+  on if he wants it built; nothing implemented.
+- **Real-browser verification is still blocked** (no passwordless sudo
+  to install `libasound.so.2`) — the entire Sim 4 UI, both Workers, and
+  Stockfish's real failure path have still never been seen running in an
+  actual browser.
+- `data/samples/DraftKings NFL DFS Projections -- Main Slate (6).csv` and
+  `.../NFL Weekly DFS System - Sim_Contest.csv` stay uncommitted,
+  deliberately, same standing precedent as `repro-slate.csv` — Ron's call.
+- Prior-session carried-forward items (JAX vs. JAC, `tools/sim_builds.py`'s
+  stale 2-arg `classify` call, no "Back" navigation, `DEFAULT_EXCLUDED_FAMILIES`
+  double-duty, etc.) are unchanged — see `sessions/1026/` for the fuller
+  history if any of those come up.
 
-- **237 pytest passing, 519 npm tests passing** (was 506 at this session's
-  start; +13 across 2 commits this session).
-- **Two commits this session, both pushed to `origin/main`**:
-  1. `689845c` "Rule change -- Bishop: relative leverage with a quality
-     floor" — Bishop's new value-floor eligibility + relative-ownership
-     sort (see Project Context above); `sport.ts`, `metrics.ts`,
-     `picklist.ts`, `PickPanel.tsx`/`BuildScreen.tsx` prop threading,
-     `parity.test.ts` exclusion. 506 → 516 npm tests.
-  2. `79bbdd2` "Rule change -- Fix Stockfish wasm load, Black never hangs
-     on engine failure" — the `.wasm`-serves-HTML fix (`vite.config.ts`,
-     `scripts/sync-stockfish.mjs`), `stockfishEngine.ts`'s ready-handshake
-     timeout, `build.ts`'s `engineFailed` flag, `BuildScreen.tsx`'s
-     "Engine unavailable" status line; confirmed no tight-finish warning
-     exists. 516 → 519 npm tests (net, after one known full-suite-load
-     timing flake in `BuildScreen.secondMove.test.tsx` retried clean in
-     isolation — longstanding, unrelated to this session's changes).
-- Python engine untouched all session (every task was explicitly TS-only).
-- Prior session (sim3/sim4/Vegas/fill-out-core, 7 commits, 463→506 npm
-  tests) — see `sessions/1026/10262026-sim3-sim4-vegas-fixes-fill-out-core.md`.
+## Next steps
 
-## Where We're Headed
-
-1. **Real-browser verification of THIS session's Stockfish fix is now the
-   top priority** — Ron reported the `.wasm`-serves-HTML bug from an
-   actual browser; the fix (vite.config.ts/sync-stockfish.mjs/
-   stockfishEngine.ts/build.ts/BuildScreen.tsx, see Project Context) was
-   verified by reproducing the exact bug against a live Vite dev server
-   via curl (byte-for-byte match) and by unit tests with a fake throwing
-   engine, but the real Worker/WebAssembly failure path itself has never
-   been exercised in an actual browser. Once a build is underway in a real
-   browser: confirm Stockfish actually loads and Black moves promptly
-   out-of-book (no hang); if it's ever made to fail again, confirm "Engine
-   unavailable — Field moving without Stockfish." shows and stays sticky.
-2. **Real-browser verification generally — attempted in a prior session,
-   blocked on a concrete, fixable thing.** No project run-skill exists for
-   launching this app; `chromium-cli` isn't installed. Playwright DOES
-   resolve (via a scratch `npm install playwright` — the package itself
-   installs fine, and a matching Chromium binary is already cached at
-   `~/.cache/ms-playwright/chromium-1248`), but launching it fails: both
-   the regular and headless-shell Chromium binaries need `libasound.so.2`,
-   not installed in this WSL distro, and installing it needs `sudo` (no
-   passwordless sudo here). **`sudo apt-get install -y libasound2` (or
-   `libasound2t64`, depending on the distro's package naming) would
-   unblock this** — once it's run, retry driving the dev server with
-   Playwright directly (`chromium.launch({ args: ['--no-sandbox'] })`,
-   `page.goto(...)`) and actually exercise `simWorker.ts`/`fieldWorker.ts`'s
-   (and now `stockfishEngine.ts`'s) real async path for the first time
-   ever in this project. Worth a `/run-skill-generator` pass once it
-   works, so this doesn't need re-discovering next time.
-3. **Sim 4's real-Worker path is the single biggest unverified piece of
-   prior-session work** — every test proves the surrounding wiring
-   (field/Vegas resolution, worker dispatch, cancellation, UI states)
-   without ever letting the Worker actually compute (jsdom has no
-   `Worker`). Once a real browser is available (#2), drive it: upload
-   projections + build at least the Small field tier in Admin, start a
-   build, lock a pick or two, click "Sim my core," confirm real ROI/Cash/
-   Top 1% numbers render (not an error, not "Build fields in Admin
-   first."), then confirm the finish screen auto-shows the same.
-4. A calibration parity test for the sim port (outcome draws/correlation
-   vs. nfl-dfs's own validated rates) — still not started, carried forward
-   from the original 6-task Monte Carlo breakdown.
-5. Simulated "Top 10%" metric — still a known gap (top1PctRate/winRate
-   exist; a percentile-of-trials "Top 10%" rate does not).
-6. Ron needs to create **`web/.env`** with his own
-   `VITE_ADMIN_PASSWORD=...` — still not created, deliberately (an `.env`
-   DOES exist as of a prior session, confirmed present, just flagging that
-   its value was never read/printed per CLAUDE.md's secrets rule).
-7. `CONTINUATION_LIMIT = 8`, `buildFieldCache.ts`'s `BUILD_SEED` and its
-   per-tier representative `fieldSize` values (1000/5000/50000) — still
-   guessed, not spec'd, unchanged.
-8. PLACED king mode's "silent King move while dragging" path still has no
-   dedicated test.
-9. If the engine changes, re-run `tools/export_parity.py` and `npm run
-   test` to keep the parity fixture honest. (This session's Bishop change
-   didn't need this — it's a TS-only divergence, not a Python-side change.)
-10. **`tools/sim_builds.py`** still calls `classify(p, sport)` with the old
-    2-arg signature and assumes Rook is RB-only — unchanged, out of scope,
-    flagged again.
-11. **JAX vs. JAC (Jacksonville's abbreviation) is still genuinely
-    unconfirmed** — no real file in this repo has ever contained that
-    team. If a real Vegas/projections file surfaces with Jacksonville on
-    it, check which code it actually uses against `vegasCsv.ts`'s own
-    choice (JAX).
-
-## Open Items
-
-- **`stockfishEngine.ts`'s real Worker/WASM failure path has never been
-  seen in a real browser** — the fix is verified by a live-server curl
-  repro (the exact wasm-request-returns-HTML bug) and by unit tests with a
-  fake throwing engine, but not end-to-end with the real worker file. See
-  "Where We're Headed" #1.
-- **`engineFailed`/"Engine unavailable" is sticky for the rest of a build
-  once tripped** (deliberate — `stockfishEngine.ts` never retries a failed
-  worker) — unchanged/by design, flagging in case that reads as a bug.
-- **Bishop's multi-position "his own position" handling is unexercised**
-  (this session's value-floor + relative-ownership rule both read
-  `player.positions[0]` only) — every real NFL player and every existing
-  test fixture has exactly one position, so this never actually matters
-  today; flagged as an assumption if that changes.
-- **`DEFAULT_EXCLUDED_FAMILIES` (openings.ts) is used for two different
-  questions that don't necessarily have the same answer** — unchanged.
-- **`yalps` is a runtime dependency** — unchanged; load-bearing in
-  `optimizer.ts`, `engine/sim/field.ts`, and (new) indirectly in every
-  `run.ts` trial via the field it's handed.
-- **`pruneDominated` (`engine/optimizer.ts`) tried as a `field.ts` speedup
-  and rejected with measured numbers** (two sessions ago) — stays private/
-  unexported, unchanged this session.
-- **Points from optimal's display, and now the whole Sim 4 UI, have never
-  been seen in a real browser** — standing limitation, see "Where We're
-  Headed" #1-2 for exactly how close this session got to fixing it.
-- **DST lost Queen eligibility** — unchanged, still unconfirmed whether
-  wanted as a permanent rule.
-- **The pick modal's "greyed out, infeasible" row display is dead code in
-  practice** — unchanged, left in place defensively.
-- **Click-to-move's real root cause for a *first*-move failure is still
-  genuinely unconfirmed** — unchanged.
-- **`assignRosterSlots`/`validate_etr_csv`/`engine/optimizer.ts` aren't in
-  the parity harness**, nor is any of `engine/sim/*` — unchanged, no Python
-  equivalent exists for any of it, by design.
-- **Which interchangeable player draws "FLEX" vs. its own dedicated slot is
-  a cosmetic artifact** of `assignRosterSlots`'s matching search —
-  unchanged; "Fill out my core" inherits this same cosmetic ambiguity for
-  whichever of its own filled players lands on FLEX.
-- **"Stop with this core"/"Sim my core"/"Fill out my core" sit in the same
-  place at every screen width** — unchanged, not confirmed either way (no
-  real browser, see above).
-- **`data/samples/repro-slate.csv`** stays on disk, deliberately
-  uncommitted — Ron's call. Now also independently useful: it's the real
-  file that confirmed the Rams' LA/LAR conflict this session.
-- **No "Back" navigation to the PREVIOUS screen** — still a known gap.
-- **`openingPreview`/`legalDepth` are slow (~49ms/call) and uncached** —
-  unchanged.
-- **`AdminScreen`'s "No Vegas row for: ... they'll use neutral defaults."
-  message/field was fully removed, not just renamed** — replaced by
-  `skippedTeams`/"Skipped N team(s) not on this slate: ..." (see Project
-  Context). A slate team with no Vegas row is a hard error now, so that old
-  message's own condition can't occur on any successful upload anymore.
-- `cloneBoard`'s PGN-round-trip clone, chess.js's missing APIs, `build.ts`'s
-  generic "illegal move" error — all unchanged.
-- Task-numbering collision, Scotch Game rank 2 / King's Indian Defense drop
-  confirmation, `excluded_families` and tier-boundary numbers hardcoded, CLI
-  wording unconfirmed, `contest_type` field, pawn promotion's DFS
-  classification, `logs/` vs `sessions/` doc-process mismatch, Kings
-  structurally uncapturable (emergent) — all still open, all unchanged,
-  carried forward across several sessions; see
-  `sessions/1026/10132026-pin-top-9-opening-ranks-test.md` and
-  `sessions/1026/10132026-never-moved-captures-field-tiers-and-family-
-  ranking.md`.
-- Full narrative for this session:
-  `sessions/1026/10262026-bishop-quality-floor-and-stockfish-fix.md`. Prior
-  sessions in `sessions/1026/` for everything predating this one, including
-  today's earlier session
-  (`sessions/1026/10262026-sim3-sim4-vegas-fixes-fill-out-core.md`).
+1. Decide whether `BUILD_ATTEMPT_CAP`/`TARGET_DISTINCT_LINEUPS` should be
+   raised further (accepting a longer Admin wait) now that real timing
+   numbers exist, or whether ~2,500-3,000 distinct is an acceptable
+   permanent ceiling.
+2. If the stack-size/field-thinness combination still produces
+   unrealistic ROI for mega-stack lineups after this session's fix,
+   consider whether `STACK_SIZE_DISTRIBUTION`'s own weights need
+   retuning, or whether thinness is still the dominant factor.
+3. A real recalibration pass on `draws.ts`'s `LATENT_WEIGHTS` against
+   `config/real_correlation_targets.json`, starting with the worst gaps
+   (WR1-WR2, RB1-WR1, WR1-TE1, QB-RB1 — all need the model to capture
+   target competition within an offense, which nothing today does).
+4. If Ron wants a contest upload built, start from this session's report
+   (item 6) — the `contestStore.ts`/validator/Admin-UI shape is scoped;
+   the `PRESETS`-staticness refactor is the real design decision to make
+   first.
+5. Still worth a `/run-skill-generator` pass once `libasound.so.2` is
+   installed, so real-browser verification doesn't need re-discovering.

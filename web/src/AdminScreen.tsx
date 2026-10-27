@@ -9,8 +9,10 @@
 // password or skip the check outright.
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import "./App.css";
-import { NFL } from "./appData";
+import { NFL, refreshPresets } from "./appData";
 import { buildAndCacheFields, BUILD_TIERS, TARGET_DISTINCT_LINEUPS } from "./buildFieldCache";
+import { clearContestsCsv, getSavedContestsCsv, saveContestsCsv } from "./contestStore";
+import { ContestValidationError, validateContestCsv } from "./engine/contestsCsv";
 import { SlateValidationError, validateSlateCsv } from "./engine/loaders";
 import type { FieldTier, Player } from "./engine/models";
 import { VegasValidationError, validateVegasCsv } from "./engine/sim/vegasCsv";
@@ -114,6 +116,26 @@ function summarizeSavedVegas(players: readonly Player[] | null): VegasSummary | 
   }
 }
 
+interface ContestsSummary {
+  contestCount: number;
+}
+
+// Independent of the projections slate (unlike Vegas) -- a contest's
+// field size/payout curve has nothing to do with which players/teams are
+// on a slate, so there's no gating here. Null whenever there's nothing
+// saved, or the saved CSV no longer validates -- same catch-and-null
+// shape as summarizeSavedVegas above; PRESETS (appData.ts) falls back to
+// contests.json in exactly the same situations.
+function summarizeSavedContests(): ContestsSummary | null {
+  const csv = getSavedContestsCsv();
+  if (csv === null) return null;
+  try {
+    return { contestCount: validateContestCsv(csv).length };
+  } catch {
+    return null;
+  }
+}
+
 // How many lineups are cached for each tier, against the CURRENT saved
 // slate's own signature -- {} (nothing shown as cached) whenever there's
 // no slate loaded at all, same "null in, null/empty out" shape as the
@@ -151,6 +173,8 @@ function AdminScreen() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [vegas, setVegas] = useState<VegasSummary | null>(() => summarizeSavedVegas(getSavedSlatePlayers()));
   const [vegasUploadError, setVegasUploadError] = useState<string | null>(null);
+  const [contests, setContests] = useState<ContestsSummary | null>(() => summarizeSavedContests());
+  const [contestsUploadError, setContestsUploadError] = useState<string | null>(null);
   const [fieldCacheStatus, setFieldCacheStatus] = useState<Partial<Record<FieldTier, FieldCacheTierStatus>>>(() =>
     computeFieldCacheStatus(getSavedProjectionsCsv()),
   );
@@ -252,6 +276,35 @@ function AdminScreen() {
     setVegasUploadError(null);
   }
 
+  // An upload replaces the whole contest list; a rejected one keeps
+  // whatever was already saved, same "save on success only" shape as
+  // handleUpload/handleVegasUpload above. refreshPresets() re-reads
+  // PRESETS (appData.ts) immediately so SetupScreen's own contest list is
+  // never stale within this same session.
+  async function handleContestsUpload(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await readFileAsText(file);
+      const presets = validateContestCsv(text);
+      saveContestsCsv(text);
+      setContests({ contestCount: presets.length });
+      setContestsUploadError(null);
+      refreshPresets();
+    } catch (e) {
+      setContestsUploadError(
+        e instanceof ContestValidationError ? e.message : "Couldn't read that file as a contest CSV -- check it's a valid contest export.",
+      );
+    }
+  }
+
+  function handleClearContests(): void {
+    clearContestsCsv();
+    setContests(null);
+    setContestsUploadError(null);
+    refreshPresets();
+  }
+
   if (!authed) {
     return (
       <main className="setup">
@@ -342,6 +395,27 @@ function AdminScreen() {
             </button>
           </>
         )}
+      </section>
+      <section className="step">
+        <h2>Contests</h2>
+        <label className="file-label" htmlFor="admin-contests-csv">
+          Contests CSV
+        </label>
+        <input id="admin-contests-csv" type="file" accept=".csv" onChange={handleContestsUpload} />
+        {contests !== null && (
+          <p className="status">
+            {contests.contestCount} contest{contests.contestCount === 1 ? "" : "s"} loaded.
+          </p>
+        )}
+        {contests === null && contestsUploadError === null && <p className="status">No contests saved yet.</p>}
+        {contestsUploadError !== null && (
+          <p className="error" role="alert">
+            {contestsUploadError}
+          </p>
+        )}
+        <button type="button" className="continue" onClick={handleClearContests}>
+          Clear contests
+        </button>
       </section>
       <section className="step">
         <h2>Simulated fields</h2>

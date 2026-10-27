@@ -6,6 +6,7 @@
 // data combination (no domain policy/judgment call) for the opening
 // explorer (Task 34, drill-down restored Task 39) to show a family's
 // variations with their game counts.
+import { getSavedContestsCsv } from "./contestStore";
 import contestsRaw from "./data/config/contests.json";
 import nflConfig from "./data/config/sports/nfl.json";
 import aTsv from "./data/openings/a.tsv?raw";
@@ -15,13 +16,39 @@ import dTsv from "./data/openings/d.tsv?raw";
 import eTsv from "./data/openings/e.tsv?raw";
 import lineStatsRaw from "./data/openings/line_stats.json?raw";
 import popularityRaw from "./data/openings/popularity.json?raw";
+import { validateContestCsv } from "./engine/contestsCsv";
 import { loadContestPresets, type ContestPreset, type RawContestPreset } from "./engine/config";
 import { loadLineStats, loadOpeningBook, loadPopularity, type LineStatsEntry } from "./engine/loaders";
 import { openingPreview, rankFamilies, splitFamily, type BookLine, type OpeningPreview, type RankedFamily } from "./engine/openings";
 import { loadSportConfig } from "./engine/sport";
 
 export const NFL = loadSportConfig(nflConfig);
-export const PRESETS: ContestPreset[] = loadContestPresets(contestsRaw as RawContestPreset[]);
+
+// An admin-uploaded contest CSV (contestStore.ts) replaces contests.json's
+// own list entirely; nothing uploaded (or a since-cleared one, or one that
+// no longer validates) falls back to contests.json, same catch-and-fall-
+// back shape AdminScreen's own summarize* helpers use. PRESETS is a live
+// export (not a frozen snapshot) -- refreshPresets() re-runs this and
+// reassigns it, which every importer of PRESETS sees immediately (an ES
+// module binding, not a copied value) -- App.tsx calls it on the way back
+// from #/admin, the same moment it re-reads the saved slate.
+function loadPresets(): ContestPreset[] {
+  const csv = getSavedContestsCsv();
+  if (csv !== null) {
+    try {
+      return validateContestCsv(csv);
+    } catch {
+      // Falls through to contests.json.
+    }
+  }
+  return loadContestPresets(contestsRaw as RawContestPreset[]);
+}
+
+export let PRESETS: ContestPreset[] = loadPresets();
+
+export function refreshPresets(): void {
+  PRESETS = loadPresets();
+}
 
 export const BOOK: BookLine[] = loadOpeningBook([aTsv, bTsv, cTsv, dTsv, eTsv]);
 const LINE_STATS: LineStatsEntry[] = loadLineStats(lineStatsRaw);
