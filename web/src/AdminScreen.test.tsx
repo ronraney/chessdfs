@@ -287,18 +287,20 @@ describe("AdminScreen -- Contests upload", () => {
 
   // The real sample file's own "NFL GIANT $25 Double-Up" row has
   // Pct_To_First=50 (a plain dollar figure, not a (0,1] fraction) --
-  // its payout curve can't be built, so the WHOLE file is rejected,
-  // naming it, same as engine/contestsCsv.test.ts's own coverage of this
-  // exact row.
-  it("the real sample file's Double-Up row rejects the whole upload, naming it, and saves nothing", async () => {
+  // read as dollars and converted, which lands it in the flat-table
+  // payout case (see engine/contestsCsv.test.ts's own coverage of this
+  // exact row) -- so the full, untrimmed sample loads as 20 contests,
+  // with Double-Up named in the "read as dollars" note.
+  it("the full real sample file loads all 20 contests, noting Double-Up's Pct_To_First was read as dollars", async () => {
     render(<AdminScreen />);
     const user = userEvent.setup();
     await logIn(user);
 
     await user.upload(screen.getByLabelText("Contests CSV"), sampleContestCsvFile(SAMPLE_CONTEST_CSV));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/Payout curve rejected contest\(s\): NFL GIANT \$25 Double-Up\./);
-    expect(getSavedContestsCsv()).toBeNull();
+    await waitFor(() => expect(screen.getByText("20 contests loaded.")).toBeInTheDocument());
+    expect(screen.getByText("Pct_To_First read as dollars: NFL GIANT $25 Double-Up")).toBeInTheDocument();
+    expect(getSavedContestsCsv()).toBe(SAMPLE_CONTEST_CSV);
   });
 
   it("a file missing required columns names them and saves nothing", async () => {

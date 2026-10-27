@@ -118,6 +118,7 @@ function summarizeSavedVegas(players: readonly Player[] | null): VegasSummary | 
 
 interface ContestsSummary {
   contestCount: number;
+  dollarPctToFirstNames: readonly string[];
 }
 
 // Independent of the projections slate (unlike Vegas) -- a contest's
@@ -130,7 +131,8 @@ function summarizeSavedContests(): ContestsSummary | null {
   const csv = getSavedContestsCsv();
   if (csv === null) return null;
   try {
-    return { contestCount: validateContestCsv(csv).length };
+    const { presets, dollarPctToFirstNames } = validateContestCsv(csv);
+    return { contestCount: presets.length, dollarPctToFirstNames };
   } catch {
     return null;
   }
@@ -286,9 +288,9 @@ function AdminScreen() {
     if (!file) return;
     try {
       const text = await readFileAsText(file);
-      const presets = validateContestCsv(text);
+      const { presets, dollarPctToFirstNames } = validateContestCsv(text);
       saveContestsCsv(text);
-      setContests({ contestCount: presets.length });
+      setContests({ contestCount: presets.length, dollarPctToFirstNames });
       setContestsUploadError(null);
       refreshPresets();
     } catch (e) {
@@ -403,9 +405,14 @@ function AdminScreen() {
         </label>
         <input id="admin-contests-csv" type="file" accept=".csv" onChange={handleContestsUpload} />
         {contests !== null && (
-          <p className="status">
-            {contests.contestCount} contest{contests.contestCount === 1 ? "" : "s"} loaded.
-          </p>
+          <div className="status">
+            <p>
+              {contests.contestCount} contest{contests.contestCount === 1 ? "" : "s"} loaded.
+            </p>
+            {contests.dollarPctToFirstNames.length > 0 && (
+              <p className="status">Pct_To_First read as dollars: {contests.dollarPctToFirstNames.join(", ")}</p>
+            )}
+          </div>
         )}
         {contests === null && contestsUploadError === null && <p className="status">No contests saved yet.</p>}
         {contestsUploadError !== null && (

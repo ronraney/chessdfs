@@ -54,7 +54,16 @@ const NUMERIC_COLUMN_KEYS = [
   "maxEntriesPerUser",
 ] as const;
 
-export function validateContestCsv(data: string, columnMap: ContestColumnMap = CONTEST_COLUMN_MAP): ContestPreset[] {
+export interface ContestCsvValidationResult {
+  presets: ContestPreset[];
+  // Rows whose Pct_To_First was > 1 -- a dollar amount (some real
+  // exports use this for cash-game-style contests) rather than the (0,1]
+  // fraction every other row uses -- converted here by dividing by that
+  // row's own Total_Prize_Pool before the payout curve ever sees it.
+  dollarPctToFirstNames: readonly string[];
+}
+
+export function validateContestCsv(data: string, columnMap: ContestColumnMap = CONTEST_COLUMN_MAP): ContestCsvValidationResult {
   const parsed = parse<Record<string, string>>(data, { header: true, skipEmptyLines: true });
   const fields = parsed.meta.fields ?? [];
 
@@ -85,13 +94,21 @@ export function validateContestCsv(data: string, columnMap: ContestColumnMap = C
   }
 
   const rejectedNames: string[] = [];
+  const dollarPctToFirstNames: string[] = [];
   const presets: ContestPreset[] = [];
   for (const row of rows) {
     const name = row[columnMap.name].trim();
+    const totalPrizePool = Number(row[columnMap.totalPrizePool]);
+    const rawPctToFirst = Number(row[columnMap.pctToFirst]);
+    // > 1 can't be a (0,1] fraction -- it's the 1st-place dollar amount
+    // instead (some real cash-game-style rows export it that way); every
+    // other row's value is already a fraction, left as-is.
+    const pctToFirst = rawPctToFirst > 1 ? rawPctToFirst / totalPrizePool : rawPctToFirst;
+    if (rawPctToFirst > 1) dollarPctToFirstNames.push(name);
     try {
       const payouts = generatePayoutCurve(
-        Number(row[columnMap.totalPrizePool]),
-        Number(row[columnMap.pctToFirst]),
+        totalPrizePool,
+        pctToFirst,
         Number(row[columnMap.minCashAmount]),
         Number(row[columnMap.cashLinePosition]),
       );
@@ -108,7 +125,7 @@ export function validateContestCsv(data: string, columnMap: ContestColumnMap = C
     throw new ContestValidationError(`Payout curve rejected contest(s): ${rejectedNames.join(", ")}.`);
   }
 
-  return presets;
+  return { presets, dollarPctToFirstNames };
 }
 
 function isFiniteNumericString(raw: string | undefined): boolean {

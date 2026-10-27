@@ -36,7 +36,7 @@ function loadPresets(): ContestPreset[] {
   const csv = getSavedContestsCsv();
   if (csv !== null) {
     try {
-      return validateContestCsv(csv);
+      return validateContestCsv(csv).presets;
     } catch {
       // Falls through to contests.json.
     }
