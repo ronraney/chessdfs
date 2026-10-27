@@ -135,6 +135,12 @@ const HOW_IT_WORKS_TEXT =
   "You're White. Each move locks a DFS player of that piece's type: pawns are cheap plays, knights TEs, bishops WRs, rooks RBs, queens $7K+ studs, the king your QB. The Field (Black) does the same. Build a 4–5 player core, then stop or keep going.";
 
 const BLACK_REPLY_DELAY_MS = 600;
+// Bug fix: shown once Stockfish genuinely fails (not just "has no opinion"
+// -- see build.ts's MoveResult.engineFailed) instead of letting the status
+// line keep reading "The Field is moving…" forever while Black's reply
+// actually already landed fine (the uniform-random fallback, same as
+// always ran before Stockfish existed).
+const ENGINE_UNAVAILABLE_NOTE = "Engine unavailable — Field moving without Stockfish.";
 // At the very start of a build, `bookContinuations` returns essentially
 // every first move recorded anywhere in the 3,865-line book -- dozens of
 // options, not a useful menu. Capped to the chosen line's own move (always
@@ -477,6 +483,12 @@ export default function BuildScreen({
   // fresh every time Black actually moves.
   const [whiteCaptureNote, setWhiteCaptureNote] = useState<string | null>(null);
   const [blackMoveNote, setBlackMoveNote] = useState<string | null>(null);
+  // Bug fix: sticky once Stockfish genuinely fails (engineFailed, not just
+  // "had no opinion" -- see ENGINE_UNAVAILABLE_NOTE above) -- the worker's
+  // own readyPromise is memoized forever once it rejects (stockfishEngine.ts
+  // never retries), so once it's broken for one Black turn it stays broken
+  // for the rest of this build; never reset.
+  const [engineUnavailable, setEngineUnavailable] = useState(false);
   const [howItWorksDismissed, setHowItWorksDismissed] = useState<boolean>(
     () => window.localStorage.getItem(HOW_IT_WORKS_KEY) === "1",
   );
@@ -649,7 +661,7 @@ export default function BuildScreen({
         : pendingMove !== null
           ? pendingPickText(pendingMove)
           : turn === "b"
-            ? whiteCaptureNote ?? "The Field is moving…"
+            ? whiteCaptureNote ?? (engineUnavailable ? ENGINE_UNAVAILABLE_NOTE : "The Field is moving…")
             : showBookExitPrompt
               ? "There is no longer an opening line. Continue, or start again?"
               : lastBlackMove !== null
@@ -677,7 +689,10 @@ export default function BuildScreen({
   // keeps that think time off the UI thread. The existing "The Field is
   // moving…" status line (see statusLine below) already covers the whole
   // wait regardless of its source (the fixed BLACK_REPLY_DELAY_MS pause, or
-  // the engine itself), so no new status text is needed for it.
+  // the engine itself) -- UNLESS the engine just failed (engineUnavailable),
+  // in which case that same slot switches to ENGINE_UNAVAILABLE_NOTE from
+  // here on. Either way, Black's reply itself always lands (build.ts's own
+  // uniform-random fallback never hangs on a broken engine).
   function scheduleBlackReply(newState: BuildState): void {
     if (blackTimerRef.current !== null) clearTimeout(blackTimerRef.current);
     if (newState.board.turn() !== "b") {
@@ -690,7 +705,12 @@ export default function BuildScreen({
         const result = await playBlackMove(
           newState, BOOK, familyRanks, targetRank, NFL, preset.contest, players, rng, kingMode, stockfishEngine,
         );
-        setBlackMoveNote(describeBlackMove(newState, result.state));
+        if (result.engineFailed) {
+          setEngineUnavailable(true);
+          setBlackMoveNote(ENGINE_UNAVAILABLE_NOTE);
+        } else {
+          setBlackMoveNote(describeBlackMove(newState, result.state));
+        }
         setState(result.state);
         // Black's reply just handed the turn back to White -- the one
         // other moment (besides mount) White's side can start dead; see

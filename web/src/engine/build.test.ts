@@ -728,6 +728,17 @@ function fakeEngine(candidates: EngineCandidate[]): BlackEngine {
   return { analyze: vi.fn(async () => candidates) };
 }
 
+// Bug fix: a real Stockfish worker that fails to load (the .wasm-serving
+// bug) or errors any other way -- `analyze` rejecting, same contract as the
+// real stockfishEngine.ts's own getReadyWorker()/runOnce() timeouts.
+function throwingEngine(message = "stockfish worker failed to start"): BlackEngine {
+  return {
+    analyze: vi.fn(async () => {
+      throw new Error(message);
+    }),
+  };
+}
+
 function engineCandidate(move: string, cp: number): EngineCandidate {
   return { move: uci(move), cp };
 }
@@ -814,6 +825,51 @@ describe("Black's out-of-book engine assist", () => {
     for (const san of sans) {
       expect(san.startsWith("N")).toBe(false); // every engine candidate was a Knight move -- none ever chosen
     }
+  });
+
+  it("falls back to the uniform-random legal move AND flags engineFailed when the engine itself fails", async () => {
+    // Bug fix: Black must never hang on a broken engine -- same fallback
+    // path as "none of the engine's candidates pass" above, but reached via
+    // a rejection (a worker that fails to load/errors/never responds)
+    // rather than a bad/empty candidate list. engineFailed is what lets the
+    // UI tell this apart from the ordinary "no opinion" fallback.
+    const pool = nflPool();
+    const [whitePlayer, ...blackPool] = pool;
+    const state = playWhiteMove(new BuildState(), uci("e2e4"), whitePlayer, NFL, CONTEST, []).state;
+
+    const sans = new Set<string>();
+    for (let seed = 0; seed < 30; seed++) {
+      const result = await playBlackMove(
+        state, [], {}, 0, NFL, CONTEST, blackPool, new SeededRandom(seed), KingMode.EMERGE, throwingEngine(),
+      );
+      expect(result.engineFailed).toBe(true);
+      sans.add(lastOf(result.state.blackMoves).san);
+    }
+    expect(sans.size).toBeGreaterThan(1); // really the uniform-random fallback, not one fixed pick
+  });
+
+  it("engineFailed stays false when the engine succeeds but has no sound candidates (not a failure)", async () => {
+    const pawnOnlyPool = Array.from({ length: 8 }, (_, i) => makePlayer(`pawn${i}`, "WR", 3000 + i));
+    const whitePlayer = makePlayer("w1", "WR", 2900);
+    const state = playWhiteMove(new BuildState(), uci("e2e4"), whitePlayer, NFL, CONTEST, []).state;
+    const candidates = [engineCandidate("g8f6", 500)]; // DFS-illegal only -- nothing survives filtering
+
+    const result = await playBlackMove(
+      state, [], {}, 0, NFL, CONTEST, pawnOnlyPool, new SeededRandom(1), KingMode.EMERGE, fakeEngine(candidates),
+    );
+    expect(result.engineFailed).toBe(false);
+  });
+
+  it("never calls the engine (and engineFailed stays false) while a book line still matches, even with a broken engine", async () => {
+    const pool = nflPool();
+    const [whitePlayer, ...blackPool] = pool;
+    const state = playWhiteMove(new BuildState(), uci("e2e4"), whitePlayer, NFL, CONTEST, BOOK).state;
+
+    const engine = throwingEngine();
+    const result = await playBlackMove(state, BOOK, {}, 0, NFL, CONTEST, blackPool, new SeededRandom(1), KingMode.EMERGE, engine);
+
+    expect(engine.analyze).not.toHaveBeenCalled();
+    expect(result.engineFailed).toBe(false);
   });
 
   it("never calls the engine while a book line still matches", async () => {

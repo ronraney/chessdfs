@@ -31,6 +31,17 @@ const STOCKFISH_WORKER_URL = "/stockfish/stockfish.js";
 // part of the engine's quick-setting target itself.
 const RESPONSE_TIMEOUT_MARGIN_MS = 2000;
 
+// Bug fix: a worker that loads but never reaches "uciok" -- e.g. its own
+// WebAssembly.instantiate() fails (a bad .wasm fetch, same failure mode as
+// the one that prompted this fix) in a way that doesn't bubble up as the
+// Worker's global "error" event -- used to hang getReadyWorker() (and
+// therefore every future analyze() call, since the rejected/never-settled
+// promise is memoized) forever, which hung Black's whole turn. This bounds
+// the readiness handshake the same way RESPONSE_TIMEOUT_MARGIN_MS already
+// bounds an actual "go" search below, so getReadyWorker() always settles
+// one way or the other.
+const READY_TIMEOUT_MS = 10_000;
+
 // UCI reports a forced mate as "score mate N" (N plies/moves to deliver it,
 // negative if the side to move is the one getting mated) instead of a
 // centipawn number. Folded into the same cp scale here, far outside any
@@ -86,14 +97,23 @@ export class StockfishEngine implements BlackEngine {
     if (this.readyPromise !== null) return this.readyPromise;
     this.readyPromise = new Promise<Worker>((resolve, reject) => {
       const worker = new Worker(STOCKFISH_WORKER_URL);
+      const timeoutId = setTimeout(() => {
+        worker.removeEventListener("message", onMessage);
+        worker.terminate();
+        reject(new Error(`stockfish worker never became ready (no "uciok" within ${READY_TIMEOUT_MS}ms)`));
+      }, READY_TIMEOUT_MS);
       function onMessage(event: MessageEvent<unknown>): void {
         if (typeof event.data === "string" && event.data.includes("uciok")) {
+          clearTimeout(timeoutId);
           worker.removeEventListener("message", onMessage);
           resolve(worker);
         }
       }
       worker.addEventListener("message", onMessage);
-      worker.addEventListener("error", (event) => reject(event.error ?? new Error("stockfish worker failed to start")));
+      worker.addEventListener("error", (event) => {
+        clearTimeout(timeoutId);
+        reject(event.error ?? new Error("stockfish worker failed to start"));
+      });
       worker.postMessage("uci");
     });
     return this.readyPromise;

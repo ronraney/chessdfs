@@ -100,6 +100,14 @@ export interface MoveResultFields {
   opening: string | null;
   message: string | null; // HAPPY_HUNTING, NO_LEGAL_MOVES, or null (build still ongoing)
   openSlots?: Record<string, number> | null; // populated only for NO_LEGAL_MOVES
+  // True only for a playBlackMove call where a real engine was actually
+  // consulted (no committed book line) AND it genuinely failed (threw --
+  // see chooseEngineMove) -- Black still played a legal, DFS-sound move
+  // (the uniform-random fallback), but the caller/UI may want to say so.
+  // False for every other MoveResult (playWhiteMove, playBlackTemplateMove,
+  // checkWhiteDeadEnd never touch the engine at all; a committed book line
+  // skips it too; `noEngine`'s own "no opinion" isn't a failure either).
+  engineFailed?: boolean;
 }
 
 export class MoveResult {
@@ -107,12 +115,14 @@ export class MoveResult {
   readonly opening: string | null;
   readonly message: string | null;
   readonly openSlots: Record<string, number> | null;
+  readonly engineFailed: boolean;
 
   constructor(fields: MoveResultFields) {
     this.state = fields.state;
     this.opening = fields.opening;
     this.message = fields.message;
     this.openSlots = fields.openSlots ?? null;
+    this.engineFailed = fields.engineFailed ?? false;
   }
 }
 
@@ -490,27 +500,37 @@ function moveKey(move: { from: string; to: string; promotion?: string }): string
 // (already filtered to whatever's both chess-legal and DFS-sound for Black
 // right now -- see playBlackMove). Engine candidates outside that allow-list
 // (the engine knows nothing about DFS/roster rules) are dropped before
-// chooseAmongSound ever sees them. Returns null -- the caller's cue to fall
-// back to a uniform-random choice among `dfsLegalCandidates` -- if the
-// engine has no opinion at all (the default `noEngine`), it fails outright
-// (a real Stockfish worker that errors or never responds), or none of its
-// candidates survive the allow-list filter.
+// chooseAmongSound ever sees them. `move` is null -- the caller's cue to
+// fall back to a uniform-random choice among `dfsLegalCandidates` -- if the
+// engine has no opinion at all (the default `noEngine`, not a failure) or
+// none of its candidates survive the allow-list filter (also not a
+// failure: the engine answered fine, its answer just wasn't usable).
+// `engineFailed` is true only for the other case, a genuine failure (a
+// real Stockfish worker that errors, never responds, or never loads at
+// all) -- `engine.analyze` throwing -- distinct from both of the above so
+// the caller/UI can tell "the engine had nothing good to say" apart from
+// "the engine is broken."
+interface EngineMoveResult {
+  move: ChessMove | null;
+  engineFailed: boolean;
+}
+
 async function chooseEngineMove(
   state: BuildState,
   dfsLegalCandidates: readonly ChessJsMove[],
   rng: SeededRandom,
   engine: BlackEngine,
-): Promise<ChessMove | null> {
+): Promise<EngineMoveResult> {
   let engineCandidates: readonly EngineCandidate[];
   try {
     engineCandidates = await engine.analyze(state.board.fen(), ENGINE_MULTIPV, ENGINE_MOVE_TIME_MS);
   } catch {
-    return null;
+    return { move: null, engineFailed: true };
   }
 
   const legalKeys = new Set(dfsLegalCandidates.map(moveKey));
   const sound = engineCandidates.filter((c) => legalKeys.has(moveKey(c.move)));
-  return chooseAmongSound(sound, rng)?.move ?? null;
+  return { move: chooseAmongSound(sound, rng)?.move ?? null, engineFailed: false };
 }
 
 // Generates and applies Black's move. Outside an explicit template
@@ -582,6 +602,7 @@ export async function playBlackMove(
   }
 
   let chessMove: ChessMove | null = null;
+  let engineFailed = false;
   if (committed !== null) {
     const matched = state.board.moves({ verbose: true }).find((m) => m.san === committed![depth]);
     if (!matched) {
@@ -593,7 +614,9 @@ export async function playBlackMove(
   if (chessMove === null) {
     // No book line to commit to at all: every DFS-sound legal move -- the
     // same allow-list the engine's own candidates get checked against
-    // below, and the uniform-random fallback if none of those pass either.
+    // below, and the uniform-random fallback if none of those pass either
+    // (including when the engine itself failed -- Black must never hang
+    // waiting on a broken engine).
     const legalMoves = state.board.moves({ verbose: true });
     let candidates: ChessJsMove[];
     if (blackIsFull) {
@@ -608,7 +631,9 @@ export async function playBlackMove(
       throw new NoLegalBlackMoveError();
     }
 
-    chessMove = await chooseEngineMove(state, candidates, rng, engine);
+    const engineResult = await chooseEngineMove(state, candidates, rng, engine);
+    chessMove = engineResult.move;
+    engineFailed = engineResult.engineFailed;
     if (chessMove === null) {
       // RULES.md gives no other weighting signal for free play.
       const chosen = rng.choice(candidates);
@@ -633,7 +658,7 @@ export async function playBlackMove(
   newState.blackCommittedLine = committed;
   const opening = openingName(sanHistory(newState.board), book);
   const message = isBuildOver(newState, sport) ? HAPPY_HUNTING : null;
-  return new MoveResult({ state: newState, opening, message });
+  return new MoveResult({ state: newState, opening, message, engineFailed });
 }
 
 // Applies `chessMove` for Black exactly as given, in place of Black's usual
