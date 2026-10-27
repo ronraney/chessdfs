@@ -92,19 +92,23 @@ function slateTeams(players: readonly Player[]): Set<string> {
 
 interface VegasSummary {
   teamCount: number;
-  missingTeams: readonly string[];
+  skippedTeams: readonly string[];
 }
 
 // Null whenever there's no saved projections slate to validate team
 // coverage against -- the Vegas upload itself is gated on this (see the
-// "Upload projections first" message below).
+// "Upload projections first" message below). Also null if the saved
+// Vegas CSV no longer validates against the CURRENT slate (e.g. a slate
+// team now has no Vegas row at all -- a hard error since the behavior-
+// reversal task) -- same catch-and-null pattern this function already
+// had for every other validation failure, not new to this change.
 function summarizeSavedVegas(players: readonly Player[] | null): VegasSummary | null {
   if (players === null) return null;
   const csv = getSavedVegasCsv();
   if (csv === null) return null;
   try {
-    const { vegas, missingTeams } = validateVegasCsv(csv, slateTeams(players));
-    return { teamCount: vegas.size, missingTeams };
+    const { vegas, skippedTeams } = validateVegasCsv(csv, slateTeams(players));
+    return { teamCount: vegas.size, skippedTeams };
   } catch {
     return null;
   }
@@ -218,9 +222,9 @@ function AdminScreen() {
     if (!file || slatePlayers === null) return;
     try {
       const text = await readFileAsText(file);
-      const { vegas: parsed, missingTeams } = validateVegasCsv(text, slateTeams(slatePlayers));
+      const { vegas: parsed, skippedTeams } = validateVegasCsv(text, slateTeams(slatePlayers));
       saveVegasCsv(text);
-      setVegas({ teamCount: parsed.size, missingTeams });
+      setVegas({ teamCount: parsed.size, skippedTeams });
       setVegasUploadError(null);
     } catch (e) {
       setVegasUploadError(
@@ -306,9 +310,10 @@ function AdminScreen() {
             {vegas !== null && (
               <div className="status">
                 <p>{vegas.teamCount} team(s) loaded.</p>
-                {vegas.missingTeams.length > 0 && (
+                {vegas.skippedTeams.length > 0 && (
                   <p className="status">
-                    No Vegas row for: {vegas.missingTeams.join(", ")} -- they'll use neutral defaults.
+                    Skipped {vegas.skippedTeams.length} team{vegas.skippedTeams.length === 1 ? "" : "s"} not on this slate:{" "}
+                    {vegas.skippedTeams.join(", ")}
                   </p>
                 )}
               </div>

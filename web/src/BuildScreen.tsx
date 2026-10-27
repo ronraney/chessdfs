@@ -992,14 +992,14 @@ export default function BuildScreen({
   }, [preset, players]);
   // Vegas is OPTIONAL for the sim, not a hard requirement (draws.ts's own
   // drawSlateOutcomes degrades to nfl-dfs's neutral per-game defaults for
-  // any team with no Vegas row, same convention AdminScreen's own "they'll
-  // use neutral defaults" note documents) -- confirmed by reading
-  // draws.ts directly before building this, not assumed. A missing OR
-  // invalid-for-this-slate Vegas CSV (e.g. saved against a different
-  // slate, so validateVegasCsv's own off-slate-team check throws) both
-  // fall back to an empty map rather than blocking the sim -- flagged
-  // here, not silently buried, since it's a judgment call this task left
-  // open ("if it can [run without it], say so in your report").
+  // any team with no Vegas row) -- confirmed by reading draws.ts directly
+  // before building this, not assumed. A missing OR invalid-for-this-
+  // slate Vegas CSV (e.g. saved against a different slate, so
+  // validateVegasCsv's own "a slate team has no Vegas row" check throws --
+  // off-slate rows alone no longer throw, see vegasCsv.ts) both fall back
+  // to an empty map rather than blocking the sim -- flagged here, not
+  // silently buried, since it's a judgment call this task left open ("if
+  // it can [run without it], say so in your report").
   const slateVegas: SlateVegas = useMemo(() => {
     const csv = getSavedVegasCsv();
     if (csv === null) return new Map();

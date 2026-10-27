@@ -44,11 +44,9 @@ export type VegasColumnMap = typeof VEGAS_COLUMN_MAP;
 //     MIA, MIN, NE, NO, NYG, NYJ, PIT, SEA, SF, TEN, WAS exactly as above.
 //   - data/samples/repro-slate.csv (a separate real fixture, 20 teams)
 //     confirms BAL, BUF, CAR, KC, PHI, TB exactly as above -- but uses
-//     "LA", not "LAR", for the Rams. FLAGGED, not silently resolved: this
-//     table uses LAR (matching nfl.json's dome_teams, the more central
-//     convention already relied on elsewhere) -- a slate loaded from
-//     repro-slate.csv specifically would still reject "Los Angeles Rams"
-//     as off-slate, since that slate's own Team column reads "LA".
+//     "LA", not "LAR", for the Rams. This genuine real-data conflict is
+//     what TEAM_ALIAS_GROUPS (below) resolves dynamically per slate,
+//     rather than this table having to pick one winner.
 //   - JAX (Jacksonville) never appears in ANY real file in this repo --
 //     the one team code this table could NOT cross-check against real
 //     data. Chose JAX (the current DK/NFL.com convention) over the older
@@ -89,23 +87,51 @@ const FULL_TEAM_NAME_TO_ABBREVIATION: Readonly<Record<string, string>> = {
   "washington commanders": "WAS",
 };
 
-// Maps a full team name to its abbreviation; an already-abbreviated (or
-// otherwise unrecognized) value passes through unchanged -- abbreviations
-// keep working exactly as before, and a genuinely unknown name still
-// fails the existing off-slate-team check below with the same message it
-// always has, rather than this function inventing a second error path.
-function normalizeTeamName(raw: string): string {
+// Teams whose abbreviation genuinely varies by source -- each inner array
+// is the same real team under different codes, real conflicting data
+// confirmed on disk in this repo (see the table's own comment above for
+// the Rams' LA/LAR case). Resolved to whichever one THIS slate actually
+// uses, not a fixed pick -- a slate never has both, so "whichever alias
+// is present" is unambiguous. Only the one pair this task named, not a
+// general "every team's every known alternate code" list.
+const TEAM_ALIAS_GROUPS: readonly (readonly string[])[] = [["LA", "LAR"]];
+
+// If `abbr` itself isn't on the slate but a KNOWN ALIAS of it is, returns
+// that alias instead; otherwise returns `abbr` unchanged (including when
+// neither it nor any alias is on the slate -- the off-slate-team check
+// downstream is what reports that, not this function).
+function resolveSlateAlias(abbr: string, slateTeams: ReadonlySet<string>): string {
+  if (slateTeams.has(abbr)) return abbr;
+  for (const group of TEAM_ALIAS_GROUPS) {
+    if (!group.includes(abbr)) continue;
+    const onSlate = group.find((alias) => slateTeams.has(alias));
+    if (onSlate !== undefined) return onSlate;
+  }
+  return abbr;
+}
+
+// Maps a full team name to its abbreviation, then reconciles known
+// abbreviation aliases (TEAM_ALIAS_GROUPS) against this slate's own
+// convention. An already-abbreviated (or otherwise unrecognized) value
+// with no alias match passes through unchanged -- abbreviations keep
+// working exactly as before, and a genuinely unknown name still fails the
+// off-slate-team handling below the same way it always has.
+function normalizeTeamName(raw: string, slateTeams: ReadonlySet<string>): string {
   const trimmed = raw.trim();
-  return FULL_TEAM_NAME_TO_ABBREVIATION[trimmed.toLowerCase()] ?? trimmed;
+  const mapped = FULL_TEAM_NAME_TO_ABBREVIATION[trimmed.toLowerCase()] ?? trimmed;
+  return resolveSlateAlias(mapped, slateTeams);
 }
 
 export class VegasValidationError extends Error {}
 
 export interface VegasValidationResult {
   vegas: SlateVegas;
-  // Slate teams with no Vegas row -- not a validation failure (that team
-  // just draws with nfl-dfs's own neutral defaults), but worth surfacing.
-  missingTeams: readonly string[];
+  // Vegas rows for a team not on this slate -- skipped, not an error (a
+  // full-week Vegas sheet routinely covers teams this slate isn't using).
+  // A SLATE team with no Vegas row is the opposite situation and still a
+  // hard error (see the throw below) -- these two checks are deliberately
+  // asymmetric now, not two sides of the same rule.
+  skippedTeams: readonly string[];
 }
 
 const REQUIRED_COLUMN_KEYS = ["rank", "team", "impliedTotal", "spread", "overUnder", "opponent"] as const;
@@ -124,19 +150,26 @@ export function validateVegasCsv(
     throw new VegasValidationError(`Missing required column(s): ${missingColumns.map((key) => columnMap[key]).join(", ")}.`);
   }
 
-  // Team and Opponent are both normalized before anything below reads
-  // them -- a full team name in either column becomes its abbreviation
-  // here, once, rather than needing every later check to know about it.
-  const rows: Record<string, string>[] = parsed.data.map((row) => ({
+  // Team and Opponent are both normalized (full name -> abbreviation,
+  // then slate-alias reconciliation) before anything below reads them.
+  const normalizedRows: Record<string, string>[] = parsed.data.map((row) => ({
     ...row,
-    [columnMap.team]: normalizeTeamName(row[columnMap.team] ?? ""),
-    [columnMap.opponent]: normalizeTeamName(row[columnMap.opponent] ?? ""),
+    [columnMap.team]: normalizeTeamName(row[columnMap.team] ?? "", slateTeams),
+    [columnMap.opponent]: normalizeTeamName(row[columnMap.opponent] ?? "", slateTeams),
   }));
 
-  const missingTeamCount = rows.filter((row) => (row[columnMap.team] ?? "").trim() === "").length;
+  const missingTeamCount = normalizedRows.filter((row) => (row[columnMap.team] ?? "").trim() === "").length;
   if (missingTeamCount > 0) {
     throw new VegasValidationError(`${missingTeamCount} row(s) are missing a Team value.`);
   }
+
+  // Off-slate rows are dropped before any further check runs -- a row
+  // we're about to discard shouldn't block the upload over its own data
+  // quality (a duplicate or non-numeric value among teams we don't care
+  // about here). skippedTeams is deduplicated and sorted for the caller's
+  // own "Skipped N teams not on this slate: ..." note.
+  const skippedTeams = [...new Set(normalizedRows.map((row) => row[columnMap.team].trim()).filter((team) => !slateTeams.has(team)))].sort();
+  const rows = normalizedRows.filter((row) => slateTeams.has(row[columnMap.team].trim()));
 
   const seenTeams = new Set<string>();
   const duplicateTeams = new Set<string>();
@@ -157,11 +190,6 @@ export function validateVegasCsv(
     }
   }
 
-  const offSlateTeams = rows.map((row) => row[columnMap.team].trim()).filter((team) => !slateTeams.has(team));
-  if (offSlateTeams.length > 0) {
-    throw new VegasValidationError(`Vegas row(s) for team(s) not on the loaded slate: ${offSlateTeams.join(", ")}.`);
-  }
-
   const vegas = new Map<string, GameVegas>();
   for (const row of rows) {
     const team = row[columnMap.team].trim();
@@ -171,9 +199,18 @@ export function validateVegasCsv(
     });
   }
 
+  // Bug fix (behavior reversal, per this task's own explicit wording): a
+  // slate team with no Vegas row used to be a non-fatal "missingTeams"
+  // note (that team would just draw with neutral defaults). Now it's a
+  // hard error instead -- paired with skippedTeams above, the new rule is
+  // "every slate team needs real Vegas data; extra rows for teams the
+  // slate isn't using are fine."
   const missingTeams = [...slateTeams].filter((team) => !vegas.has(team)).sort();
+  if (missingTeams.length > 0) {
+    throw new VegasValidationError(`No Vegas row for slate team(s): ${missingTeams.join(", ")}.`);
+  }
 
-  return { vegas, missingTeams };
+  return { vegas, skippedTeams };
 }
 
 function isFiniteNumericString(raw: string | undefined): boolean {

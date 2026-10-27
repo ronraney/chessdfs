@@ -17,17 +17,22 @@ function csv(rows: readonly string[]): string {
 const TWO_TEAM_ROWS = [row(1, "AAA", 27.5, -3.5, 51, "BBB"), row(2, "BBB", 23.5, 3.5, 51, "AAA")];
 
 describe("validateVegasCsv", () => {
-  it("a valid two-team upload parses cleanly with no missing teams", () => {
+  it("a valid two-team upload parses cleanly with nothing skipped", () => {
     const result = validateVegasCsv(csv(TWO_TEAM_ROWS), new Set(["AAA", "BBB"]));
     expect(result.vegas.get("AAA")).toEqual({ total: 51, spread: -3.5 });
     expect(result.vegas.get("BBB")).toEqual({ total: 51, spread: 3.5 });
-    expect(result.missingTeams).toEqual([]);
+    expect(result.skippedTeams).toEqual([]);
   });
 
-  it("warns (does not throw) when a slate team has no Vegas row", () => {
-    const result = validateVegasCsv(csv(TWO_TEAM_ROWS), new Set(["AAA", "BBB", "CCC"]));
-    expect(result.vegas.size).toBe(2);
-    expect(result.missingTeams).toEqual(["CCC"]);
+  // Bug fix (behavior reversal): a slate team with no Vegas row used to
+  // be a non-fatal note (that team would draw with neutral defaults).
+  // Now it's a hard error -- a full-week Vegas sheet is expected to cover
+  // every team actually on the slate; if it doesn't, that's worth
+  // stopping the upload for, not quietly degrading.
+  it("errors when a slate team has no Vegas row", () => {
+    expect(() => validateVegasCsv(csv(TWO_TEAM_ROWS), new Set(["AAA", "BBB", "CCC"]))).toThrow(
+      /No Vegas row for slate team\(s\): CCC/,
+    );
   });
 
   it("rejects a file missing required columns, naming them", () => {
@@ -41,7 +46,7 @@ describe("validateVegasCsv", () => {
     expect(() => validateVegasCsv(csv(rows), new Set(["AAA", "BBB"]))).toThrow(/1 row\(s\) are missing a Team value/);
   });
 
-  it("rejects duplicate team rows", () => {
+  it("rejects duplicate team rows (among teams actually on the slate)", () => {
     const rows = [...TWO_TEAM_ROWS, row(3, "AAA", 24, -1, 48, "BBB")];
     expect(() => validateVegasCsv(csv(rows), new Set(["AAA", "BBB"]))).toThrow(/Duplicate team row\(s\): AAA/);
   });
@@ -56,10 +61,23 @@ describe("validateVegasCsv", () => {
     expect(() => validateVegasCsv(csv(rows), new Set(["AAA", "BBB"]))).toThrow(/Non-numeric O\/U value for team\(s\): AAA/);
   });
 
-  it("rejects a Vegas row for a team not on the loaded slate", () => {
-    expect(() => validateVegasCsv(csv(TWO_TEAM_ROWS), new Set(["AAA"]))).toThrow(
-      /Vegas row\(s\) for team\(s\) not on the loaded slate: BBB/,
-    );
+  // Bug fix: a full-week Vegas sheet routinely covers teams this
+  // particular slate isn't using (e.g. a Thursday-only slate against a
+  // full-week sheet) -- that used to reject the whole upload outright.
+  // Now the off-slate row is skipped, noted, and doesn't block anything
+  // else: AAA (on the slate) still gets its real Vegas data.
+  it("skips (does not reject) a Vegas row for a team not on the loaded slate", () => {
+    const result = validateVegasCsv(csv(TWO_TEAM_ROWS), new Set(["AAA"]));
+    expect(result.vegas.get("AAA")).toEqual({ total: 51, spread: -3.5 });
+    expect(result.vegas.has("BBB")).toBe(false);
+    expect(result.skippedTeams).toEqual(["BBB"]);
+  });
+
+  it("skips several off-slate teams at once and lists them all, deduplicated and sorted", () => {
+    const rows = [...TWO_TEAM_ROWS, row(3, "CCC", 20, 0, 44, "DDD"), row(4, "BBB", 23.5, 3.5, 51, "AAA")]; // BBB appears twice, off-slate both times
+    const result = validateVegasCsv(csv(rows), new Set(["AAA"]));
+    expect(result.skippedTeams).toEqual(["BBB", "CCC"]);
+    expect(result.vegas.size).toBe(1);
   });
 
   // Bug fix: full team names ("Detroit Lions") in the Team column used to
@@ -70,7 +88,7 @@ describe("validateVegasCsv", () => {
     const result = validateVegasCsv(csv(rows), new Set(["DET", "GB"]));
     expect(result.vegas.get("DET")).toEqual({ total: 47, spread: -2.5 });
     expect(result.vegas.get("GB")).toEqual({ total: 47, spread: 2.5 });
-    expect(result.missingTeams).toEqual([]);
+    expect(result.skippedTeams).toEqual([]);
   });
 
   it("maps a full team name in the Opponent column the same way (case-insensitive, whitespace-tolerant)", () => {
@@ -87,11 +105,16 @@ describe("validateVegasCsv", () => {
     expect(result.vegas.size).toBe(2);
   });
 
-  it("still rejects a genuinely unknown team name", () => {
+  // Behavior consequence, flagged rather than assumed: this function has
+  // no separate "is this a real team" check independent of slate
+  // membership -- off-slate and "not a real team at all" are the same
+  // condition here (neither is in slateTeams). A typo'd/garbage team name
+  // is now silently skipped like any other off-slate row, not rejected.
+  it("a genuinely unrecognized team name is skipped the same as any other off-slate team, not rejected", () => {
     const rows = [row(1, "Not A Real Team", 24.5, -2.5, 47, "GB"), row(2, "GB", 22, 2.5, 47, "Not A Real Team")];
-    expect(() => validateVegasCsv(csv(rows), new Set(["GB"]))).toThrow(
-      /Vegas row\(s\) for team\(s\) not on the loaded slate: Not A Real Team/,
-    );
+    const result = validateVegasCsv(csv(rows), new Set(["GB"]));
+    expect(result.skippedTeams).toEqual(["Not A Real Team"]);
+    expect(result.vegas.get("GB")).toEqual({ total: 47, spread: 2.5 }); // GB's own row is on-slate and otherwise valid
   });
 
   it("maps every one of the 32 real full team names to this file's own abbreviation set", () => {
@@ -137,7 +160,38 @@ describe("validateVegasCsv", () => {
     for (const [, abbr] of entries) {
       expect(result.vegas.has(abbr)).toBe(true);
     }
-    expect(result.missingTeams).toEqual([]);
+    expect(result.skippedTeams).toEqual([]);
+  });
+
+  // This task's own named case: the Rams' abbreviation genuinely varies
+  // by source (confirmed on disk -- see vegasCsv.ts's own comment). The
+  // CSV's own choice shouldn't matter; only the slate's does.
+  describe("LA/LAR alias (the Rams)", () => {
+    it("the slate uses LAR -- a CSV row for LA resolves to LAR", () => {
+      const rows = [row(1, "LA", 24, -3, 47, "SF"), row(2, "SF", 23, 3, 47, "LA")];
+      const result = validateVegasCsv(csv(rows), new Set(["LAR", "SF"]));
+      expect(result.vegas.get("LAR")).toEqual({ total: 47, spread: -3 });
+      expect(result.skippedTeams).toEqual([]);
+    });
+
+    it("the slate uses LA -- a CSV row for LAR resolves to LA", () => {
+      const rows = [row(1, "LAR", 24, -3, 47, "SF"), row(2, "SF", 23, 3, 47, "LAR")];
+      const result = validateVegasCsv(csv(rows), new Set(["LA", "SF"]));
+      expect(result.vegas.get("LA")).toEqual({ total: 47, spread: -3 });
+      expect(result.skippedTeams).toEqual([]);
+    });
+
+    it("the slate uses LAR -- a CSV row for the full name 'Los Angeles Rams' resolves to LAR", () => {
+      const rows = [row(1, "Los Angeles Rams", 24, -3, 47, "SF"), row(2, "SF", 23, 3, 47, "Los Angeles Rams")];
+      const result = validateVegasCsv(csv(rows), new Set(["LAR", "SF"]));
+      expect(result.vegas.get("LAR")).toEqual({ total: 47, spread: -3 });
+    });
+
+    it("neither alias on the slate -- LA is simply off-slate, not specially treated", () => {
+      const rows = [row(1, "LA", 24, -3, 47, "SF"), row(2, "SF", 23, 3, 47, "LA")];
+      const result = validateVegasCsv(csv(rows), new Set(["SF"]));
+      expect(result.skippedTeams).toEqual(["LA"]);
+    });
   });
 });
 
@@ -158,16 +212,16 @@ describe("validateVegasCsv -> drawSlateOutcomes integration", () => {
     });
   }
 
-  it("a slate team missing from the Vegas upload falls back to drawSlateOutcomes' own neutral defaults", () => {
-    // AAA/BBB get real, skewed Vegas data; CCC/DDD are on the slate but
-    // absent from the CSV entirely (validateVegasCsv reports them as
-    // missingTeams, not an error). CCC/DDD's own game total/spread is
-    // undefined either way, so their statistics should land the same
-    // whether or not AAA/BBB's real coverage is present elsewhere on the
-    // slate -- checked over many trials (a single shared-rng draw isn't
-    // comparable 1:1 across scenarios here: AAA/BBB's different Vegas
-    // data changes how many regime-shock rng calls their OWN game
-    // consumes, which shifts the rng stream CCC/DDD draw from next).
+  it("a team absent from the vegas map falls back to drawSlateOutcomes' own neutral defaults", () => {
+    // AAA/BBB get real, skewed Vegas data via validateVegasCsv (proving
+    // its own output needs no adapter for drawSlateOutcomes); CCC/DDD are
+    // real players on the slate but simply never asked about here --
+    // validateVegasCsv now REQUIRES full coverage of whatever slate it's
+    // given (a slate team with no Vegas row is a hard error), so a gap
+    // can no longer survive its own validated path. Scoping this call's
+    // own `slateTeams` to {AAA, BBB} only (not the full 4-player roster)
+    // is what still produces a real, validator-approved map with a real
+    // gap to test drawSlateOutcomes' own degradation against.
     const players = [
       makePlayer("qbA", "QB", "AAA", "BBB"),
       makePlayer("qbB", "QB", "BBB", "AAA"),
@@ -176,8 +230,8 @@ describe("validateVegasCsv -> drawSlateOutcomes integration", () => {
     ];
     const ccDd = [players[2], players[3]];
     const rows = [row(1, "AAA", 30, -6, 60, "BBB"), row(2, "BBB", 24, 6, 60, "AAA")];
-    const { vegas, missingTeams } = validateVegasCsv(csv(rows), new Set(["AAA", "BBB", "CCC", "DDD"]));
-    expect(missingTeams).toEqual(["CCC", "DDD"]);
+    const { vegas, skippedTeams } = validateVegasCsv(csv(rows), new Set(["AAA", "BBB"]));
+    expect(skippedTeams).toEqual([]);
     expect(vegas.has("CCC")).toBe(false);
     expect(vegas.has("DDD")).toBe(false);
 

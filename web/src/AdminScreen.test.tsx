@@ -16,14 +16,26 @@ import { getSavedVegasCsv } from "./vegasStore";
 const SAMPLE_PLAYER_COUNT = loadEtrCsv(SAMPLE_CSV).length;
 const PASSWORD = "letmein-test-password";
 
-// ARI/CHI are both real teams on the sample slate (data/samples/NFL
-// Weekly DFS System - Projections.csv) -- used below for a partial-
-// coverage upload (20 of the sample's 22 teams end up in missingTeams).
+// The sample slate (data/samples/NFL Weekly DFS System - Projections.csv)
+// has exactly these 22 real teams -- a slate team with no Vegas row is
+// now a hard error (behavior-reversal task), so "a valid upload" against
+// this slate means covering all 22, not just a couple.
+const SAMPLE_SLATE_TEAMS = [
+  "ARI", "CHI", "CIN", "CLE", "DEN", "DET", "GB", "HOU", "IND", "LAC", "LV",
+  "MIA", "MIN", "NE", "NO", "NYG", "NYJ", "PIT", "SEA", "SF", "TEN", "WAS",
+];
 const VEGAS_HEADER = "Rank,Team,Implied Total,Spread,O/U,Opponent";
 function vegasCsv(rows: readonly string[]): string {
   return [VEGAS_HEADER, ...rows].join("\n");
 }
-const VALID_VEGAS_CSV = vegasCsv(["1,ARI,27.5,-3.5,51,CHI", "2,CHI,23.5,3.5,51,ARI"]);
+// Opponent is parsed but never read/validated (vegasCsv.ts) -- "XXX" is a
+// deliberate, harmless placeholder, not meant to pair up real games.
+const VALID_VEGAS_CSV = vegasCsv(SAMPLE_SLATE_TEAMS.map((team, i) => `${i + 1},${team},24,0,47,XXX`));
+// ARI/CHI only -- a real team (KC) never appears on this 22-team sample
+// slate at all, so it's a genuinely off-slate row (skipped, not rejected,
+// per this task); the other 20 slate teams are simply absent from this
+// CSV (the OTHER, still-fatal case: a slate team with no Vegas row).
+const PARTIAL_COVERAGE_VEGAS_CSV = vegasCsv(["1,ARI,27.5,-3.5,51,CHI", "2,CHI,23.5,3.5,51,ARI"]);
 function vegasCsvFile(text: string = VALID_VEGAS_CSV): File {
   return new File([text], "vegas.csv", { type: "text/csv" });
 }
@@ -160,15 +172,28 @@ describe("AdminScreen -- Vegas upload", () => {
     expect(screen.getByText("No Vegas data saved yet.")).toBeInTheDocument();
   });
 
-  it("a valid partial-coverage upload shows the team count, warns on missing teams, and saves it", async () => {
+  it("a valid full-coverage upload shows the team count and saves it", async () => {
     const user = userEvent.setup();
     await logInAndUploadProjections(user);
 
     await user.upload(screen.getByLabelText("Vegas CSV"), vegasCsvFile());
 
-    await waitFor(() => expect(screen.getByText("2 team(s) loaded.")).toBeInTheDocument());
-    expect(screen.getByText(/No Vegas row for: .* -- they'll use neutral defaults\./)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("22 team(s) loaded.")).toBeInTheDocument());
+    expect(screen.queryByText(/Skipped/)).not.toBeInTheDocument();
     expect(getSavedVegasCsv()).toBe(VALID_VEGAS_CSV);
+  });
+
+  // Bug fix (behavior reversal): a slate team with no Vegas row used to
+  // be a non-fatal note; it's a hard error now. 20 of the sample slate's
+  // 22 teams have no row in this CSV.
+  it("errors and saves nothing when a slate team has no Vegas row", async () => {
+    const user = userEvent.setup();
+    await logInAndUploadProjections(user);
+
+    await user.upload(screen.getByLabelText("Vegas CSV"), vegasCsvFile(PARTIAL_COVERAGE_VEGAS_CSV));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/No Vegas row for slate team\(s\): /);
+    expect(getSavedVegasCsv()).toBeNull();
   });
 
   it("a file missing required columns names them and saves nothing", async () => {
@@ -182,28 +207,33 @@ describe("AdminScreen -- Vegas upload", () => {
     expect(getSavedVegasCsv()).toBeNull();
   });
 
-  it("a row for a team not on the loaded slate is rejected and saves nothing", async () => {
+  // Bug fix: a full-week Vegas sheet routinely has rows for teams this
+  // slate isn't using (KC is a real team, just not one of the sample
+  // slate's 22). That used to reject the whole upload; now it's skipped,
+  // noted, and the upload still saves.
+  it("skips a row for a real team not on the loaded slate, notes it, and still saves", async () => {
     const user = userEvent.setup();
     await logInAndUploadProjections(user);
 
-    const badFile = vegasCsvFile(vegasCsv(["1,ARI,27.5,-3.5,51,CHI", "2,ZZZ,23.5,3.5,51,ARI"]));
-    await user.upload(screen.getByLabelText("Vegas CSV"), badFile);
+    const extraRow = "23,KC,25,-1,48,XXX";
+    await user.upload(screen.getByLabelText("Vegas CSV"), vegasCsvFile(vegasCsv([...VALID_VEGAS_CSV.split("\n").slice(1), extraRow])));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/Vegas row\(s\) for team\(s\) not on the loaded slate: ZZZ/);
-    expect(getSavedVegasCsv()).toBeNull();
+    await waitFor(() => expect(screen.getByText("22 team(s) loaded.")).toBeInTheDocument());
+    expect(screen.getByText("Skipped 1 team not on this slate: KC")).toBeInTheDocument();
+    expect(getSavedVegasCsv()).not.toBeNull();
   });
 
   it("a rejected upload keeps the previously saved Vegas data", async () => {
     const user = userEvent.setup();
     await logInAndUploadProjections(user);
     await user.upload(screen.getByLabelText("Vegas CSV"), vegasCsvFile());
-    await waitFor(() => expect(screen.getByText("2 team(s) loaded.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("22 team(s) loaded.")).toBeInTheDocument());
 
     const badFile = new File(["Rank,Team\n1,ARI"], "junk.csv", { type: "text/csv" });
     await user.upload(screen.getByLabelText("Vegas CSV"), badFile);
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/Missing required column/);
-    expect(screen.getByText("2 team(s) loaded.")).toBeInTheDocument(); // unchanged
+    expect(screen.getByText("22 team(s) loaded.")).toBeInTheDocument(); // unchanged
     expect(getSavedVegasCsv()).toBe(VALID_VEGAS_CSV); // unchanged
   });
 
@@ -211,7 +241,7 @@ describe("AdminScreen -- Vegas upload", () => {
     const user = userEvent.setup();
     await logInAndUploadProjections(user);
     await user.upload(screen.getByLabelText("Vegas CSV"), vegasCsvFile());
-    await waitFor(() => expect(screen.getByText("2 team(s) loaded.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("22 team(s) loaded.")).toBeInTheDocument());
 
     await user.click(screen.getByRole("button", { name: "Clear Vegas data" }));
 
