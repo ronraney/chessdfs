@@ -9,6 +9,7 @@
     "dev": "npm run sync-data && npm run sync-stockfish && vite",
     "build": "npm run sync-data && npm run sync-stockfish && tsc -b && vite build",
     "test": "npm run sync-data && npm run sync-stockfish && vitest run",
+    "backtest": "vite build --config vite.backtest.config.ts && node .tmp-backtest/simBacktestCli.js",
     "lint": "oxlint",
     "preview": "vite preview"
   },

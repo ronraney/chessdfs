@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# build output of `npm run backtest` (vite.backtest.config.ts)
+.tmp-backtest
+
 # synced from ../data and ../config by `npm run sync-data` — originals are the source of truth
 src/data
 
