@@ -678,22 +678,33 @@ export function applyCaptureMove(
   if (square !== chessMove.to) {
     newPieceLocks.delete(square);
   }
+  // Bug fix: the capturing piece's own lock history follows IT to its new
+  // square, in BOTH branches below -- never the captured player's, even
+  // when that capture fits and transfers. A capture never locks a new
+  // player for the capturing piece itself (RULES.md "Captures": "the
+  // capturing piece locks no one"), so its own history can't gain an
+  // entry here; `captured` is tracked entirely via `moves`/`locked`
+  // below instead. Previously this set `[...moverHistory, captured!]`
+  // when `fits` -- conflating the capturing piece's own identity with the
+  // captured player's at the SAME square. That stray entry then silently
+  // became "the most recently locked player" for a LATER capture of that
+  // same square (recapture), handing the wrong player to the wrong side
+  // -- e.g. 5. Bxc6 (fits) dxc6 used to transfer the knight captured on
+  // move 5 back out, instead of the bishop's own pick from move 4.
+  newPieceLocks.set(chessMove.to, moverHistory);
 
   let moves: Move[];
   let locked: Set<string>;
   if (fits) {
-    newPieceLocks.set(chessMove.to, [...moverHistory, captured!]);
     const moveRecord = new Move({ side, piece: lockedPiece, san, player: captured! });
     moves = [...movesFor(state, side), moveRecord];
     locked = new Set(state.lockedPlayerIds);
     locked.add(captured!.id);
   } else {
-    // The capturing piece's own history is unaffected -- it just moved,
-    // locking no one of its own; a historied `captured` leaves the
-    // opposing side's roster and returns to the pool (no longer locked);
-    // an unmoved capture's `captured` (missing, or given but not a fit)
-    // was never locked, so there's nothing to remove.
-    newPieceLocks.set(chessMove.to, moverHistory);
+    // A historied `captured` leaves the opposing side's roster and
+    // returns to the pool (no longer locked); an unmoved capture's
+    // `captured` (missing, or given but not a fit) was never locked, so
+    // there's nothing to remove.
     moves = movesFor(state, side);
     locked = new Set(state.lockedPlayerIds);
     if (captured !== null) locked.delete(captured.id);

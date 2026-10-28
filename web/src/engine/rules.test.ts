@@ -509,6 +509,89 @@ describe("captures", () => {
     expect(blackIds.has("te_k1")).toBe(false);
   });
 
+  // Bug fix: a RECAPTURE of the same square used to transfer the WRONG
+  // player on the second capture. Ron's build: 1. e4 e5 2. Nf3 Nc6 3. Nc3
+  // Nf6 4. Bb5 a6 5. Bxc6 dxc6 -- 5. Bxc6 (fits) used to write
+  // `[...moverHistory, captured]` at c6 (the bishop's OWN history from
+  // b5, PLUS the just-transferred knight, both under the same square
+  // key), so 5...dxc6's "most recently locked player transfers" read the
+  // knight back out again instead of the bishop's own pick from 4. Bb5 --
+  // the knight (already safely transferred to White) was never even
+  // still on the board to be captured a second time. Fixed: a capture
+  // never adds to the CAPTURING piece's own history (`moverHistory` moves
+  // to the new square unchanged, `captured` is tracked only via `moves`/
+  // `locked`), so recapturing c6 now correctly reads the bishop's own
+  // (unmodified) history.
+  it("a recapture on the same square transfers the right player each time (bug fix)", () => {
+    let state = applyMove(new BuildState(), uci("e2e4"), makePlayer("w_pawn1", "WR", 3000), NFL, CONTEST);
+    state = applyMove(state, uci("e7e5"), makePlayer("b_pawn1", "WR", 3000), NFL, CONTEST);
+    state = applyMove(state, uci("g1f3"), makePlayer("w_knight1", "RB", 5200), NFL, CONTEST);
+    const bKnightC6 = makePlayer("b_knight_c6", "RB", 5200); // 2...Nc6
+    state = applyMove(state, uci("b8c6"), bKnightC6, NFL, CONTEST);
+    state = applyMove(state, uci("b1c3"), makePlayer("w_knight2", "RB", 5300), NFL, CONTEST);
+    state = applyMove(state, uci("g8f6"), makePlayer("b_knight2", "RB", 5300), NFL, CONTEST);
+    const wBishopB5 = makePlayer("w_bishop_b5", "WR", 5500); // 4. Bb5
+    state = applyMove(state, uci("f1b5"), wBishopB5, NFL, CONTEST);
+    state = applyMove(state, uci("a7a6"), makePlayer("b_pawn2", "WR", 3000), NFL, CONTEST);
+
+    // 5. Bxc6 -- White's bishop captures Black's knight on c6.
+    const firstCapture = state.board.moves({ verbose: true }).find((m) => m.from === "b5" && m.to === "c6");
+    expect(firstCapture?.isCapture()).toBe(true);
+    state = applyCaptureMove(state, uci("b5c6"), NFL, CONTEST);
+
+    const knightTransfer = state.whiteMoves.find((m) => m.player.id === "b_knight_c6");
+    expect(knightTransfer?.piece).toBe(Piece.KNIGHT); // the knight's own real piece, not re-derived from the bishop
+    expect(state.blackMoves.some((m) => m.player.id === "b_knight_c6")).toBe(false);
+
+    // 5...dxc6 -- Black's pawn recaptures on c6, now occupied by White's
+    // bishop (the knight was already removed from the board in move 5).
+    const secondCapture = state.board.moves({ verbose: true }).find((m) => m.from === "d7" && m.to === "c6");
+    expect(secondCapture?.isCapture()).toBe(true);
+    state = applyCaptureMove(state, uci("d7c6"), NFL, CONTEST);
+
+    const bishopTransfer = state.blackMoves.find((m) => m.player.id === "w_bishop_b5");
+    expect(bishopTransfer?.piece).toBe(Piece.BISHOP); // correctly named as a Bishop, not a Knight
+    expect(state.whiteMoves.some((m) => m.player.id === "w_bishop_b5")).toBe(false);
+
+    // The first capture's own transfer is untouched by the second.
+    expect(state.whiteMoves.some((m) => m.player.id === "b_knight_c6")).toBe(true);
+    expect(state.blackMoves.some((m) => m.player.id === "b_knight_c6")).toBe(false);
+  });
+
+  // Bug fix, same scenario: Take back (BuildScreen.tsx's own `pastStates`
+  // stack) restores a build by keeping the PRIOR BuildState snapshot
+  // around and discarding whatever came after -- it never recomputes
+  // anything, so the real guarantee it depends on is that deriving a
+  // LATER move from a state never mutates that state itself. Confirms
+  // that directly: the snapshot right after 5. Bxc6 (what Take back
+  // would restore to if 5...dxc6 were undone) stays exactly as it was,
+  // even after 5...dxc6 is derived from it.
+  it("Take back's own snapshot after a capture is unaffected by a later capture derived from it", () => {
+    let state = applyMove(new BuildState(), uci("e2e4"), makePlayer("w_pawn1", "WR", 3000), NFL, CONTEST);
+    state = applyMove(state, uci("e7e5"), makePlayer("b_pawn1", "WR", 3000), NFL, CONTEST);
+    state = applyMove(state, uci("g1f3"), makePlayer("w_knight1", "RB", 5200), NFL, CONTEST);
+    state = applyMove(state, uci("b8c6"), makePlayer("b_knight_c6", "RB", 5200), NFL, CONTEST);
+    state = applyMove(state, uci("b1c3"), makePlayer("w_knight2", "RB", 5300), NFL, CONTEST);
+    state = applyMove(state, uci("g8f6"), makePlayer("b_knight2", "RB", 5300), NFL, CONTEST);
+    const wBishopB5 = makePlayer("w_bishop_b5", "WR", 5500);
+    state = applyMove(state, uci("f1b5"), wBishopB5, NFL, CONTEST);
+    state = applyMove(state, uci("a7a6"), makePlayer("b_pawn2", "WR", 3000), NFL, CONTEST);
+
+    const takeBackSnapshot = applyCaptureMove(state, uci("b5c6"), NFL, CONTEST); // 5. Bxc6
+    const snapshotWhiteMoves = takeBackSnapshot.whiteMoves;
+    const snapshotPieceLocks = takeBackSnapshot.pieceLocks;
+
+    applyCaptureMove(takeBackSnapshot, uci("d7c6"), NFL, CONTEST); // 5...dxc6, derived but never fed back in
+
+    // Taking back 5...dxc6 means keeping `takeBackSnapshot` exactly as it
+    // was -- same object references, same transfer, same piece-lock
+    // history for c6 (the bishop's own, from 4. Bb5).
+    expect(takeBackSnapshot.whiteMoves).toBe(snapshotWhiteMoves);
+    expect(takeBackSnapshot.pieceLocks).toBe(snapshotPieceLocks);
+    expect(takeBackSnapshot.whiteMoves.some((m) => m.player.id === "b_knight_c6")).toBe(true);
+    expect(takeBackSnapshot.pieceLocks.get("c6" as Square)).toEqual([wBishopB5]);
+  });
+
   it("en passant capture transfers the captured pawn's player (Task 30b)", () => {
     // chess.js keeps "ordinary capture" and "en passant" as separate move
     // flags -- isCapture() alone is false here, unlike python-chess's
