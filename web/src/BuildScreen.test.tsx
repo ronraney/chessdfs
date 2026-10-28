@@ -591,11 +591,12 @@ describe("BuildScreen -- pick list is no longer capped (Rule change)", () => {
 
 // Rule change: the existing inline "tight finish" copy (buildStats.ts's
 // tightFinishStatus, shown in the You panel and the pick modal's own
-// "after this pick" preview) is easy to miss -- a window.alert now fires
-// too, once per level, the moment a LOCKED pick first reaches it.
-// tightFinishStatus itself is mocked (see the top of this file) so these
-// tests can script exactly which level a pick reports without needing a
-// genuinely expensive, many-pick real roster against the real $50,000 cap.
+// "after this pick" preview) is easy to miss -- an in-app dialog
+// (TightFinishDialog.tsx) now shows too, once per level, the moment a
+// LOCKED pick first reaches it. tightFinishStatus itself is mocked (see
+// the top of this file) so these tests can script exactly which level a
+// pick reports without needing a genuinely expensive, many-pick real
+// roster against the real $50,000 cap.
 describe("BuildScreen -- tight finish alert (rule change)", () => {
   const CAUTION: TightFinishStatus = {
     level: "caution",
@@ -610,6 +611,15 @@ describe("BuildScreen -- tight finish alert (rule change)", () => {
     message: "Tight finish: $3,800 per open slot · QB still open",
   };
 
+  function tightFinishDialog(): HTMLElement | null {
+    return screen.queryByRole("dialog", { name: "Salary alert" });
+  }
+
+  async function dismissTightFinishDialog(user: UserEvent): Promise<void> {
+    const dialog = screen.getByRole("dialog", { name: "Salary alert" });
+    await user.click(within(dialog).getByRole("button", { name: "OK" }));
+  }
+
   // Same move/pick/wait-for-reply shape as the castling describe block's
   // own developKnightAndBishop (not reused directly -- that one's scoped
   // to its own block) -- any 3 legal, in-book moves work here, since
@@ -622,49 +632,49 @@ describe("BuildScreen -- tight finish alert (rule change)", () => {
     await waitFor(() => expect(lastApi!.config.movable!.dests!.size).toBeGreaterThan(0), { timeout: 2000 });
   }
 
-  it("alerts the moment a locked pick first makes the build 'caution', keeping the inline text too", async () => {
-    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+  it("shows an in-app dialog the moment a locked pick first makes the build 'caution', keeping the inline text too", async () => {
     renderScreen();
     const user = userEvent.setup();
 
-    expect(alertSpy).not.toHaveBeenCalled(); // nothing to alert about yet, right at mount
+    expect(tightFinishDialog()).toBeNull(); // nothing to show yet, right at mount
 
     vi.mocked(tightFinishStatus).mockReturnValue(CAUTION);
     await playAndLock(user, "e2", "e4");
 
-    expect(alertSpy).toHaveBeenCalledTimes(1);
-    expect(alertSpy).toHaveBeenCalledWith(CAUTION.message);
+    const dialog = await screen.findByRole("dialog", { name: "Salary alert" });
+    expect(within(dialog).getByRole("heading", { name: "Caution" })).toBeInTheDocument();
+    expect(dialog.textContent).toContain(CAUTION.message);
     // The existing inline copy is still there too -- this doesn't replace it.
     expect(within(youColumn()).getByText(CAUTION.message)).toBeInTheDocument();
 
-    alertSpy.mockRestore();
+    await dismissTightFinishDialog(user);
+    expect(tightFinishDialog()).toBeNull();
   });
 
-  it("fires a second, different alert once a later pick makes it 'warning', but never re-fires a level already alerted this build", async () => {
-    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+  it("shows a second, different dialog once a later pick makes it 'warning', but never re-shows a level already shown this build", async () => {
     renderScreen();
     const user = userEvent.setup();
 
     vi.mocked(tightFinishStatus).mockReturnValue(CAUTION);
     await playAndLock(user, "e2", "e4");
-    expect(alertSpy).toHaveBeenCalledTimes(1);
+    expect(within(await screen.findByRole("dialog", { name: "Salary alert" })).getByRole("heading", { name: "Caution" })).toBeInTheDocument();
+    await dismissTightFinishDialog(user);
 
     vi.mocked(tightFinishStatus).mockReturnValue(WARNING);
     await playAndLock(user, "g1", "f3");
-    expect(alertSpy).toHaveBeenCalledTimes(2);
-    expect(alertSpy).toHaveBeenLastCalledWith(WARNING.message);
+    const warningDialog = await screen.findByRole("dialog", { name: "Salary alert" });
+    expect(within(warningDialog).getByRole("heading", { name: "Warning" })).toBeInTheDocument();
+    expect(warningDialog.textContent).toContain(WARNING.message);
+    await dismissTightFinishDialog(user);
 
     // Back to "caution" (e.g. Take back, or a cheaper pick) -- already
-    // alerted once this build, so no third alert.
+    // shown once this build, so no third dialog.
     vi.mocked(tightFinishStatus).mockReturnValue(CAUTION);
     await playAndLock(user, "f1", "b5");
-    expect(alertSpy).toHaveBeenCalledTimes(2);
-
-    alertSpy.mockRestore();
+    expect(tightFinishDialog()).toBeNull();
   });
 
-  it("does not alert from the pick modal's own hypothetical preview -- only once a pick actually locks", async () => {
-    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+  it("does not show a dialog from the pick modal's own hypothetical preview -- only once a pick actually locks", async () => {
     renderScreen();
     const user = userEvent.setup();
 
@@ -677,15 +687,13 @@ describe("BuildScreen -- tight finish alert (rule change)", () => {
     // flipping the mock's return value out from under an unchanged roster.
     vi.mocked(tightFinishStatus).mockImplementation((players) => (players.length > 0 ? WARNING : null));
     simulateMove("e2", "e4");
-    const dialog = await screen.findByRole("dialog");
-    await selectTopRow(user, dialog); // shows the "after this pick" preview -- still not committed
+    const pickDialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await selectTopRow(user, pickDialog); // shows the "after this pick" preview -- still not committed
 
-    expect(alertSpy).not.toHaveBeenCalled();
+    expect(tightFinishDialog()).toBeNull();
 
-    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
-    expect(alertSpy).toHaveBeenCalledTimes(1); // only once the pick is actually locked
-
-    alertSpy.mockRestore();
+    await user.click(within(pickDialog).getByRole("button", { name: "Lock player" }));
+    expect(await screen.findByRole("dialog", { name: "Salary alert" })).toBeInTheDocument(); // only once the pick is actually locked
   });
 });
 
@@ -818,7 +826,10 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
       await selectTopRow(user, rookDialog);
       await user.click(within(rookDialog).getByRole("button", { name: "Lock player" }));
 
-      expect(screen.queryByRole("dialog")).toBeNull();
+      // "No pick dialog" specifically -- real top-of-list picks across 5
+      // locks legitimately reach a tight-finish dialog here too (a
+      // separate, correctly-named dialog; see "tight finish alert" below).
+      expect(screen.queryByRole("dialog", { name: /^Choose your/ })).toBeNull();
       // Three White picks already locked (pawn, knight, bishop) + King + Rook from castling.
       expect(within(youColumn()).queryAllByRole("listitem")).toHaveLength(5);
       expect(within(youColumn()).getByText((text) => text.includes("♚"))).toBeInTheDocument();
@@ -879,7 +890,10 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
       await selectTopRow(user, rookDialog);
       await user.click(within(rookDialog).getByRole("button", { name: "Lock player" }));
 
-      expect(screen.queryByRole("dialog")).toBeNull();
+      // "No pick dialog" specifically -- real top-of-list picks across 5
+      // locks legitimately reach a tight-finish dialog here too (a
+      // separate, correctly-named dialog; see "tight finish alert" below).
+      expect(screen.queryByRole("dialog", { name: /^Choose your/ })).toBeNull();
       expect(within(youColumn()).getByText(new RegExp(WHITE_QB.name))).toBeInTheDocument();
 
       await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(4), { timeout: 2000 }); // Black's reply still fires

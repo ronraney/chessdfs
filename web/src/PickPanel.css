@@ -172,6 +172,27 @@
   font-weight: 600;
 }
 
+/* Rule change: TightFinishDialog's own heading -- same level colors as
+   .pick-tight-finish/.side-tight-finish above, just at heading weight/size
+   instead of small inline text, since this is the whole point of the
+   dialog ("hard to miss"). */
+.tight-finish-dialog-heading {
+  margin: 2px 0 0;
+}
+
+.tight-finish-dialog-heading.caution {
+  color: var(--text-h);
+}
+
+.tight-finish-dialog-heading.warning {
+  color: var(--danger);
+}
+
+.tight-finish-dialog-message {
+  margin: 0;
+  font-size: 15px;
+}
+
 .pick-modal-actions {
   display: flex;
   gap: 8px;
