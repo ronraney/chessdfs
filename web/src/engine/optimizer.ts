@@ -234,3 +234,58 @@ export function optimalLineup(
   );
   return solveLineup(pool, sport.rosterSlots, cap, lockedIds);
 }
+
+// Rule change "Tight-finish alerts: new levels + Go back" -- step 3
+// ("barely completable") needs the floor: the cheapest a side could
+// possibly still finish its OPEN slots for, from whoever's genuinely left
+// to draft. Same weighted-assignment shape as solveLineup above (a plain
+// per-slot "take the cheapest" is wrong for the same reason a greedy
+// projection pick is -- two still-open slots can compete for the same
+// cheap player), just minimizing salary instead of maximizing projection,
+// and over only the slots `openSlots` (rules.openRosterSlots' own output)
+// names as still unfilled -- a side's own already-locked players aren't
+// part of this sub-problem at all (their slots are already excluded from
+// `openSlots`), so there's no "forced in" set and no cap constraint of its
+// own (the whole point is finding the floor, not a lineup that fits under
+// anything). Returns 0 with no solve at all once every slot is filled.
+// Null if no legal assignment exists -- too few eligible players left in
+// `availablePlayers` for some open slot; shouldn't happen against a real
+// slate (same caveat optimalLineup's own null carries), so the caller
+// treats it as "unknown," not an error.
+export function cheapestCompletionCost(
+  availablePlayers: readonly Player[],
+  openSlots: Readonly<Record<string, number>>,
+  rosterSlots: readonly RosterSlot[],
+): number | null {
+  const slotsToFill = rosterSlots.filter((slot) => (openSlots[slot.name] ?? 0) > 0);
+  if (slotsToFill.length === 0) return 0;
+
+  const variables = new Map<string, Map<string, number>>();
+  const playerIds = new Set<string>();
+  for (const player of availablePlayers) {
+    const positions = new Set(player.positions.map((p) => p.toUpperCase()));
+    for (const slot of slotsToFill) {
+      if (!intersects(slot.positions, positions)) continue;
+      variables.set(
+        variableKey(player.id, slot.name),
+        new Map([
+          ["obj", player.salary],
+          [`slot:${slot.name}`, 1],
+          [`player:${player.id}`, 1],
+        ]),
+      );
+      playerIds.add(player.id);
+    }
+  }
+
+  const constraints = new Map<string, { equal?: number; max?: number }>();
+  for (const slot of slotsToFill) {
+    constraints.set(`slot:${slot.name}`, { equal: openSlots[slot.name] });
+  }
+  for (const playerId of playerIds) {
+    constraints.set(`player:${playerId}`, { max: 1 });
+  }
+
+  const solution = solve({ direction: "minimize", objective: "obj", constraints, variables, binaries: true });
+  return solution.status === "optimal" ? solution.result : null;
+}

@@ -96,10 +96,21 @@ function clickMove(from: string, to: string): void {
 }
 
 async function lockTopCandidate(user: UserEvent, dialogName?: string): Promise<void> {
-  const dialog = dialogName ? await screen.findByRole("dialog", { name: dialogName }) : await screen.findByRole("dialog");
+  const dialog = dialogName ? await screen.findByRole("dialog", { name: dialogName }) : await screen.findByRole("dialog", { name: /^Choose your/ });
   const firstRow = dialog.querySelector(".pick-row") as HTMLElement;
   await user.click(firstRow);
   await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+  // Rule change "new levels + Go back": a real top-of-list pick can now
+  // genuinely reach Caution/Warning/Critical (the avg thresholds
+  // loosened, and the old 3-open-slot gate dropped to 2) -- the board
+  // goes inert (empty dests, same as a pending pick) while that dialog is
+  // up, so every caller here needs it out of the way before the next
+  // move; OK keeps the real pick, same as every other move in these
+  // sequences.
+  const alert = screen.queryByRole("dialog", { name: "Salary alert" });
+  if (alert !== null) {
+    await user.click(within(alert).getByRole("button", { name: "OK" }));
+  }
 }
 
 // Waits for White's real turn to actually be back (non-empty dests), not
@@ -260,8 +271,15 @@ describe("BuildScreen -- White's second move (bug fix)", () => {
       // immediately with no modal; capturing a still-unmoved piece opens
       // one -- either way, wait for the capturing piece to actually land.
       await waitFor(() => expect(capturedApi!.state.pieces.get(capture![1] as Key)?.color).toBe(pieceBeforeCapture.color === "white" ? "black" : "white"));
-      if (screen.queryByRole("dialog") !== null) {
+      if (screen.queryByRole("dialog", { name: /^Choose your/ }) !== null) {
         await lockTopCandidate(user);
+      } else {
+        // A transfer capture (no modal) can itself cross a real tight-
+        // finish threshold now -- see lockTopCandidate's own comment.
+        const alert = screen.queryByRole("dialog", { name: "Salary alert" });
+        if (alert !== null) {
+          await user.click(within(alert).getByRole("button", { name: "OK" }));
+        }
       }
       await waitForWhitesTurn();
 

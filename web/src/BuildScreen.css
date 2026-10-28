@@ -273,7 +273,8 @@
   font-style: italic;
 }
 
-.side-tight-finish.warning {
+.side-tight-finish.warning,
+.side-tight-finish.critical {
   color: var(--danger);
   font-weight: 600;
 }

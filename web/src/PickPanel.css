@@ -167,7 +167,8 @@
   font-style: italic;
 }
 
-.pick-tight-finish.warning {
+.pick-tight-finish.warning,
+.pick-tight-finish.critical {
   color: var(--danger);
   font-weight: 600;
 }
@@ -175,7 +176,10 @@
 /* Rule change: TightFinishDialog's own heading -- same level colors as
    .pick-tight-finish/.side-tight-finish above, just at heading weight/size
    instead of small inline text, since this is the whole point of the
-   dialog ("hard to miss"). */
+   dialog ("hard to miss"). "critical" (Rule change "new levels + Go
+   back") reuses warning's own --danger red rather than inventing a
+   fourth palette color -- the heading text ("Critical" vs "Warning")
+   already carries the extra severity. */
 .tight-finish-dialog-heading {
   margin: 2px 0 0;
 }
@@ -184,13 +188,21 @@
   color: var(--text-h);
 }
 
-.tight-finish-dialog-heading.warning {
+.tight-finish-dialog-heading.warning,
+.tight-finish-dialog-heading.critical {
   color: var(--danger);
 }
 
 .tight-finish-dialog-message {
   margin: 0;
   font-size: 15px;
+}
+
+.tight-finish-dialog-hint {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--text);
+  font-style: italic;
 }
 
 .pick-modal-actions {

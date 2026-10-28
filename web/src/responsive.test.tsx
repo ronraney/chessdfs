@@ -110,6 +110,7 @@ describe("Pick modal -- bottom sheet (DOM structure, real render -- see file hea
         candidates={candidates}
         currentPlayers={[]}
         playersPool={candidates}
+        lockedPlayerIds={new Set()}
         sport={NFL}
         contest={contest}
         onPick={() => {}}

@@ -901,7 +901,17 @@ export default function BuildScreen({
     return null;
   }
 
-  function commit(newState: BuildState, opts: { captureNote?: string | null } = {}): void {
+  // Rule change "new levels + Go back": `reopen` is the PendingMove that
+  // was active right before this very commit (the pick that's about to
+  // lock), if any -- a direct lock with no pick list at all (a capture
+  // transfer, a silent King move, or an unmoved capture with no fitting
+  // candidate) has none. Stashed in a ref (not state -- nothing ever
+  // renders it directly) so the tight-finish dialog's own "Go back" can
+  // restore it later without threading it through render.
+  const lastReopenRef = useRef<PendingMove | null>(null);
+
+  function commit(newState: BuildState, opts: { captureNote?: string | null; reopen?: PendingMove | null } = {}): void {
+    lastReopenRef.current = opts.reopen ?? null;
     setPastStates((past) => [...past, state]);
     setState(newState);
     setPendingMove(null);
@@ -994,12 +1004,12 @@ export default function BuildScreen({
       switch (pendingMove.kind) {
         case "ordinary": {
           const result = playWhiteMove(state, pendingMove.chessMove, player, NFL, preset.contest, BOOK, null, kingMode);
-          commit(result.state);
+          commit(result.state, { reopen: pendingMove });
           return;
         }
         case "captureUnmoved": {
           const result = playWhiteMove(state, pendingMove.chessMove, player, NFL, preset.contest, BOOK, null, kingMode);
-          commit(result.state, { captureNote: `You captured ${player.name}.` });
+          commit(result.state, { captureNote: `You captured ${player.name}.`, reopen: pendingMove });
           return;
         }
         case "castleEmergeKing":
@@ -1009,7 +1019,7 @@ export default function BuildScreen({
           return;
         case "castleEmergeRook": {
           const result = playWhiteMove(state, pendingMove.chessMove, pendingMove.king, NFL, preset.contest, BOOK, player, kingMode);
-          commit(result.state);
+          commit(result.state, { reopen: pendingMove });
           return;
         }
         // The one-time "Switch your QB?" offer (Task 14), resolved
@@ -1028,7 +1038,7 @@ export default function BuildScreen({
         }
         case "castlePlacedRook": {
           const result = playWhiteMove(pendingMove.baseState, pendingMove.chessMove, null, NFL, preset.contest, BOOK, player, kingMode);
-          commit(result.state);
+          commit(result.state, { reopen: pendingMove });
           return;
         }
       }
@@ -1124,7 +1134,11 @@ export default function BuildScreen({
   // fill happens) makes this identical to the old move-only computation.
   const whiteRoster = [...state.whiteMoves.map((m) => m.player), ...whiteFilledPlayers];
   const whiteStats = sideStats(whiteRoster, NFL, preset.contest);
-  const whiteTightFinish = tightFinishStatus(whiteRoster, NFL, preset.contest);
+  // Rule change "new levels + Go back": step 3's cheapest-completion solve
+  // needs whoever's genuinely still undrafted -- not locked by either
+  // side right now.
+  const availablePlayers = players.filter((p) => !state.lockedPlayerIds.has(p.id));
+  const whiteTightFinish = tightFinishStatus(whiteRoster, availablePlayers, NFL, preset.contest);
   const blackStats = sideStats(state.blackMoves.map((m) => m.player), NFL, preset.contest);
 
   // Rule change: the tight-finish copy above is easy to miss (plain inline
@@ -1157,6 +1171,43 @@ export default function BuildScreen({
     // keyed on the level alone: re-entering the SAME level (e.g. the exact
     // dollar figure moving within "caution") must not re-alert.
   }, [whiteTightFinish?.level]);
+
+  // Rule change "new levels + Go back": the dialog's primary action --
+  // undoes the pick that just triggered it (same underlying snapshot
+  // takeBack itself pops, so a Black reply already landed in the
+  // background while the dialog sat open is discarded right along with
+  // it, same as takeBack's own "in one step" behavior) and reopens that
+  // same pick's own list (lastReopenRef -- null for a pick with no list
+  // at all, e.g. a capture transfer, which just undoes). Cancels any
+  // still-pending Black reply outright (clearing blackTimerRef AND
+  // blackMoving -- the timer's own `finally` never runs once cancelled,
+  // so nothing else resets that flag) rather than letting it land for a
+  // pick that's being reconsidered. Clears `ending` too, in case Black's
+  // reply (already landed) pushed White into a dead end while the dialog
+  // was still up -- going back undoes that along with everything else.
+  // The just-alerted level is un-marked so re-locking an equally-bad
+  // player re-alerts instead of silently passing (OK, not Go back, is
+  // what means "stop telling me about this level").
+  function goBackFromTightFinish(): void {
+    if (tightFinishAlert !== null) alertedLevelsRef.current.delete(tightFinishAlert.level);
+    setTightFinishAlert(null);
+    if (blackTimerRef.current !== null) {
+      clearTimeout(blackTimerRef.current);
+      blackTimerRef.current = null;
+      setBlackMoving(false);
+    }
+    if (pastStates.length === 0) return; // shouldn't happen -- this dialog only ever follows a real commit
+    const previous = pastStates[pastStates.length - 1];
+    setPastStates((past) => past.slice(0, -1));
+    setState(previous);
+    setPendingMove(lastReopenRef.current);
+    setEnding(null);
+    setWhiteCaptureNote(null);
+    setBlackMoveNote(null);
+    setBlackMoveError(null);
+    setMoveRejected(null);
+    setPickError(null);
+  }
 
   // The slate's own best possible lineup never depends on `state` at all --
   // no locks, no exclusions -- so it's computed once per slate/contest
@@ -1455,7 +1506,14 @@ export default function BuildScreen({
               <p className="status-line">{statusLine}</p>
               <BuildBoard
                 fen={previewFen}
-                dests={pendingMove === null ? dests : new Map()}
+                // Rule change "new levels + Go back": the tight-finish
+                // dialog now offers a real action (Go back undoes the
+                // very last commit) -- a move played while it's still up
+                // would both race Go back's own "undo the last commit"
+                // assumption and leave two modals stacked at once. Inert,
+                // same mechanism (an empty dests map) BuildBoard already
+                // uses for "a pick is pending."
+                dests={pendingMove === null && tightFinishAlert === null ? dests : new Map()}
                 lastMove={lastMove}
                 onMove={handleBoardMove}
                 getPieceTooltip={getPieceTooltip}
@@ -1542,6 +1600,7 @@ export default function BuildScreen({
           candidates={pendingCandidates}
           currentPlayers={pendingPlayerBaseline}
           playersPool={players}
+          lockedPlayerIds={state.lockedPlayerIds}
           sport={NFL}
           contest={preset.contest}
           reasons={pendingReasons}
@@ -1552,7 +1611,11 @@ export default function BuildScreen({
       )}
 
       {tightFinishAlert !== null && (
-        <TightFinishDialog status={tightFinishAlert} onDismiss={() => setTightFinishAlert(null)} />
+        <TightFinishDialog
+          status={tightFinishAlert}
+          onDismiss={() => setTightFinishAlert(null)}
+          onGoBack={goBackFromTightFinish}
+        />
       )}
     </main>
   );

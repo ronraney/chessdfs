@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import nflConfig from "../data/config/sports/nfl.json";
 import { Player } from "./models";
-import { optimalLineup } from "./optimizer";
+import { cheapestCompletionCost, optimalLineup } from "./optimizer";
 import { loadSportConfig } from "./sport";
 
 const NFL = loadSportConfig(nflConfig);
@@ -205,5 +205,50 @@ describe("optimalLineup -- salary cap", () => {
 
     const result = optimalLineup(players, NFL, CAP);
     expect(result).toBeNull();
+  });
+});
+
+// Rule change "Tight-finish alerts: new levels + Go back" -- step 3's own
+// floor: the cheapest a side could still finish its OPEN slots for. Same
+// "not greedy" concern as optimalLineup's own known-answer test above, just
+// inverted (minimizing salary, not maximizing projection): a naive
+// independent per-slot "take the cheapest eligible player" can double-book
+// the same player into two different open slots when one player (or a
+// small group) is eligible for more than one of them.
+describe("cheapestCompletionCost", () => {
+  it("returns 0 with no solve at all once there's nothing open", () => {
+    expect(cheapestCompletionCost([], {}, NFL.rosterSlots)).toBe(0);
+  });
+
+  it("doesn't double-book the one cheap player across two open slots that both accept them", () => {
+    // RB is eligible for the dedicated RB slot AND FLEX -- if the solver
+    // let the single cheap RB count toward both open slots at once, the
+    // (wrong) answer would be 4,000 (2,000 twice); correctly used for only
+    // one of them, the other slot has to fall back to the next-cheapest
+    // FLEX-eligible player instead.
+    const available = [makePlayer("rb_cheap", "RB", 2000, 1), makePlayer("wr_cheap", "WR", 2500, 1)];
+    const cost = cheapestCompletionCost(available, { RB: 1, FLEX: 1 }, NFL.rosterSlots);
+    expect(cost).toBe(4500);
+  });
+
+  it("fills a multi-count open slot with its own cheapest eligible players, not just one", () => {
+    const available = [
+      makePlayer("w1", "WR", 3000, 1),
+      makePlayer("w2", "WR", 3500, 1),
+      makePlayer("w3", "WR", 9000, 1), // never needed -- the other two are enough and cheaper
+    ];
+    const cost = cheapestCompletionCost(available, { WR: 2 }, NFL.rosterSlots);
+    expect(cost).toBe(6500);
+  });
+
+  it("ignores players who aren't eligible for any currently-open slot", () => {
+    const available = [makePlayer("dst_cheap", "DST", 1500, 1), makePlayer("qb_irrelevant", "QB", 1, 1)];
+    const cost = cheapestCompletionCost(available, { DST: 1 }, NFL.rosterSlots);
+    expect(cost).toBe(1500); // the $1 QB is irrelevant -- DST is the only open slot
+  });
+
+  it("returns null when no eligible player is left for some open slot at all", () => {
+    const available = [makePlayer("rb1", "RB", 4000, 10)]; // no QB-eligible player anywhere
+    expect(cheapestCompletionCost(available, { QB: 1 }, NFL.rosterSlots)).toBeNull();
   });
 });

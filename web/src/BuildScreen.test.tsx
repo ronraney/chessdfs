@@ -601,14 +601,17 @@ describe("BuildScreen -- tight finish alert (rule change)", () => {
   const CAUTION: TightFinishStatus = {
     level: "caution",
     avgRemainingPerOpenSlot: 4200,
-    reasons: [],
     message: "Salary getting tight: $4,200 per open slot.",
   };
   const WARNING: TightFinishStatus = {
     level: "warning",
     avgRemainingPerOpenSlot: 3800,
-    reasons: ["QB still open"],
-    message: "Tight finish: $3,800 per open slot · QB still open",
+    message: "Tight finish: $3,800 per open slot.",
+  };
+  const CRITICAL: TightFinishStatus = {
+    level: "critical",
+    avgRemainingPerOpenSlot: 1000,
+    message: "Barely completable: $200 of room before the cheapest finish.",
   };
 
   function tightFinishDialog(): HTMLElement | null {
@@ -626,10 +629,20 @@ describe("BuildScreen -- tight finish alert (rule change)", () => {
   // tightFinishStatus's real output is irrelevant once mocked.
   async function playAndLock(user: UserEvent, from: string, to: string): Promise<void> {
     simulateMove(from, to);
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("dialog", { name: /^Choose your/ });
     await selectTopRow(user, dialog);
     await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
-    await waitFor(() => expect(lastApi!.config.movable!.dests!.size).toBeGreaterThan(0), { timeout: 2000 });
+    // Waits for Black's own reply to actually land -- NOT "dests
+    // repopulate," which (Rule change "new levels + Go back") no longer
+    // implies that on its own: the board goes inert (empty dests) while a
+    // tight-finish dialog is up, same as while a pick is pending, and
+    // every test here mocks tightFinishStatus to return non-null, so
+    // that's exactly what happens right after this lock -- dismissed
+    // explicitly by each test body afterward (that's what's actually
+    // under test), not here. Checking the real chess turn (off the FEN
+    // chessground itself was handed) instead of dests size is the signal
+    // that's actually true either way.
+    await waitFor(() => expect(new Chess(lastApi!.config.fen!).turn()).toBe("w"), { timeout: 2000 });
   }
 
   it("shows an in-app dialog the moment a locked pick first makes the build 'caution', keeping the inline text too", async () => {
@@ -694,6 +707,71 @@ describe("BuildScreen -- tight finish alert (rule change)", () => {
 
     await user.click(within(pickDialog).getByRole("button", { name: "Lock player" }));
     expect(await screen.findByRole("dialog", { name: "Salary alert" })).toBeInTheDocument(); // only once the pick is actually locked
+  });
+
+  it("shows the 'critical' level with its own heading and message", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+
+    vi.mocked(tightFinishStatus).mockReturnValue(CRITICAL);
+    await playAndLock(user, "e2", "e4");
+
+    const dialog = await screen.findByRole("dialog", { name: "Salary alert" });
+    expect(within(dialog).getByRole("heading", { name: "Critical" })).toBeInTheDocument();
+    expect(dialog.textContent).toContain(CRITICAL.message);
+  });
+
+  // Rule change "new levels + Go back": the dialog's primary action.
+  it("Go back undoes the just-locked pick and reopens that same piece's pick list", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+
+    vi.mocked(tightFinishStatus).mockReturnValue(CAUTION);
+    simulateMove("e2", "e4");
+    const pawnDialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    const fenWhilePending = lastApi!.config.fen; // e4 shown as a pending preview, nothing locked yet
+    await selectTopRow(user, pawnDialog);
+    await user.click(within(pawnDialog).getByRole("button", { name: "Lock player" }));
+
+    const alert = await screen.findByRole("dialog", { name: "Salary alert" });
+    expect(within(youColumn()).queryAllByRole("listitem")).toHaveLength(1); // the pick really did lock
+
+    await user.click(within(alert).getByRole("button", { name: "Go back" }));
+
+    expect(screen.queryByRole("dialog", { name: "Salary alert" })).toBeNull();
+    expect(within(youColumn()).queryAllByRole("listitem")).toHaveLength(0); // the lock is undone
+    const reopened = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    expect(reopened).toBeInTheDocument(); // same pick list, reopened
+    // e4 is still shown pending (the SAME move, not yet re-locked) -- Go
+    // back undoes the LOCK, not the move itself.
+    expect(lastApi!.config.fen).toBe(fenWhilePending);
+  });
+
+  it("Go back un-marks the level it undid, so locking an equally tight player again re-alerts (only OK suppresses it)", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+
+    vi.mocked(tightFinishStatus).mockReturnValue(CAUTION);
+    simulateMove("e2", "e4");
+    const pawnDialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await selectTopRow(user, pawnDialog);
+    await user.click(within(pawnDialog).getByRole("button", { name: "Lock player" }));
+    await screen.findByRole("dialog", { name: "Salary alert" });
+
+    // The real roster goes back to empty once Go back reverts it -- models
+    // that honestly (null) rather than leaving the mock lying about an
+    // unchanged roster, the same way the CAUTION -> WARNING -> CAUTION
+    // test above exercises a real level change.
+    vi.mocked(tightFinishStatus).mockReturnValue(null);
+    await user.click(within(screen.getByRole("dialog", { name: "Salary alert" })).getByRole("button", { name: "Go back" }));
+    await screen.findByRole("dialog", { name: "Choose your Pawn" });
+
+    vi.mocked(tightFinishStatus).mockReturnValue(CAUTION);
+    const reopened = screen.getByRole("dialog", { name: "Choose your Pawn" });
+    await selectTopRow(user, reopened);
+    await user.click(within(reopened).getByRole("button", { name: "Lock player" }));
+
+    expect(await screen.findByRole("dialog", { name: "Salary alert" })).toBeInTheDocument(); // re-alerts, not suppressed
   });
 });
 
@@ -779,6 +857,22 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
     vi.restoreAllMocks();
   });
 
+  // Rule change "new levels + Go back": real top-of-list picks across a
+  // several-move sequence can now genuinely reach Caution/Warning (the
+  // avg thresholds loosened, and the old 3-open-slot gate dropped to 2) --
+  // the board itself goes inert while that dialog is up (BuildScreen's
+  // own dests gating), so a real user has to click through it before the
+  // next move lands; these multi-move helpers do the same, dismissing it
+  // (OK -- keeping the real pick, same as every other move in these
+  // sequences) right after whichever lock might have triggered it, before
+  // simulating the next move.
+  async function dismissTightFinishIfShown(user: UserEvent): Promise<void> {
+    const alert = screen.queryByRole("dialog", { name: "Salary alert" });
+    if (alert !== null) {
+      await user.click(within(alert).getByRole("button", { name: "OK" }));
+    }
+  }
+
   // Plays 1. e4 2. Nf3 3. Bb5 for White -- a Knight move and a Bishop
   // move locked (canCastle's own requirement), f1/g1 both clear, same
   // shape as the Ruy Lopez's own opening -- so O-O is chess-AND-DFS-legal
@@ -792,9 +886,10 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
     ];
     for (const [from, to] of moves) {
       simulateMove(from, to);
-      const dialog = await screen.findByRole("dialog");
+      const dialog = await screen.findByRole("dialog", { name: /^Choose your/ });
       await selectTopRow(user, dialog);
       await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+      await dismissTightFinishIfShown(user);
       // Waits for actual, non-empty dests -- the direct signal that it's
       // genuinely White's turn again with real options, not just "the
       // status line's text happens to differ right now" (which a stray
@@ -974,18 +1069,22 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
       const [from, to] = developing ?? [...destsNow.entries()].flatMap(([f, tos]) => tos.map((t) => [f, t] as [string, string]))[0];
       simulateMove(from, to);
       if (isCastleMove(from, to)) {
-        const kingDialog = await screen.findByRole("dialog");
+        const kingDialog = await screen.findByRole("dialog", { name: "Choose your King" });
         await selectTopRow(user, kingDialog);
         await user.click(within(kingDialog).getByRole("button", { name: "Lock player" }));
-        const rookDialog = await screen.findByRole("dialog");
+        const rookDialog = await screen.findByRole("dialog", { name: "Choose your Rook" });
         await selectTopRow(user, rookDialog);
         await user.click(within(rookDialog).getByRole("button", { name: "Lock player" }));
       } else if (chess.get(to as Square) === undefined || isSameStartingPiece(fen, to as Square)) {
         // ordinary, or a capture of an unmoved piece -- both open a modal.
-        const dialog = await screen.findByRole("dialog");
+        const dialog = await screen.findByRole("dialog", { name: /^Choose your/ });
         await selectTopRow(user, dialog);
         await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
       } // else: a transfer capture -- no modal at all.
+      // Rule change "new levels + Go back": any of the three branches
+      // above can lock a real player and cross a real threshold now --
+      // see dismissTightFinishIfShown's own comment.
+      await dismissTightFinishIfShown(user);
       // Bug fix: 2000ms here (one of up to 8 plies, each a real Black
       // engine reply + chessground mount) was observed timing out under
       // full-suite parallel load even though the outer it()'s own 15000/
@@ -1005,7 +1104,12 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
       // its starting-square occupant -- is a transfer.
       await playUntilCapture(user, (fen, _from, to) => !isSameStartingPiece(fen, to));
 
-      expect(screen.queryByRole("dialog")).toBeNull(); // no modal at all
+      // No PICK modal specifically -- the transfer is unambiguous. A real
+      // top-of-list pick sequence can legitimately also reach a tight-
+      // finish alert here now (Rule change "new levels + Go back"); that's
+      // a separate, correctly-named dialog (see "tight finish alert"
+      // below), not asserted against either way here.
+      expect(screen.queryByRole("dialog", { name: /^Choose your/ })).toBeNull();
       expect(statusLine().textContent).toMatch(/^You captured .+\./);
     },
     15000,
@@ -1020,7 +1124,7 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
       // moved (never been locked) -- almost always a pawn this early.
       await playUntilCapture(user, (fen, _from, to) => isSameStartingPiece(fen, to));
 
-      const dialog = await screen.findByRole("dialog");
+      const dialog = await screen.findByRole("dialog", { name: /^Choose your/ });
       expect(dialog).toHaveAccessibleName(/^Choose your (Pawn|Knight|Bishop|Rook|Queen)$/);
       await selectTopRow(user, dialog);
       await user.click(within(dialog).getByRole("button", { name: "Lock player" }));

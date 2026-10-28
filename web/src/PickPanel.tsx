@@ -90,8 +90,15 @@ interface Props {
   currentPlayers: readonly Player[];
   // The whole slate, not just `candidates` -- Bishop's own relativeLeverage
   // sort needs the highest ownership at a position across every player,
-  // which a pre-filtered candidate list can't answer on its own.
+  // which a pre-filtered candidate list can't answer on its own; the
+  // "after this pick" tight-finish preview (Rule change "new levels + Go
+  // back") also needs it, filtered by `lockedPlayerIds`, to find the
+  // cheapest possible finish from whoever's genuinely still undrafted.
   playersPool: readonly Player[];
+  // Every player already locked by EITHER side right now (not just
+  // White's own `currentPlayers`) -- who's actually left to draft for the
+  // tight-finish preview's own cheapest-completion solve.
+  lockedPlayerIds: ReadonlySet<string>;
   sport: SportConfig;
   contest: ContestConfig;
   reasons?: ReadonlyMap<string, string>; // player id -> why greyed out; absent means feasible
@@ -137,6 +144,7 @@ export default function PickPanel({
   candidates,
   currentPlayers,
   playersPool,
+  lockedPlayerIds,
   sport,
   contest,
   reasons = NO_REASONS,
@@ -166,8 +174,16 @@ export default function PickPanel({
     [selected, currentPlayers, sport, contest],
   );
   const afterTightFinish = useMemo(
-    () => (selected === null ? null : tightFinishStatus([...currentPlayers, selected], sport, contest)),
-    [selected, currentPlayers, sport, contest],
+    () =>
+      selected === null
+        ? null
+        : tightFinishStatus(
+            [...currentPlayers, selected],
+            playersPool.filter((p) => p.id !== selected.id && !lockedPlayerIds.has(p.id)),
+            sport,
+            contest,
+          ),
+    [selected, currentPlayers, playersPool, lockedPlayerIds, sport, contest],
   );
 
   return (
