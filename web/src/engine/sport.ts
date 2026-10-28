@@ -82,11 +82,6 @@ export interface SportConfigFields {
   salaryCap: number;
   pieceBands: readonly PieceBand[];
   rosterSlots: readonly RosterSlot[];
-  // Per-piece cap on how many candidates a pick list ever shows -- a
-  // piece missing here has no cap (RULES.md "List cap": default 12 for
-  // Queen/Rook/Bishop/Knight, none for King/Pawn -- but that default
-  // lives in each sport's own config data, not hardcoded here).
-  listCaps?: ReadonlyMap<Piece, number>;
   // Teams whose home stadium is a dome/retractable roof -- engine/sim's
   // dome wGame boost reads this; no bearing on chess-move/pick-list rules
   // at all. Empty for a sport (or a test fixture) with no such concept.
@@ -103,7 +98,6 @@ export class SportConfig {
   readonly salaryCap: number;
   readonly pieceBands: readonly PieceBand[];
   readonly rosterSlots: readonly RosterSlot[];
-  readonly listCaps: ReadonlyMap<Piece, number>;
   readonly domeTeams: ReadonlySet<string>;
   readonly bishopValuePercentile: number;
 
@@ -112,17 +106,12 @@ export class SportConfig {
     this.salaryCap = fields.salaryCap;
     this.pieceBands = fields.pieceBands;
     this.rosterSlots = fields.rosterSlots;
-    this.listCaps = fields.listCaps ?? new Map();
     this.domeTeams = fields.domeTeams ?? new Set();
     this.bishopValuePercentile = fields.bishopValuePercentile ?? 0.5;
   }
 
   get rosterSize(): number {
     return this.rosterSlots.reduce((sum, slot) => sum + slot.count, 0);
-  }
-
-  listCapFor(piece: Piece): number | null {
-    return this.listCaps.get(piece) ?? null;
   }
 }
 
@@ -146,7 +135,12 @@ export interface RawSportConfig {
   salary_cap: number;
   piece_bands: RawPieceBand[];
   roster_slots: RawRosterSlot[];
-  list_caps?: Record<string, number>;
+  // Rule change "Remove the pick list cap": config/sports/nfl.json still
+  // carries its own `list_caps` key -- the frozen Python engine's own
+  // test_picklist.py still asserts against it, read straight from this
+  // same shared file -- but TS no longer has any concept of a pick-list
+  // cap at all (picklist.ts's pickList/castleRookList are both uncapped
+  // now), so it's deliberately absent here and ignored on read.
   dome_teams?: string[];
   bishop_value_percentile?: number;
 }
@@ -211,16 +205,11 @@ export function loadSportConfig(data: RawSportConfig): SportConfig {
     );
   }
 
-  const listCaps = new Map<Piece, number>(
-    Object.entries(data.list_caps ?? {}).map(([name, cap]) => [pieceFromName(name), cap]),
-  );
-
   return new SportConfig({
     sport: data.sport,
     salaryCap: data.salary_cap,
     pieceBands,
     rosterSlots,
-    listCaps,
     domeTeams: new Set(data.dome_teams ?? []),
     bishopValuePercentile: data.bishop_value_percentile,
   });

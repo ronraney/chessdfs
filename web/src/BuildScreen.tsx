@@ -366,8 +366,10 @@ function pendingBaseline(pendingMove: PendingMove, whiteMoves: readonly Move[]):
 }
 
 // The pending pick's own candidate list -- RULES.md piece table: each
-// piece's pick list (engine/picklist.ts's pickList, sorted + capped), not
-// a blanket "every eligible player." Direct Rook moves ("ordinary"/
+// piece's pick list (engine/picklist.ts's pickList, sorted by that
+// piece's own metric -- uncapped, Rule change "Remove the pick list
+// cap"), not a blanket "every eligible player" (eligibility/taken/roster-
+// salary filters still apply). Direct Rook moves ("ordinary"/
 // "captureUnmoved") pass the moving side's own locked-QB team
 // (lockedQbTeam) for the stack-tier sort only (Rule change "Rook: stack
 // builder" -- eligibility is no longer team-restricted at all). Castling

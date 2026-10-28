@@ -136,33 +136,32 @@ describe("pickList", () => {
     expect(result.map((p) => p.id)).toEqual(["a", "b"]);
   });
 
-  // --- list cap (RULES.md "List cap") -----------------------------------------
+  // --- no list cap (Rule change "Remove the pick list cap") ------------------
 
-  it("caps Queen/Rook/Bishop/Knight to 12", () => {
+  it("Queen/Rook/Bishop/Knight are no longer capped", () => {
     const pool = Array.from({ length: 20 }, (_, i) => makePlayer(`wr${i}`, "WR", 7000 + i, i));
-    expect(pickList(Piece.QUEEN, pool, new Set(), [], NFL, CONTEST)).toHaveLength(12);
-    expect(pickList(Piece.ROOK, pool, new Set(), [], NFL, CONTEST)).toHaveLength(12);
-    expect(pickList(Piece.KNIGHT, pool, new Set(), [], NFL, CONTEST)).toHaveLength(12);
+    expect(pickList(Piece.QUEEN, pool, new Set(), [], NFL, CONTEST)).toHaveLength(20);
+    expect(pickList(Piece.ROOK, pool, new Set(), [], NFL, CONTEST)).toHaveLength(20);
+    expect(pickList(Piece.KNIGHT, pool, new Set(), [], NFL, CONTEST)).toHaveLength(20);
     // Bishop needs its own pool: identical value (same salary and proj for
-    // every player) so none trips the new median floor below -- this test
-    // is about the cap, not the floor.
+    // every player) so none trips the median floor below -- this test is
+    // about the (removed) cap, not the floor.
     const bishopPool = Array.from({ length: 20 }, (_, i) => makePlayer(`wr${i}`, "WR", 7000, 10.0));
-    expect(pickList(Piece.BISHOP, bishopPool, new Set(), [], NFL, CONTEST)).toHaveLength(12);
+    expect(pickList(Piece.BISHOP, bishopPool, new Set(), [], NFL, CONTEST)).toHaveLength(20);
   });
 
-  it("King and Pawn are uncapped", () => {
+  it("King and Pawn are uncapped too", () => {
     const kings = Array.from({ length: 20 }, (_, i) => makePlayer(`qb${i}`, "QB", 6000 + i, i));
     const pawns = Array.from({ length: 20 }, (_, i) => makePlayer(`wr${i}`, "WR", 3000 + i, i));
     expect(pickList(Piece.KING, kings, new Set(), [], NFL, CONTEST)).toHaveLength(20);
     expect(pickList(Piece.PAWN, pawns, new Set(), [], NFL, CONTEST)).toHaveLength(20);
   });
 
-  it("cap applies after removing taken and infeasible players", () => {
+  it("taken and infeasible players are still excluded from a large pool", () => {
     // 14 otherwise-eligible Bishops: one is already locked, and WR(3) +
     // FLEX(1) are already filled by 4 locked WRs, so every one of these
     // candidates (all WR) is also infeasible -- the surviving list must
-    // be empty, not capped-but-nonempty by counting taken/infeasible
-    // players toward the 12.
+    // be empty.
     const current = [0, 1, 2, 3].map((i) => makePlayer(`wr_locked${i}`, "WR", 5000 + i)); // fills WR(3) + FLEX
     const pool = Array.from({ length: 14 }, (_, i) => makePlayer(`wr${i}`, "WR", 5100 + i, i));
     const result = pickList(Piece.BISHOP, pool, new Set([pool[0].id]), current, NFL, CONTEST);
@@ -241,10 +240,10 @@ describe("pickList", () => {
     expect(result.map((p) => p.id)).toEqual(["b", "a"]);
   });
 
-  it("is still capped at 12", () => {
+  it("is no longer capped", () => {
     const qb = makePlayer("qb1", "QB", 6000, 10.0, 6.0, 16.0, 0.1, 0.1, "CIN");
     const pool = Array.from({ length: 20 }, (_, i) => makePlayer(`rb${i}`, "RB", 5000 + i, 10.0, 6.0, 16.0 + i, 0.1, 0.1, "CIN"));
-    expect(pickList(Piece.ROOK, pool, new Set(), [qb], NFL, CONTEST, "CIN")).toHaveLength(12);
+    expect(pickList(Piece.ROOK, pool, new Set(), [qb], NFL, CONTEST, "CIN")).toHaveLength(20);
   });
 });
 
@@ -296,8 +295,8 @@ describe("castleRookList", () => {
     expect(result.map((p) => p.id)).toEqual(["b", "a"]);
   });
 
-  it("is still capped at 12", () => {
+  it("is no longer capped", () => {
     const pool = Array.from({ length: 20 }, (_, i) => makePlayer(`rb${i}`, "RB", 5000 + i, i, 6.0, 16.0, 0.1, 0.1, "CIN"));
-    expect(castleRookList(pool, new Set(), [], NFL, CONTEST, "CIN")).toHaveLength(12);
+    expect(castleRookList(pool, new Set(), [], NFL, CONTEST, "CIN")).toHaveLength(20);
   });
 });

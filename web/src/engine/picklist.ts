@@ -1,11 +1,12 @@
-// Pick lists -- see RULES.md "List cap" and the piece table's sort
-// column. A pick list is the eligible, unlocked, roster/salary-feasible
-// players for a piece, sorted by that piece's own metric (metrics.
-// sortMetric) and capped to `sport`'s own per-piece list cap, if any.
-// This is the one list White's pick modal shows and Black's placeholder
-// pick takes the top of (RULES.md: "Black ... picks the top of the moved
-// piece's (capped) list instead of highest projection"). Ported from
-// dfs_chess/picklist.py.
+// Pick lists -- see the piece table's sort column. A pick list is every
+// eligible, unlocked, roster/salary-feasible player for a piece, sorted
+// by that piece's own metric (metrics.sortMetric) -- uncapped (Rule
+// change "Remove the pick list cap": the old per-piece `sport.listCapFor`
+// slice is gone; `sport`/config/sports/*.json no longer carries that
+// concept at all for TS). This is the one list White's pick modal shows
+// and Black's placeholder pick (build.ts's own blueprint-first, top-of-
+// list-fallback logic, unchanged by this rule change) takes the top of.
+// Ported from dfs_chess/picklist.py.
 
 import type { ContestConfig } from "./config";
 import { highestOwnershipByPosition, sortMetric, value } from "./metrics";
@@ -131,8 +132,7 @@ export function pickList(
       (a, b) => sortMetric(piece, b, contest, highestOwnership) - sortMetric(piece, a, contest, highestOwnership),
     );
   }
-  const listCap = sport.listCapFor(piece);
-  return listCap === null ? candidates : candidates.slice(0, listCap);
+  return candidates;
 }
 
 // Castling's own Rook step -- UNCHANGED by Rule change "Rook: stack
@@ -158,8 +158,7 @@ export function castleRookList(
       lineupStillCompletable([...currentPlayers, p], sport, cap),
   );
   candidates.sort((a, b) => sortMetric(Piece.ROOK, b, contest) - sortMetric(Piece.ROOK, a, contest));
-  const listCap = sport.listCapFor(Piece.ROOK);
-  return listCap === null ? candidates : candidates.slice(0, listCap);
+  return candidates;
 }
 
 // King's own pick list, further restricted to QBs with at least one

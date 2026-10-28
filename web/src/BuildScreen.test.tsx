@@ -555,6 +555,18 @@ describe("BuildScreen -- click-to-move (bug fix)", () => {
   });
 });
 
+describe("BuildScreen -- pick list is no longer capped (Rule change)", () => {
+  it("shows every eligible Knight, not just the old top-12 cap", async () => {
+    renderScreen();
+    lastApi!.selectSquare("g1"); // develops the Knight -- Queen/Rook/Bishop/Knight were each capped at 12
+    lastApi!.selectSquare("f3");
+
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Knight" });
+    const rows = dialog.querySelectorAll(".pick-row");
+    expect(rows.length).toBeGreaterThan(12); // the full eligible pool, uncapped
+  });
+});
+
 describe("BuildScreen -- status line (Task 38d)", () => {
   it("shows 'Your move' on arrival", () => {
     renderScreen();
