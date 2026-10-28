@@ -24,11 +24,11 @@
 // verification isn't available in this environment (see sessions/HANDOFF.md's
 // Environment note -- no browser can launch here at all, missing
 // libasound.so.2, no sudo to install it).
-import { render } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Api } from "@lichess-org/chessground/api";
 import type { Dests, Key } from "@lichess-org/chessground/types";
-import BuildBoard from "./BuildBoard";
+import BuildBoard, { type PieceTooltipContent } from "./BuildBoard";
 
 let capturedApi: Api | null = null;
 
@@ -134,5 +134,148 @@ describe("BuildBoard -- re-measures chessground's board bounds on container resi
     expect(disconnect).toHaveBeenCalled();
 
     vi.unstubAllGlobals();
+  });
+});
+
+// Board piece-info hover/long-press tooltip. BuildBoard itself only knows
+// board geometry (which square sits under a point) -- content comes from
+// the caller-supplied `getPieceTooltip`, stubbed directly here rather than
+// through any real engine state (BuildScreen.test.tsx's own "board hover
+// tooltip" tests cover that wiring against real BuildState/pieceLocks).
+// jsdom's `getBoundingClientRect` is always zeroed by default (same
+// limitation this file's header comment already documents for drag) --
+// stubbing it directly on the real `.build-board-cg` element (geometry's
+// own measurement point; see BuildBoard.tsx's showTooltipAt) sidesteps that
+// without faking anything else.
+describe("BuildBoard -- piece-info hover/long-press tooltip", () => {
+  const RECT = { left: 0, top: 0, width: 480, height: 480, right: 480, bottom: 480, x: 0, y: 0, toJSON: () => ({}) };
+
+  // The inverse of BuildBoard's own squareAtPoint -- the (clientX, clientY)
+  // that lands in the middle of `square`, given RECT above.
+  function pointFor(square: Key): { clientX: number; clientY: number } {
+    const col = "abcdefgh".indexOf(square[0]);
+    const row = 8 - Number(square[1]);
+    return { clientX: ((col + 0.5) / 8) * RECT.width, clientY: ((row + 0.5) / 8) * RECT.height };
+  }
+
+  function stubRect(): void {
+    const cg = document.querySelector(".build-board-cg") as HTMLElement;
+    cg.getBoundingClientRect = () => RECT as DOMRect;
+  }
+
+  function boardEl(): HTMLElement {
+    return document.querySelector(".build-board") as HTMLElement;
+  }
+
+  const CONTENT: PieceTooltipContent = { title: "Test Player", detail: "RB · $7,200 · 14.2 pts · 18.3% own" };
+  const getPieceTooltip = (square: Key): PieceTooltipContent | null => (square === "e4" ? CONTENT : null);
+
+  it("shows the hovered square's tooltip content, and hides it on mouse leave", () => {
+    const dests: Dests = new Map();
+    render(<BuildBoard fen="start" dests={dests} lastMove={null} onMove={vi.fn()} getPieceTooltip={getPieceTooltip} />);
+    stubRect();
+
+    fireEvent.mouseMove(boardEl(), pointFor("e4" as Key));
+    expect(document.querySelector(".piece-tooltip-title")?.textContent).toBe("Test Player");
+    expect(document.querySelector(".piece-tooltip-detail")?.textContent).toBe("RB · $7,200 · 14.2 pts · 18.3% own");
+
+    fireEvent.mouseLeave(boardEl());
+    expect(document.querySelector(".piece-tooltip")).toBeNull();
+  });
+
+  it("shows nothing for a square getPieceTooltip reports as empty", () => {
+    const dests: Dests = new Map();
+    render(<BuildBoard fen="start" dests={dests} lastMove={null} onMove={vi.fn()} getPieceTooltip={getPieceTooltip} />);
+    stubRect();
+
+    fireEvent.mouseMove(boardEl(), pointFor("a8" as Key));
+    expect(document.querySelector(".piece-tooltip")).toBeNull();
+  });
+
+  it("renders the fit note with its own tone class when content includes one", () => {
+    const dests: Dests = new Map();
+    const withFit = (): PieceTooltipContent | null => ({
+      title: "Field Player",
+      fit: { fits: false, text: "Capture: won't fit — returns to pool" },
+    });
+    render(<BuildBoard fen="start" dests={dests} lastMove={null} onMove={vi.fn()} getPieceTooltip={withFit} />);
+    stubRect();
+
+    fireEvent.mouseMove(boardEl(), pointFor("e4" as Key));
+    const fit = document.querySelector(".piece-tooltip-fit");
+    expect(fit?.textContent).toBe("Capture: won't fit — returns to pool");
+    expect(fit).toHaveClass("no");
+  });
+
+  it("never renders a tooltip at all when getPieceTooltip isn't supplied", () => {
+    const dests: Dests = new Map();
+    render(<BuildBoard fen="start" dests={dests} lastMove={null} onMove={vi.fn()} />);
+    stubRect();
+
+    fireEvent.mouseMove(boardEl(), pointFor("e4" as Key));
+    expect(document.querySelector(".piece-tooltip")).toBeNull();
+  });
+
+  it("clears an already-shown tooltip once the position changes (fen prop updates)", () => {
+    const dests: Dests = new Map();
+    const { rerender } = render(
+      <BuildBoard fen="start" dests={dests} lastMove={null} onMove={vi.fn()} getPieceTooltip={getPieceTooltip} />,
+    );
+    stubRect();
+    fireEvent.mouseMove(boardEl(), pointFor("e4" as Key));
+    expect(document.querySelector(".piece-tooltip")).not.toBeNull();
+
+    rerender(
+      <BuildBoard
+        fen="rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
+        dests={dests}
+        lastMove={null}
+        onMove={vi.fn()}
+        getPieceTooltip={getPieceTooltip}
+      />,
+    );
+    expect(document.querySelector(".piece-tooltip")).toBeNull();
+  });
+
+  describe("touch (long-press)", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("shows the tooltip after holding past the long-press delay", () => {
+      const dests: Dests = new Map();
+      render(<BuildBoard fen="start" dests={dests} lastMove={null} onMove={vi.fn()} getPieceTooltip={getPieceTooltip} />);
+      stubRect();
+
+      const { clientX, clientY } = pointFor("e4" as Key);
+      fireEvent.touchStart(boardEl(), { touches: [{ clientX, clientY }] });
+      expect(document.querySelector(".piece-tooltip")).toBeNull(); // not yet -- still within the hold delay
+
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+      expect(document.querySelector(".piece-tooltip-title")?.textContent).toBe("Test Player");
+
+      fireEvent.touchEnd(boardEl());
+      expect(document.querySelector(".piece-tooltip")).toBeNull();
+    });
+
+    it("a touchmove before the delay elapses cancels the long press (a drag, not a hold)", () => {
+      const dests: Dests = new Map();
+      render(<BuildBoard fen="start" dests={dests} lastMove={null} onMove={vi.fn()} getPieceTooltip={getPieceTooltip} />);
+      stubRect();
+
+      const { clientX, clientY } = pointFor("e4" as Key);
+      fireEvent.touchStart(boardEl(), { touches: [{ clientX, clientY }] });
+      fireEvent.touchMove(boardEl(), { touches: [{ clientX: clientX + 40, clientY }] });
+
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+      expect(document.querySelector(".piece-tooltip")).toBeNull();
+    });
   });
 });

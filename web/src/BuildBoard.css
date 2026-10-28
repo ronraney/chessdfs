@@ -11,3 +11,47 @@
   inset: 0;
   z-index: 1;
 }
+
+/* Piece-info hover/long-press tooltip (see BuildBoard.tsx's tooltipStyle).
+   `pointer-events: none` is load-bearing, not cosmetic -- it's what
+   guarantees the tooltip can never intercept a click/drag on a square it
+   happens to visually overlap. */
+.piece-tooltip {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  width: max-content;
+  max-width: 180px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.piece-tooltip-title {
+  margin: 0;
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+.piece-tooltip-detail {
+  margin: 2px 0 0;
+  color: var(--text);
+}
+
+.piece-tooltip-fit {
+  margin: 4px 0 0;
+  font-weight: 600;
+}
+
+.piece-tooltip-fit.ok {
+  color: var(--accent);
+}
+
+.piece-tooltip-fit.no {
+  color: var(--danger);
+}

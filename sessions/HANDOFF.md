@@ -1,4 +1,4 @@
-# Handoff — 2026-10-27
+# Handoff — 2026-10-28
 
 ## Where things stand
 
@@ -12,168 +12,149 @@ all earlier rules. Git workflow: work on `main`, one commit per task
 after tests pass, push to `origin/main` after every commit, never use
 `AskUserQuestion` (ask inline as plain text).
 
-Python 3.11+ engine (`dfs_chess/`, **frozen** — TS-only from here on,
-per the most recent rule change) + `web/` (Vite + React + TypeScript,
-Node v24/npm). The TS port of the chess/DFS engine and the Monte Carlo
-sim (`web/src/engine/sim/`) are both complete and wired into the UI.
+Python 3.11+ engine (`dfs_chess/`, **frozen** — TS-only from here on) +
+`web/` (Vite + React + TypeScript, Node v24/npm). The TS port of the
+chess/DFS engine and the Monte Carlo sim (`web/src/engine/sim/`) are both
+complete and wired into the UI. `field.ts` (the MILP that builds "the
+field") still has NO awareness of the real-correlation model
+(`draws.ts`'s own Gaussian copula) — still its own older ownership-bias/
+noise objective; see Open items.
 
-**Sim engine (`draws.ts`) is now a Gaussian copula on measured real-world
-correlations**, not a latent-factor model. Each player is ranked into a
-role (QB1, RB1/RB2, WR1/WR2/WR3, TE1/TE2, DST) by DK projection within
-team+position; everyone else is "other" (0 correlation with all).
-`config/real_correlation_targets.json` holds the measured 9x9 same-team
-and opponent correlation matrices (nflverse, 2021-2025, season-to-date
-role ranking); per game, the two teams' filled roles are assembled into
-one matrix and Cholesky-drawn. No more zGame/zTeam/regime shocks, no
-DST-splash side channel. Vegas total/spread and dome **no longer affect
-the draw at all** — removed as double-counting (ETR's own floor/proj/
-ceiling already bake both in). The Vegas upload still works end-to-end
-in Admin (`vegasCsv.ts`/`vegasStore.ts`); it's just inert now.
-`drawOutcome` was also fixed so a player's simulated **mean** (not
-median) lands on DK Proj (`internalAnchorForTargetMean`, a closed-form
-per-player anchor solve) — previously the mean ran 1-2pts high because
-real ceiling-proj gaps usually exceed proj-floor gaps. `TAIL_K` lowered
-1.0→0.5 (the old value put P95/P99 25-45% above a player's own ceiling).
+**Black drafts from a sim-field blueprint, not top-of-list** (earlier
+today): `build.ts`'s `chooseBlueprintPlayer` — every Black pick (moves,
+castling King/Rook, an unmoved-piece capture, the setup QB pick) drafts
+from one lineup drawn by seeded random from the contest tier's own built
+field, containing every player Black's already locked and none of
+White's; re-drawn when invalid (White took a blueprint player, or none
+fits the pick), falling back to top-of-list with no field built or no
+lineup qualifying. `BuildState.blackBlueprint` carries it forward.
+`buildSeed` now originates in `SetupScreen.tsx` (needed there for the
+setup QB pick) and flows down via `ChosenSetup.buildSeed` →
+`BuildScreen`'s own (optional) prop.
 
-**`field.ts` (lineup generation, the MILP that builds "the field") was
-NOT touched by any of this** — it still has no awareness of the new
-real-correlation model, just its own older ownership-bias/noise
-objective. This is a real, flagged, open gap: a diagnosis run found both
-the projection-optimal lineup and a hand-picked GB-stack benchmark
-ranking at the **100th percentile of 200 random field lineups** even
-after the correlation fixes above — the field likely isn't competitive/
-representative enough yet. Not started.
+**Pick lists are no longer capped** (earlier today): the old per-piece
+`sport.listCapFor` cap (12 for Queen/Rook/Bishop/Knight) is gone from
+`picklist.ts`/`sport.ts` entirely. `config/sports/nfl.json` still
+carries its own `list_caps` key, kept ONLY because the frozen Python
+engine's own `test_picklist.py` reads that exact shared file and still
+asserts the old cap — TS's loader just ignores the key now.
 
-**Rook's own pool was reworked** (pieces.ts/picklist.ts): any RB/WR/TE,
-any salary — the old "QB's team only" filter is gone from `classify()`
-entirely (team no longer affects eligibility for ANY piece). The pick
-list instead sorts by a 4-tier stack rule (1: QB's team, 2: QB's
-opponent, 3: a team already in the lineup, 4: everyone else), then DK
-Ceiling within a tier. Castling's own Rook step
-is explicitly unchanged (team-restricted, proj-sorted) via a new
-dedicated `castleRookList`, kept deliberately separate from the general
-`pickList` since the two have now genuinely diverged. This is a TS-only
-divergence from the frozen Python engine; one parity fixture
-(`pick_list_rook_requires_qb_team`) is now filtered out in
-`parity.test.ts`, same precedent as Bishop's own earlier TS-only rework.
+**New this session: a capture's lock history bug, fixed.**
+`rules.ts`'s `applyCaptureMove` used to write
+`[...moverHistory, captured]` at the capturing piece's new square when
+the transfer fit — conflating the capturing piece's OWN lock history
+with the just-transferred captured player's, under the same square key.
+A capture never locks a new player for the capturing piece itself, so
+that extra entry was wrong on its face, and on a LATER recapture of the
+same square it silently became "the most recently locked player,"
+handing the wrong player to the wrong side (reported: `5. Bxc6 dxc6`
+transferred the knight captured on move 5 back out, instead of the
+bishop's own pick from move 4). Fixed: both branches now write just
+`moverHistory` (hoisted above the fits/doesn't-fit split, since they're
+now identical) — a piece's own history follows it; the captured player
+is tracked only via `moves`/`locked`. Take back needed no separate fix
+(it only restores a prior, never-mutated snapshot). The frozen Python
+engine has the identical bug (`dfs_chess/rules.py`) — left untouched
+per "TS-only from here on."
 
-**Admin has a contest upload** (from an earlier session, unchanged this
-session): `contestStore.ts` + `engine/contestsCsv.ts` + an Admin
-"Contests" section (upload/summary/Clear), falling back to
-`config/contests.json` when nothing's uploaded. `Pct_To_First > 1` is
-read as a dollar amount and converted to a fraction automatically.
+**New this session: the tight-finish salary warning now interrupts,
+via an in-app dialog.** `buildStats.ts`'s `tightFinishStatus` (Caution
+at ≤$4,500/open-slot, Warning at ≤$4,000 + an aggravating factor) was
+already shown as small inline text in the You panel and the pick
+modal's "after this pick" preview — easy to miss. `TightFinishDialog.tsx`
+(new) now also shows a real modal (reusing `PickPanel.css`'s own
+overlay/card/footer/button styles — same dimmed backdrop, same
+centered-desktop/bottom-sheet-mobile treatment, theme-aware for free)
+with a level-colored heading ("Caution"/"Warning"), the same message
+text, and one "OK" button — once per level per build, the moment a
+LOCKED pick (never the modal's own hypothetical preview) first reaches
+it, never once the build's over. Went through `window.alert` first,
+then was replaced with the dialog once asked for explicitly. Fixed two
+existing castling tests along the way whose own real top-of-list picks
+(5 locks) legitimately reach "caution"/"warning" now that it's a real,
+queryable dialog — their "no dialog left open" assertions were too
+broad and needed narrowing to the pick panel's own dialog name.
+
+**Rook's own pool** (prior session): any RB/WR/TE, any salary — team no
+longer affects eligibility for any piece except castling's own Rook
+step (`castleRookList`, still team-restricted).
+
+**Admin has a contest upload** (prior session): `contestStore.ts` +
+`engine/contestsCsv.ts`, falling back to `config/contests.json`.
 
 **Environment**: accessed from Windows via `\\wsl.localhost\Ubuntu\...`.
-Plain `npm`/`npx`/`git`/`python` through the Windows-side Bash tool
-fails on this UNC path — every such command needs
-`wsl.exe -d Ubuntu -- bash -lc "cd ~/chess-dfs/... && ..."`. No real
-browser is launchable here (missing `libasound.so.2`, no passwordless
-sudo) — Sim 4's UI and the real Worker path have still never been
-exercised end-to-end in an actual browser.
+Plain `npm`/`npx`/`git`/`python`/`node` through the Windows-side shell
+fails on this UNC path for anything that shells out — every such
+command needs `wsl.exe -e bash -lc "cd /home/raney/chess-dfs/... && ..."`.
+No real browser is launchable here (missing `libasound.so.2`, no
+passwordless sudo).
 
-**Tests**: 237 pytest, 559 npm, both green as of this session's last
-commit (`bcfdc5b`). A couple of BuildScreen/SetupScreen tests (castling,
-deviation-banner, "White can move again after castling") are **known
-flaky under full-suite parallel load only** — confirmed again this
-session, same pre-existing pattern from prior sessions; they pass
-reliably alone. Not fixed.
+**Tests**: 237 pytest, 591 npm, both green as of this session's last
+commit (`342c917`) — the most recent full `npm run test` run was clean
+(no flakes at all), though a prior run today saw a wider set of full-
+suite-only flaky tests than previously documented (see Open items).
 
 ## What happened this session
 
-Four rule-change tasks (all committed and pushed), plus three
-diagnosis/report/status asks with no code changes:
+Continuing from earlier today's Sim 5 + pick-list-cap-removal work
+(already in a prior handoff), three more tasks, all committed and
+pushed:
 
-1. **Real NFL correlation targets, season-to-date role ranking**
-   (`ddfa1ad`) — extended the nflverse measurement script to RB2/WR3/TE2
-   (9 roles total) and to the FULL 9x9 same-team + opponent matrix (81
-   pairs), replacing the earlier per-week-ranked version (a lookahead/
-   circularity bug: ranking a role by the very week being correlated
-   inflates same-team real_r). Every real_r changed; biggest moves in
-   same-team pairs (QB-WR1 0.45→0.37, WR1-WR2 0.19→0.03).
+1. **Bug fix: captures transfer the wrong player** (`4d1bd47`) — see
+   "Where things stand" above. Verified both new `rules.test.ts` tests
+   (the exact reported recapture sequence, and a Take-back-equivalent
+   snapshot-immutability check) actually fail against the pre-fix code
+   before confirming the fix.
 
-2. **Rebuild draws on real correlation targets** (`31d6c8e`) — the
-   Gaussian-copula rewrite described above. Validation (20,000 trials,
-   Main Slate 6): 67 of 81 measured pairs land within ±0.05 of real_r;
-   every failure is a weak real target and/or involves TE2 (expected
-   copula-through-nonlinear-marginal signature, not a bug). Benchmark
-   GB-stack lineup: Sim ROI 1,447%→323% (Cash% 34.8%→33.5%, Top1%
-   10.0%→3.3%, win rate 2.27%→0.48%) — the old same-team correlations
-   (e.g. 0.76) were far stronger than real ones (0.37), so a mega-stack's
-   edge shrinks a lot once it's calibrated to real data.
+2. **Rule change: tight-finish salary alert** (`4c1c660`) — first pass,
+   `window.alert`, fired once per level after a pick locks. 3 new
+   `BuildScreen.test.tsx` tests (`tightFinishStatus` partially mocked so
+   these could script exact levels without needing a many-pick, real
+   expensive roster — the threshold math itself already has direct unit
+   coverage in `buildStats.test.ts`).
 
-3. **Sim diagnosis round 2** (no code changes) — found two real bugs
-   later fixed in task 4: (a) dome's old mean-shift fired regardless of
-   "no Vegas" (59.5% of this slate's players sit in a dome game, so this
-   wasn't a corner case); (b) `drawOutcome`'s median-pinned-to-proj
-   design left the mean biased ~1-2pts high even with zero shift, purely
-   from curve asymmetry. All 10 "off by 3+" players were dome-game
-   players. Also ran a 200-lineup field vs. optimal-by-proj vs. the GB
-   benchmark ROI comparison (see field.ts gap above).
+3. **Rule change: tight-finish alert as an in-app dialog** (`342c917`)
+   — superseded #2's `window.alert` per explicit follow-up ask. New
+   `TightFinishDialog.tsx` + two small CSS rules in `PickPanel.css`.
+   Rewrote the 3 tests from #2 to check the real dialog instead of a
+   `window.alert` spy; fixed 2 unrelated existing castling tests whose
+   "no dialog open" assertions were too broad once a second, legitimate
+   dialog type could coexist.
 
-4. **Sim: remove double counting, fix player curves** (`a5c7af1`) — the
-   actual fixes for (a)/(b) above. Re-ran the diagnosis: below-floor/
-   above-ceiling now 14.9-15.1% every position (was 13.0/17.3); 0 players
-   off by more than 3 points (was 10); P95/P99-vs-ceiling roughly halved
-   at the same 5 sample players.
-
-5. **Benchmark check** (no code changes) — before/after comparison under
-   diagnosis-round-2 settings (field sampled to 5,000): benchmark ROI
-   393.7%→281.2% (Cash 34.1%→30.5%, Top1% 3.66%→2.97%, win 0.60%→0.44%).
-   Median ROI by stack bucket (QB+3-or-more vs. QB+0/1/2) showed no real
-   difference (−24.3% vs. −24.6%) — stacking affects tail/ceiling, not
-   the typical outcome, which is expected in a GPP.
-
-6. **Rook: stack builder** (`bcfdc5b`) — the pieces.ts/picklist.ts rework
-   described above.
-
-7. **Status check** (no code changes) — a plain description of current
-   castling/captures/Black-move-source behavior; nothing changed.
-
-Every commit: ran `npm run test` (full suite) and `pytest` before
-committing, per CLAUDE.md; flaky BuildScreen failures were re-run in
-isolation each time to confirm they weren't real regressions.
+Every commit: ran `npm run test` + `pytest` before committing.
 
 ## Open items / blockers
 
-- **`field.ts` doesn't know about the new real-correlation model** (see
-  above) — the single highest-value open item. Its own ownership-bias/
-  noise objective is unchanged since well before this session; a
-  diagnosis found both the optimal-by-proj and a hand-built stack
-  ranking at the 100th percentile of a 200-lineup field sample, which
-  suggests the field itself may be under-competitive. Not started.
-- **Full-suite test flakiness under parallel load** (see Tests above) —
-  pre-existing across many sessions, not fixed.
-- Field still short of its own 5,000-distinct-lineup target per tier
-  (measured a few sessions back at ~2,500-3,000); stack-size realized
-  rates still don't exactly match `STACK_SIZE_DISTRIBUTION`'s configured
-  weights (same "leakage toward smaller stacks" already documented in
-  `field.ts`'s own comments).
-- `sport.ts`'s `teamRestricted` field and `config/sports/nfl.json`'s
-  `team_restricted: true` are now unread by any code (Rook's own
-  restriction moved to an explicit team check) — left in place as data
-  since removing a schema field was a bigger change than that task
-  asked for.
-- No real-browser verification yet (`libasound.so.2`, no passwordless
-  sudo) — Sim 4's UI/Worker path still hasn't been exercised end-to-end
-  in an actual browser.
-- `data/samples/DraftKings NFL DFS Projections -- Main Slate (6).csv`,
-  `.../NFL Weekly DFS System - Sim_Contest.csv`, and
-  `.../NFL Weekly DFS System - Projections.csv` stay uncommitted,
-  deliberately, same standing precedent as `repro-slate.csv`.
-- `sessions/1026/10272026-admin-contest-upload-and-pct-to-first-dollars.md`
-  is still untracked (never `git add`ed by whichever earlier session
-  wrote it) — worth adding next time something else in that area is
-  committed, not urgent on its own.
+- **`field.ts` still doesn't know about the real-correlation model** —
+  same long-standing #1 item, unchanged this session.
+- Full-suite test flakiness: one run today saw 7 distinct BuildScreen/
+  App/SetupScreen tests fail (non-overlapping sets across two runs),
+  every one confirmed passing in isolation, one even reproduced against
+  the pre-change baseline — not traced to any of this session's changes,
+  but wider than the "2 known-flaky tests" previously documented.
+  Today's LATEST full run (after the tight-finish-dialog work) was
+  completely clean, so this may just be load-dependent noise rather
+  than a worsening trend — worth a fresh look if it recurs.
+- The standalone backtest/diagnose tool (`web/src/tools/`) still
+  rebuilds a fresh ~10,000-attempt field on every invocation, no
+  caching — unchanged, low priority unless it becomes a recurring task.
+- Still undecided: `data/backtest/` vs `data/samples/` as the real home
+  for backtest input files.
+- Untracked-file pile keeps growing, same standing "leave uncommitted"
+  precedent: the same data/design/Zone.Identifier clutter as before,
+  plus FOUR session logs from 10-27/10-28 still untracked (including
+  this session's own) — none committed yet.
 
 ## Next steps
 
 1. Decide whether `field.ts`'s own lineup-generation objective should be
-   updated to use the real-correlation model too (currently fully
-   disconnected from `draws.ts`), given the 100th-percentile finding
-   above — this is the natural next rule-change task.
-2. If Vegas/dome should come back, they need a genuinely different
-   mechanism than "shift the z-mean" (that's what caused the double-
-   count this session fixed) — not scoped, just flagged for whenever it
-   comes up.
-3. Still worth a real-browser verification pass once `libasound.so.2` is
-   installed.
+   reworked to reflect the real-correlation model — still the natural
+   next rule-change task.
+2. Real-browser verification pass once `libasound.so.2` is available —
+   Sim 4/Sim 5's UI/Worker paths still haven't been exercised end-to-end
+   in an actual browser.
+3. If backtests/diagnostics become a recurring thing: pick a stable home
+   for input files and consider caching the built field across runs.
+4. Housekeeping: the growing pile of untracked session logs (and the
+   older data/design clutter) could use a decision — commit, `.gitignore`,
+   or explicitly leave as-is.

@@ -47,20 +47,81 @@ import "@lichess-org/chessground/assets/chessground.cburnett.css";
 import { Chessground } from "@lichess-org/chessground";
 import type { Api } from "@lichess-org/chessground/api";
 import type { Dests, Key } from "@lichess-org/chessground/types";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type TouchEvent } from "react";
 import BoardSquares from "./BoardSquares";
 import "./BuildBoard.css";
+
+// Piece-info hover/long-press tooltip: the content a caller hands back for
+// whichever square is currently hovered (or long-pressed, on touch) --
+// null means nothing to show (an empty square). `fit` is present only for
+// a captured-would-transfer note (Field pieces with lock history); absent
+// for every other content shape (a locked White piece, a never-moved
+// piece, or one that's moved but locked no one).
+export interface PieceTooltipContent {
+  title: string;
+  detail?: string;
+  fit?: { fits: boolean; text: string };
+}
 
 interface Props {
   fen: string;
   dests: Dests;
   lastMove: { orig: Key; dest: Key } | null;
   onMove: (orig: Key, dest: Key) => void;
+  // Optional: whoever owns the engine state (BuildScreen) supplies this to
+  // turn a hovered/long-pressed square into tooltip content -- BuildBoard
+  // itself knows nothing about players, locks, or fit checks, only board
+  // geometry. Omitted entirely, hovering just does nothing (BuildBoard.
+  // test.tsx's existing renders never pass it).
+  getPieceTooltip?: (square: Key) => PieceTooltipContent | null;
 }
 
-export default function BuildBoard({ fen, dests, lastMove, onMove }: Props) {
+// Long-press duration (touch only -- desktop uses plain hover) before the
+// tooltip appears; short enough to feel responsive, long enough that an
+// ordinary tap-to-select/tap-to-move never triggers it.
+const LONG_PRESS_MS = 500;
+
+const FILES = "abcdefgh";
+
+// The square under (clientX, clientY), given the board container's own
+// bounding rect -- orientation is always "white" (hardcoded at
+// construction below), so this is the same row/col -> file/rank mapping
+// BoardSquares.tsx uses for the checker pattern. Null outside the board
+// (including a zeroed rect, e.g. under jsdom, which never has real layout).
+function squareAtPoint(rect: DOMRect, clientX: number, clientY: number): Key | null {
+  if (rect.width <= 0 || rect.height <= 0) return null;
+  const relX = (clientX - rect.left) / rect.width;
+  const relY = (clientY - rect.top) / rect.height;
+  if (relX < 0 || relX >= 1 || relY < 0 || relY >= 1) return null;
+  const col = Math.floor(relX * 8);
+  const row = Math.floor(relY * 8);
+  return `${FILES[col]}${8 - row}` as Key;
+}
+
+// Where the tooltip box sits relative to `.build-board` (percent of its own
+// width/height, which is always square -- aspect-ratio: 1 in BuildBoard.css)
+// -- centered above the hovered square, flipped below for the top rank so
+// it never clips out the top of the board; nudged off-center near the left/
+// right edges so it doesn't run off the side either. `pointer-events: none`
+// in BuildBoard.css (not here) is what actually guarantees it can never
+// block a move/drag, regardless of this positioning.
+function tooltipStyle(square: Key): CSSProperties {
+  const col = FILES.indexOf(square[0]);
+  const row = 8 - Number(square[1]);
+  const nearTop = row === 0;
+  const translateX = col <= 1 ? "0%" : col >= 6 ? "-100%" : "-50%";
+  return {
+    left: `${((col + 0.5) / 8) * 100}%`,
+    top: `${(nearTop ? row + 1 : row) * 12.5}%`,
+    transform: `translate(${translateX}, ${nearTop ? "8px" : "calc(-100% - 8px)"})`,
+  };
+}
+
+export default function BuildBoard({ fen, dests, lastMove, onMove, getPieceTooltip }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<Api | null>(null);
+  const [hover, setHover] = useState<{ square: Key; content: PieceTooltipContent } | null>(null);
+  const longPressRef = useRef<number | null>(null);
   // `movable.events.after` is registered once, at mount -- this ref keeps
   // it calling whichever `onMove` is current without needing to tear down
   // and recreate the chessground instance every time the prop identity
@@ -122,10 +183,76 @@ export default function BuildBoard({ fen, dests, lastMove, onMove }: Props) {
     });
   }, [fen, dests, lastMove]);
 
+  // The position just changed (a move committed) -- whatever was hovered
+  // may no longer mean the same thing (or exist at all), so drop it rather
+  // than show stale info until the pointer next moves.
+  useEffect(() => {
+    setHover(null);
+  }, [fen]);
+
+  function clearLongPress(): void {
+    if (longPressRef.current !== null) {
+      window.clearTimeout(longPressRef.current);
+      longPressRef.current = null;
+    }
+  }
+
+  function showTooltipAt(clientX: number, clientY: number): void {
+    if (getPieceTooltip === undefined || containerRef.current === null) return;
+    const square = squareAtPoint(containerRef.current.getBoundingClientRect(), clientX, clientY);
+    const content = square === null ? null : getPieceTooltip(square);
+    setHover(square !== null && content !== null ? { square, content } : null);
+  }
+
+  // Desktop: plain hover. Neither handler calls preventDefault/
+  // stopPropagation, so chessground's own mousedown/drag handling on the
+  // same element is completely untouched by these.
+  function handleMouseMove(e: MouseEvent): void {
+    showTooltipAt(e.clientX, e.clientY);
+  }
+  function handleMouseLeave(): void {
+    setHover(null);
+  }
+
+  // Mobile (no hover): a long press shows the tooltip; any movement before
+  // it fires cancels it (that's a drag, not a press-and-hold), and lifting
+  // the finger always clears both the pending timer and any tooltip
+  // already showing. Chessground's own touchstart/touchmove/touchend
+  // listeners on this same element see every one of these events exactly
+  // as if this component didn't exist -- tap-to-select and drag-to-move
+  // are untouched.
+  function handleTouchStart(e: TouchEvent): void {
+    if (getPieceTooltip === undefined) return;
+    const touch = e.touches[0];
+    clearLongPress();
+    longPressRef.current = window.setTimeout(() => showTooltipAt(touch.clientX, touch.clientY), LONG_PRESS_MS);
+  }
+  function handleTouchEnd(): void {
+    clearLongPress();
+    setHover(null);
+  }
+
   return (
-    <div className="build-board">
+    <div
+      className="build-board"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchEnd}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
+    >
       <BoardSquares labels />
       <div className="build-board-cg" ref={containerRef} />
+      {hover !== null && (
+        <div className="piece-tooltip" style={tooltipStyle(hover.square)}>
+          <p className="piece-tooltip-title">{hover.content.title}</p>
+          {hover.content.detail !== undefined && <p className="piece-tooltip-detail">{hover.content.detail}</p>}
+          {hover.content.fit !== undefined && (
+            <p className={`piece-tooltip-fit ${hover.content.fit.fits ? "ok" : "no"}`}>{hover.content.fit.text}</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

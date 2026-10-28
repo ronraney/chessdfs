@@ -50,11 +50,12 @@
 //     forward), so Black's reply never needs deferring the way the old
 //     (post-commit) switch offer once did.
 import { Chess } from "chess.js";
+import type { Square } from "chess.js";
 import type { Dests, Key } from "@lichess-org/chessground/types";
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./BuildScreen.css";
 import { BOOK, LAST_RANK, NFL, POPULARITY, RANKED_FAMILIES, RANK_BY_FAMILY } from "./appData";
-import BuildBoard from "./BuildBoard";
+import BuildBoard, { type PieceTooltipContent } from "./BuildBoard";
 import { blockedMoveReason, classifyMove, type MoveKind } from "./buildFlow";
 import {
   pickReason,
@@ -72,12 +73,14 @@ import type { ContestConfig, ContestPreset } from "./engine/config";
 import { BuildState, KingMode, Piece, Side, type Move, type Player } from "./engine/models";
 import { bookContinuations, openingLine, openingName, splitFamily, type BookLine } from "./engine/openings";
 import { optimalLineup } from "./engine/optimizer";
+import { pieceForChessType } from "./engine/pieces";
 import { castleQbCandidates, castleRookList, pickList } from "./engine/picklist";
 import { SeededRandom } from "./engine/rng";
 import {
   assignRosterSlots,
   capturedSquare,
   isLineupComplete,
+  lineupStillCompletable,
   lockedQbTeam,
   placeKings,
   pushSilentMove,
@@ -88,6 +91,7 @@ import type { SlateVegas } from "./engine/sim/draws";
 import type { SimulatedField } from "./engine/sim/field";
 import { validateVegasCsv } from "./engine/sim/vegasCsv";
 import type { SimResult } from "./engine/sim/run";
+import type { SportConfig } from "./engine/sport";
 import { NO_FIELD_CACHED_MESSAGE, resolveCachedField, slateSignature } from "./fieldCacheStore";
 import { getSavedProjectionsCsv } from "./projectionsStore";
 import { getSavedVegasCsv } from "./vegasStore";
@@ -115,6 +119,76 @@ const PIECE_GLYPH: Record<Piece, string> = {
   KNIGHT: "♞",
   PAWN: "♟",
 };
+
+// Every square a chess move has ever landed on in `board`'s history --
+// including a castling move's own Rook destination, which chess.js's
+// verbose history only records via the King's two-square hop (same
+// from-square -> rook-squares mapping rules.ts's own, unexported
+// castlingRookSquares uses). A piece sitting on a square NOT in this set
+// has genuinely never moved (still its FEN start square, untouched by any
+// move at all) -- the board-hover tooltip's "Never moved" case. One that
+// HAS moved but still has no pieceLocks entry locked no one along the way
+// (a silent push after the lineup filled, or a never-fitting capturer
+// whose own history never gains an entry; see rules.ts's applyCaptureMove)
+// -- the tooltip's "No player" case instead.
+function squaresEverArrived(board: Chess): ReadonlySet<Square> {
+  const squares = new Set<Square>();
+  for (const move of board.history({ verbose: true })) {
+    squares.add(move.to);
+    if (move.isKingsideCastle() || move.isQueensideCastle()) {
+      const kingside = move.isKingsideCastle();
+      squares.add(move.from === "e1" ? (kingside ? "f1" : "d1") : kingside ? "f8" : "d8");
+    }
+  }
+  return squares;
+}
+
+// Board-hover tooltip content for whichever piece sits on `square` right
+// now (BuildBoard itself knows nothing about this -- see its
+// PieceTooltipContent/getPieceTooltip). Null if `square` is empty.
+//   - Lock history (pieceLocks has an entry) -> the most recently locked
+//     player (the one a capture would transfer): name, position, salary,
+//     projection, ownership. A Field (Black) piece also gets the same fit
+//     check applyCaptureMove itself uses -- would transferring this player
+//     to White's current roster still leave it completable.
+//   - No lock history, but the square has been arrived at before
+//     (squaresEverArrived) -> "No player" (moved, but never locked one --
+//     e.g. a silent push after the lineup filled).
+//   - No lock history, square never arrived at -> "Never moved," naming
+//     the piece type a capture would let White pick fresh.
+function pieceTooltipContent(
+  state: BuildState,
+  square: Square,
+  sport: SportConfig,
+  contest: ContestConfig,
+  touchedSquares: ReadonlySet<Square>,
+): PieceTooltipContent | null {
+  const boardPiece = state.board.get(square);
+  if (boardPiece === undefined) return null;
+
+  const history = state.pieceLocks.get(square) ?? [];
+  if (history.length > 0) {
+    const player = history[history.length - 1];
+    const tier = contest.fieldTier();
+    const detail = `${player.positions[0]} · $${player.salary.toLocaleString()} · ${player.proj.toFixed(1)} pts · ${(player.ownFor(tier) * 100).toFixed(1)}% own`;
+    if (boardPiece.color !== "b") {
+      return { title: player.name, detail };
+    }
+    const cap = contest.effectiveCap(sport);
+    const fits = lineupStillCompletable([...state.whiteMoves.map((m) => m.player), player], sport, cap);
+    const fit = fits
+      ? { fits: true, text: "Capture: joins you" }
+      : { fits: false, text: "Capture: won't fit — returns to pool" };
+    return { title: player.name, detail, fit };
+  }
+
+  if (touchedSquares.has(square)) {
+    return { title: "No player" };
+  }
+
+  const pieceType = pieceForChessType(boardPiece.type);
+  return { title: "Never moved", detail: `Capturing lets you pick a ${PIECE_LABEL[pieceType]}.` };
+}
 
 // "Fill out my core": a player the optimizer added, not locked by any
 // chess move -- there's no Piece for one (no move ever locked it), so
@@ -715,6 +789,14 @@ export default function BuildScreen({
       : lastRealMove !== null
         ? { orig: lastRealMove.from, dest: lastRealMove.to }
         : null;
+
+  // Board-hover tooltip (see pieceTooltipContent above): reads the real
+  // committed `state`, not `previewFen`'s tentative pick-pending move --
+  // a pending pick already covers the board with its own modal.
+  const touchedSquares = useMemo(() => squaresEverArrived(state.board), [state]);
+  function getPieceTooltip(square: Key): PieceTooltipContent | null {
+    return pieceTooltipContent(state, square as Square, NFL, preset.contest, touchedSquares);
+  }
 
   // Starts (or restarts) Black's reply timer for `newState`. The callback
   // itself is async: out of book, playBlackMove awaits a real Stockfish
@@ -1371,7 +1453,13 @@ export default function BuildScreen({
           ) : (
             <>
               <p className="status-line">{statusLine}</p>
-              <BuildBoard fen={previewFen} dests={pendingMove === null ? dests : new Map()} lastMove={lastMove} onMove={handleBoardMove} />
+              <BuildBoard
+                fen={previewFen}
+                dests={pendingMove === null ? dests : new Map()}
+                lastMove={lastMove}
+                onMove={handleBoardMove}
+                getPieceTooltip={getPieceTooltip}
+              />
 
               {turn === "w" &&
                 (showBookExitPrompt ? (

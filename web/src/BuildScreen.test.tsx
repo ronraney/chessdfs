@@ -20,7 +20,7 @@
 // "Pick" buttons.
 import { Chess } from "chess.js";
 import type { Square } from "chess.js";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { UserEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -1056,6 +1056,105 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
     expect(rows.length).toBeGreaterThan(0);
     expect(rows.every((row) => !row.disabled)).toBe(true);
   });
+});
+
+// Board piece-info hover tooltip: BuildBoard's own geometry/hover wiring is
+// covered in isolation by BuildBoard.test.tsx (a scripted getPieceTooltip,
+// no real engine state); these tests cover the other half -- that
+// BuildScreen's own pieceTooltipContent correctly reads real BuildState/
+// pieceLocks/sport/contest for whatever's actually on the board. jsdom's
+// getBoundingClientRect is always zeroed by default (same limitation noted
+// throughout this file and BuildBoard.test.tsx's own header) -- stubbed
+// directly on the real `.build-board-cg` element, same fix as there.
+describe("BuildScreen -- board piece-info hover tooltip", () => {
+  const RECT = { left: 0, top: 0, width: 480, height: 480, right: 480, bottom: 480, x: 0, y: 0, toJSON: () => ({}) };
+
+  function pointFor(square: string): { clientX: number; clientY: number } {
+    const col = "abcdefgh".indexOf(square[0]);
+    const row = 8 - Number(square[1]);
+    return { clientX: ((col + 0.5) / 8) * RECT.width, clientY: ((row + 0.5) / 8) * RECT.height };
+  }
+
+  function stubRect(): void {
+    (document.querySelector(".build-board-cg") as HTMLElement).getBoundingClientRect = () => RECT as DOMRect;
+  }
+
+  function hover(square: string): void {
+    fireEvent.mouseMove(document.querySelector(".build-board") as HTMLElement, pointFor(square));
+  }
+
+  function tooltipTitle(): string | undefined {
+    return document.querySelector(".piece-tooltip-title")?.textContent ?? undefined;
+  }
+  function tooltipDetail(): string | undefined {
+    return document.querySelector(".piece-tooltip-detail")?.textContent ?? undefined;
+  }
+
+  it("a never-moved piece names which piece a capture would pick; an empty square shows nothing", () => {
+    renderScreen();
+    stubRect();
+
+    hover("e2"); // White's own king-pawn, untouched at the start position
+    expect(tooltipTitle()).toBe("Never moved");
+    expect(tooltipDetail()).toBe("Capturing lets you pick a Pawn.");
+
+    hover("e4"); // empty before any move
+    expect(document.querySelector(".piece-tooltip")).toBeNull();
+  });
+
+  it(
+    "a locked White piece shows its name, position, salary, projection, and ownership -- no fit note",
+    async () => {
+      renderScreen();
+      const user = userEvent.setup();
+      await user.click(chosenContinueButton()); // Morphy Defense's own 1. e4
+      const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+      await selectTopRow(user, dialog);
+      await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+
+      const lockedName = within(youColumn()).getByRole("listitem").querySelector(".locked-name")!.textContent!.split(" · ")[0];
+      const player = PLAYERS.find((p) => p.name === lockedName)!;
+      const tier = H2H.contest.fieldTier();
+
+      stubRect();
+      hover("e4"); // White's pawn, now locked there
+      expect(tooltipTitle()).toBe(player.name);
+      expect(tooltipDetail()).toBe(
+        `${player.positions[0]} · $${player.salary.toLocaleString()} · ${player.proj.toFixed(1)} pts · ${(player.ownFor(tier) * 100).toFixed(1)}% own`,
+      );
+      expect(document.querySelector(".piece-tooltip-fit")).toBeNull();
+    },
+    15000,
+  );
+
+  it(
+    "a Field piece with lock history also shows whether capturing it would bring that player to White",
+    async () => {
+      renderScreen();
+      const user = userEvent.setup();
+      await user.click(chosenContinueButton());
+      const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+      await selectTopRow(user, dialog);
+      await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+
+      await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+      const fieldName = within(fieldColumn()).getByRole("listitem").querySelector(".locked-name")!.textContent!.split(" · ")[0];
+      const dest = lastApi!.config.lastMove![1]; // Black's own reply just landed here
+
+      stubRect();
+      hover(dest);
+      expect(tooltipTitle()).toBe(fieldName);
+      // White's roster has a single pawn locked so far -- transferring
+      // Black's own single locked player onto it fits comfortably under
+      // any real cap/roster shape, so this is the "joins you" branch;
+      // the "won't fit" branch is already covered directly at the engine
+      // level (rules.test.ts's isLegalCapture/applyCaptureMove cases).
+      const fit = document.querySelector(".piece-tooltip-fit");
+      expect(fit?.textContent).toBe("Capture: joins you");
+      expect(fit).toHaveClass("ok");
+    },
+    15000,
+  );
 });
 
 // Task 40: endings (Stop/dead end), the finish screen, Start again, and
