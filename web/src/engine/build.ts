@@ -32,17 +32,37 @@
 //
 // A capture is its own category: the captured player IS the move's pick.
 // If the captured piece has no lock history -- it never moved -- there's
-// nothing to transfer, so Black instead picks the same TEMPORARY
-// placeholder (highest proj among legal, unlocked candidates) of that
-// piece's own real chess type, same as any other pick; a candidate move
-// resolves to null (same as any other unplayable move) only when no such
-// player exists. Once Black's lineup is full, captures and castling are
-// excluded outright too, since both inherently lock a player and Black
-// isn't drafting anymore.
+// nothing to transfer, so Black instead picks same as any other pick (see
+// chooseBlueprintPlayer below); a candidate move resolves to null (same as
+// any other unplayable move) only when no eligible player exists. Once
+// Black's lineup is full, captures and castling are excluded outright too,
+// since both inherently lock a player and Black isn't drafting anymore.
 //
-// Black's PLAYER pick within whichever piece band a (non-silent) move
-// requires is a TEMPORARY PLACEHOLDER -- highest proj among legal,
-// unlocked candidates -- until the Monte Carlo sim is ported.
+// Rule change "Sim 5": Black's PLAYER pick within whichever piece band a
+// (non-silent) move requires -- including castling's King/Rook steps and
+// an unmoved-piece capture, and (see SetupScreen.tsx) Black's QB at setup
+// -- is drafted from a BLUEPRINT: one lineup from the contest tier's own
+// built field (fieldCacheStore's SimulatedField, resolveCachedField'd
+// against the tier the same way BuildScreen's own sim already does),
+// chosen by seeded random so it contains every player Black has already
+// locked and none of White's. Each pick then takes whichever blueprint
+// player is eligible/available/completable for that piece (pickList/
+// castleRookList/castleQbCandidates already computed exactly that,
+// sorted) -- see chooseBlueprintPlayer. The blueprint is re-drawn (next
+// seeded draw, same containment rules, restricted to field lineups that
+// have a qualifying player for the pick at hand) once it's no longer
+// usable: a blueprint player got taken by White, or no blueprint player
+// fits this particular piece. With no field built for the tier, or no
+// field lineup qualifies at all (even after a redraw), Black falls back
+// to the pre-Sim-5 rule: top of the piece's own (capped) list -- see
+// `pick`'s default below, threaded through bestLegalPlayer/
+// bestLegalCapturePlayer/bestLegalCastlePlayers. This only ever runs for
+// Black's own ACTUAL pick (playBlackMove/playBlackTemplateMove's commit
+// call) -- every feasibility PROBE elsewhere in this module (
+// checkWhiteDeadEnd, moveIsCompletable, playableContinuations, the
+// free-play candidate filter) calls resolvePlayers with no `pick`
+// override at all, so it never touches the field/rng and stays exactly
+// as deterministic/side-effect-free as before this rule change.
 
 import type { Move as ChessJsMove } from "chess.js";
 import {
@@ -75,7 +95,8 @@ import {
   openRosterSlots,
   pushSilentMove,
 } from "./rules";
-import type { SeededRandom } from "./rng";
+import { SeededRandom } from "./rng";
+import type { SimulatedField } from "./sim/field";
 import type { SportConfig } from "./sport";
 
 export const HAPPY_HUNTING = "Happy Hunting";
@@ -143,10 +164,19 @@ function currentPlayersFor(state: BuildState, side: Side): Player[] {
   return (side === Side.WHITE ? state.whiteMoves : state.blackMoves).map((m) => m.player);
 }
 
-// The top of `piece`'s own pick list for which `chessMove` is actually
-// legal -- the TEMPORARY placeholder pick (see module comment above;
-// RULES.md: "Black ... picks the top of the moved piece's (capped)
-// list").
+// Which of an already eligible/available/completable, sorted candidate
+// list (pickList/castleRookList/castleQbCandidates's own output) a pick
+// actually takes -- `candidates` is never empty when this is called.
+// Every probing call site (see module comment above) leaves this at its
+// default, the pre-Sim-5 rule (RULES.md: "Black ... picks the top of the
+// moved piece's (capped) list"); only playBlackMove/playBlackTemplateMove's
+// own commit call overrides it with a blueprint-aware chooser (see
+// chooseBlueprintPlayer below).
+type PlayerPicker = (candidates: readonly Player[]) => Player;
+const TOP_OF_LIST: PlayerPicker = (candidates) => candidates[0];
+
+// The `pick`-chosen player of `piece`'s own pick list for which `chessMove`
+// is actually legal (see PlayerPicker above).
 function bestLegalPlayer(
   chessMove: ChessMove,
   piece: Piece,
@@ -154,21 +184,20 @@ function bestLegalPlayer(
   sport: SportConfig,
   contest: ContestConfig,
   playersPool: readonly Player[],
+  pick: PlayerPicker = TOP_OF_LIST,
 ): Player | null {
   const side = state.board.turn() === "w" ? Side.WHITE : Side.BLACK;
   const current = currentPlayersFor(state, side);
   const qbTeam = lockedQbTeam(state, side);
-  const candidates = pickList(piece, playersPool, state.lockedPlayerIds, current, sport, contest, qbTeam);
-  for (const player of candidates) {
-    if (isLegalMove(state, chessMove, player, sport, contest)) return player;
-  }
-  return null;
+  const candidates = pickList(piece, playersPool, state.lockedPlayerIds, current, sport, contest, qbTeam).filter(
+    (player) => isLegalMove(state, chessMove, player, sport, contest),
+  );
+  return candidates.length > 0 ? pick(candidates) : null;
 }
 
-// The top of `capturedType`'s own pick list for which `chessMove` -- a
-// capture of a piece with no lock history, i.e. it never moved -- is
-// actually legal right now. Same placeholder convention as
-// bestLegalPlayer.
+// The `pick`-chosen player of `capturedType`'s own pick list for which
+// `chessMove` -- a capture of a piece with no lock history, i.e. it never
+// moved -- is actually legal right now (see PlayerPicker above).
 function bestLegalCapturePlayer(
   chessMove: ChessMove,
   capturedType: Piece,
@@ -176,27 +205,28 @@ function bestLegalCapturePlayer(
   sport: SportConfig,
   contest: ContestConfig,
   playersPool: readonly Player[],
+  pick: PlayerPicker = TOP_OF_LIST,
 ): Player | null {
   const side = state.board.turn() === "w" ? Side.WHITE : Side.BLACK;
   const current = currentPlayersFor(state, side);
   const qbTeam = lockedQbTeam(state, side);
-  const candidates = pickList(capturedType, playersPool, state.lockedPlayerIds, current, sport, contest, qbTeam);
-  for (const player of candidates) {
-    if (isLegalCapture(state, chessMove, sport, contest, player)) return player;
-  }
-  return null;
+  const candidates = pickList(capturedType, playersPool, state.lockedPlayerIds, current, sport, contest, qbTeam).filter(
+    (player) => isLegalCapture(state, chessMove, sport, contest, player),
+  );
+  return candidates.length > 0 ? pick(candidates) : null;
 }
 
 // [King, Rook] in EMERGE mode, or [Rook] in PLACED mode (castling locks
-// only the Rook there) -- the top of each piece's own pick list
-// (RULES.md: "Only offer QBs with at least one eligible teammate ... If
-// none, castling is illegal").
+// only the Rook there) -- each the `pick`-chosen player of its own pick
+// list (RULES.md: "Only offer QBs with at least one eligible teammate ...
+// If none, castling is illegal"; see PlayerPicker above).
 function bestLegalCastlePlayers(
   state: BuildState,
   sport: SportConfig,
   contest: ContestConfig,
   playersPool: readonly Player[],
   kingMode: KingMode = KingMode.EMERGE,
+  pick: PlayerPicker = TOP_OF_LIST,
 ): Player[] | null {
   const side = state.board.turn() === "w" ? Side.WHITE : Side.BLACK;
   if (!canCastle(state, side, kingMode)) return null;
@@ -208,16 +238,16 @@ function bestLegalCastlePlayers(
     const qbTeam = lockedQbTeam(state, side);
     if (qbTeam === null) return null; // no locked QB to restrict the castling Rook to
     const rooks = castleRookList(playersPool, locked, current, sport, contest, qbTeam);
-    return rooks.length > 0 ? [rooks[0]] : null;
+    return rooks.length > 0 ? [pick(rooks)] : null;
   }
 
   const kings = castleQbCandidates(playersPool, locked, current, sport, contest);
   if (kings.length === 0) return null;
-  const king = kings[0];
+  const king = pick(kings);
   const lockedWithKing = new Set(locked);
   lockedWithKing.add(king.id);
   const rooks = castleRookList(playersPool, lockedWithKing, [...current, king], sport, contest, king.team);
-  return rooks.length > 0 ? [king, rooks[0]] : null;
+  return rooks.length > 0 ? [king, pick(rooks)] : null;
 }
 
 // The player(s) `chessMove` would lock -- one, or two for castling in
@@ -241,12 +271,13 @@ function resolvePlayers(
   contest: ContestConfig,
   playersPool: readonly Player[],
   kingMode: KingMode = KingMode.EMERGE,
+  pick: PlayerPicker = TOP_OF_LIST,
 ): Player[] | null {
   const matched = findLegalMove(state.board, chessMove);
   if (!matched) return null;
 
   if (matched.isKingsideCastle() || matched.isQueensideCastle()) {
-    return bestLegalCastlePlayers(state, sport, contest, playersPool, kingMode);
+    return bestLegalCastlePlayers(state, sport, contest, playersPool, kingMode, pick);
   }
   if (isCaptureMove(matched)) {
     const square = capturedSquare(matched);
@@ -255,12 +286,12 @@ function resolvePlayers(
       return [capturedHistory[capturedHistory.length - 1]];
     }
     const capturedType = pieceForChessType(matched.captured!);
-    const player = bestLegalCapturePlayer(chessMove, capturedType, state, sport, contest, playersPool);
+    const player = bestLegalCapturePlayer(chessMove, capturedType, state, sport, contest, playersPool, pick);
     return player === null ? [] : [player];
   }
   const piece = pieceForChessType(matched.piece);
   if (kingMode === KingMode.PLACED && piece === Piece.KING) return [];
-  const player = bestLegalPlayer(chessMove, piece, state, sport, contest, playersPool);
+  const player = bestLegalPlayer(chessMove, piece, state, sport, contest, playersPool, pick);
   return player === null ? null : [player];
 }
 
@@ -534,6 +565,65 @@ async function chooseEngineMove(
   return { move: chooseAmongSound(sound, rng)?.move ?? null, engineFailed: false };
 }
 
+// Rule change "Sim 5": one Black pick, drafted from `field` instead of
+// `candidates`' own top (see module comment above) -- `candidates` is
+// always non-empty (whichever pickList/castleRookList/castleQbCandidates
+// call produced it). `currentBlueprint` is the already-committed blueprint
+// lineup (null to draw fresh); `blackLockedIds`/`whiteLockedIds` are each
+// side's own currently-locked player ids, snapshotted BEFORE this pick (a
+// castling King+Rook pair's own two calls reuse the same snapshot -- the
+// King just chosen within this same castle doesn't retroactively change
+// what "already locked" meant when the blueprint was drawn).
+//
+// Falls back to `candidates[0]` (the pre-Sim-5 rule) whenever there's no
+// field to draft from at all, or no field lineup -- even a freshly (re-)
+// drawn one -- has a player who's actually in `candidates`; the returned
+// `blueprint` is null in both of those cases too, so the NEXT pick starts
+// over rather than reusing a blueprint that never actually matched.
+export interface BlueprintDraw {
+  readonly player: Player;
+  readonly blueprint: readonly Player[] | null;
+}
+
+export function chooseBlueprintPlayer(
+  candidates: readonly Player[],
+  field: SimulatedField | null,
+  blackLockedIds: ReadonlySet<string>,
+  whiteLockedIds: ReadonlySet<string>,
+  currentBlueprint: readonly Player[] | null,
+  rng: SeededRandom,
+): BlueprintDraw {
+  if (field === null || field.lineups.length === 0) {
+    return { player: candidates[0], blueprint: null };
+  }
+
+  let blueprint = currentBlueprint;
+  if (blueprint !== null && blueprint.some((p) => whiteLockedIds.has(p.id))) {
+    blueprint = null; // invalid: White took one of the blueprint's players
+  }
+  if (blueprint !== null) {
+    const blueprintIds = new Set(blueprint.map((p) => p.id));
+    const match = candidates.find((p) => blueprintIds.has(p.id));
+    if (match !== undefined) return { player: match, blueprint };
+    blueprint = null; // invalid: no blueprint player qualifies for this pick -- redraw
+  }
+
+  const qualifyingLineups = field.lineups.filter((lineup) => {
+    const ids = new Set(lineup.map((p) => p.id));
+    for (const id of blackLockedIds) if (!ids.has(id)) return false;
+    for (const id of whiteLockedIds) if (ids.has(id)) return false;
+    return candidates.some((p) => ids.has(p.id)); // only redraw among lineups with a qualifying player for THIS pick
+  });
+  if (qualifyingLineups.length === 0) {
+    return { player: candidates[0], blueprint: null }; // fallback: no field lineup qualifies
+  }
+
+  const drawn = rng.choice(qualifyingLineups);
+  const drawnIds = new Set(drawn.map((p) => p.id));
+  const match = candidates.find((p) => drawnIds.has(p.id))!; // guaranteed by the qualifies filter above
+  return { player: match, blueprint: drawn };
+}
+
 // Generates and applies Black's move. Outside an explicit template
 // (RULES.md "Opening templates"), Black commits to one full book line at a
 // time -- chosen among every line matching the moves so far, the one whose
@@ -549,7 +639,11 @@ async function chooseEngineMove(
 // engine at all. Locks a player normally, unless Black's lineup is already
 // full, in which case the move is pushed silently (see module comment
 // above). Async solely because `engine.analyze` is -- every other branch
-// resolves synchronously underneath the returned promise.
+// resolves synchronously underneath the returned promise. `field` (Rule
+// change "Sim 5"; defaults to null, the pre-Sim-5 behavior for every
+// caller that doesn't pass one) is the contest tier's own built field --
+// see chooseBlueprintPlayer and the module comment above for how Black's
+// actual PLAYER pick drafts from it.
 export async function playBlackMove(
   state: BuildState,
   book: readonly BookLine[],
@@ -561,6 +655,7 @@ export async function playBlackMove(
   rng: SeededRandom,
   kingMode: KingMode = KingMode.EMERGE,
   engine: BlackEngine = noEngine,
+  field: SimulatedField | null = null,
 ): Promise<MoveResult> {
   if (state.board.turn() !== "b") {
     throw new Error("it is not Black's turn");
@@ -646,7 +741,17 @@ export async function playBlackMove(
   if (blackIsFull) {
     newState = pushSilentMove(state, chessMove);
   } else {
-    const players = resolvePlayers(state, chessMove, sport, contest, playersPool, kingMode);
+    // Rule change "Sim 5": snapshotted once per actual pick, BEFORE this
+    // move's own lock -- see chooseBlueprintPlayer's own header comment.
+    const blackLockedIds = new Set(currentPlayersFor(state, Side.BLACK).map((p) => p.id));
+    const whiteLockedIds = new Set(currentPlayersFor(state, Side.WHITE).map((p) => p.id));
+    let blueprint = state.blackBlueprint;
+    const pick: PlayerPicker = (candidates) => {
+      const result = chooseBlueprintPlayer(candidates, field, blackLockedIds, whiteLockedIds, blueprint, rng);
+      blueprint = result.blueprint;
+      return result.player;
+    };
+    const players = resolvePlayers(state, chessMove, sport, contest, playersPool, kingMode, pick);
     if (players === null) {
       // chessMove was only ever chosen because this resolved -- either as
       // the committed line's next move (checked via isMovePlayableForBlack
@@ -654,6 +759,7 @@ export async function playBlackMove(
       throw new Error("internal error: resolved move unexpectedly has no players");
     }
     newState = applyResolvedPlayers(state, chessMove, players, sport, contest, kingMode);
+    newState.blackBlueprint = blueprint;
   }
 
   newState.blackCommittedLine = committed;
@@ -665,8 +771,10 @@ export async function playBlackMove(
 // Applies `chessMove` for Black exactly as given, in place of Black's usual
 // book-weighted choice -- for template mode, where both sides mechanically
 // play a user-chosen book line (RULES.md "Opening templates"). Player pick
-// is the same highest-projection placeholder used everywhere else in this
-// module (see module comment above); `book` is only for naming the
+// drafts from `field` the same way playBlackMove's own commit does (Rule
+// change "Sim 5"; see chooseBlueprintPlayer and the module comment above),
+// falling back to the pre-Sim-5 top-of-list rule when `field` is omitted
+// (the default -- every existing caller); `book` is only for naming the
 // resulting opening, same as everywhere else. Returns null if no eligible,
 // unlocked, roster/salary-feasible player exists for `chessMove` right now
 // (a template-mode "DFS-illegal" move) -- the caller should treat the
@@ -681,6 +789,8 @@ export function playBlackTemplateMove(
   playersPool: readonly Player[],
   book: readonly BookLine[],
   kingMode: KingMode = KingMode.EMERGE,
+  field: SimulatedField | null = null,
+  rng: SeededRandom = new SeededRandom(0),
 ): MoveResult | null {
   if (state.board.turn() !== "b") {
     throw new Error("it is not Black's turn");
@@ -695,9 +805,18 @@ export function playBlackTemplateMove(
     }
     newState = pushSilentMove(state, chessMove);
   } else {
-    const players = resolvePlayers(state, chessMove, sport, contest, playersPool, kingMode);
+    const blackLockedIds = new Set(currentPlayersFor(state, Side.BLACK).map((p) => p.id));
+    const whiteLockedIds = new Set(currentPlayersFor(state, Side.WHITE).map((p) => p.id));
+    let blueprint = state.blackBlueprint;
+    const pick: PlayerPicker = (candidates) => {
+      const result = chooseBlueprintPlayer(candidates, field, blackLockedIds, whiteLockedIds, blueprint, rng);
+      blueprint = result.blueprint;
+      return result.player;
+    };
+    const players = resolvePlayers(state, chessMove, sport, contest, playersPool, kingMode, pick);
     if (players === null) return null;
     newState = applyResolvedPlayers(state, chessMove, players, sport, contest, kingMode);
+    newState.blackBlueprint = blueprint;
   }
 
   const opening = openingName(sanHistory(newState.board), book);

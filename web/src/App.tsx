@@ -116,6 +116,7 @@ function App() {
         whiteKing={chosenSetup.whiteKing}
         blackKing={chosenSetup.blackKing}
         chosenOpening={chosenSetup.opening}
+        buildSeed={chosenSetup.buildSeed}
         onStartAgain={startAgain}
         onNewContest={newContest}
       />

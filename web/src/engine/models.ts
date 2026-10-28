@@ -133,6 +133,13 @@ export interface BuildStateFields {
   // moves unchanged; only build.ts's play_black_move equivalent sets it
   // (not yet ported).
   blackCommittedLine?: readonly string[] | null;
+  // Rule change "Sim 5": the field lineup Black's picks are currently
+  // drafting toward -- null if nothing's committed (no field built for the
+  // tier, or Black hasn't picked yet). Carried through unchanged by every
+  // move/capture/castle that doesn't touch it; build.ts's playBlackMove/
+  // playBlackTemplateMove are the only things that ever set it (same
+  // carry-unless-set pattern as blackCommittedLine above).
+  blackBlueprint?: readonly Player[] | null;
   // Whether each side has already castled this build (Task 14: in PLACED
   // king mode, a locked King is always present from setup, so can_castle
   // can no longer tell "already castled" apart from "King locked" by
@@ -152,6 +159,7 @@ export class BuildState {
   lockedPlayerIds: Set<string>;
   pieceLocks: Map<Square, Player[]>;
   blackCommittedLine: readonly string[] | null;
+  blackBlueprint: readonly Player[] | null;
   whiteCastled: boolean;
   blackCastled: boolean;
 
@@ -162,6 +170,7 @@ export class BuildState {
     this.lockedPlayerIds = fields.lockedPlayerIds ?? new Set();
     this.pieceLocks = fields.pieceLocks ?? new Map();
     this.blackCommittedLine = fields.blackCommittedLine ?? null;
+    this.blackBlueprint = fields.blackBlueprint ?? null;
     this.whiteCastled = fields.whiteCastled ?? false;
     this.blackCastled = fields.blackCastled ?? false;
   }

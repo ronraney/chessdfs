@@ -18,6 +18,7 @@ import {
   HAPPY_HUNTING,
   NO_LEGAL_MOVES,
   checkWhiteDeadEnd,
+  chooseBlueprintPlayer,
   moveIsCompletable,
   playBlackMove,
   playBlackTemplateMove,
@@ -34,6 +35,7 @@ import { classify, pieceForChessType } from "./pieces";
 import type { ChessMove } from "./rules";
 import { applyMove, isLineupComplete, placeKings } from "./rules";
 import { SeededRandom } from "./rng";
+import type { SimulatedField } from "./sim/field";
 import { PieceBand, RosterSlot, SportConfig, loadSportConfig } from "./sport";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -894,5 +896,118 @@ describe("Black's out-of-book engine assist", () => {
     const r2 = await playBlackMove(state, [], {}, 0, NFL, CONTEST, blackPool, new SeededRandom(42), KingMode.EMERGE, fakeEngine(candidates));
 
     expect(lastOf(r1.state.blackMoves).san).toBe(lastOf(r2.state.blackMoves).san);
+  });
+});
+
+// --- Sim 5: Black drafts from the sim field ----------------------------------
+
+function fieldOf(...lineups: readonly Player[][]): SimulatedField {
+  return { lineups, lineupWeight: 1 };
+}
+
+describe("Sim 5: Black drafts from the sim field", () => {
+  describe("chooseBlueprintPlayer", () => {
+    it("is deterministic by seed", () => {
+      const a = makePlayer("a", "WR", 3000);
+      const b = makePlayer("b", "WR", 3100);
+      const c = makePlayer("c", "WR", 3200);
+      const candidates = [a, b, c]; // the piece's own pick list, already sorted
+      const field = fieldOf(
+        [a, makePlayer("a_mate", "RB", 4000)],
+        [b, makePlayer("b_mate", "RB", 4000)],
+        [c, makePlayer("c_mate", "RB", 4000)],
+      );
+
+      const draw = () => chooseBlueprintPlayer(candidates, field, new Set(), new Set(), null, new SeededRandom(7));
+      const r1 = draw();
+      const r2 = draw();
+
+      expect(r1.player.id).toBe(r2.player.id);
+      expect(r1.blueprint!.map((p) => p.id)).toEqual(r2.blueprint!.map((p) => p.id));
+    });
+
+    it("re-draws once White has taken a player out of the committed blueprint", () => {
+      const a = makePlayer("a", "WR", 3000);
+      const aMate = makePlayer("a_mate", "RB", 4000);
+      const b = makePlayer("b", "WR", 3100);
+      const bMate = makePlayer("b_mate", "RB", 4100);
+      const candidates = [a, b];
+      const committedBlueprint = [a, aMate]; // Black's current blueprint has `a` for this pick
+      const field = fieldOf([a, aMate], [b, bMate]);
+
+      // White has since locked `a` -- the committed blueprint no longer fits.
+      const result = chooseBlueprintPlayer(candidates, field, new Set(), new Set([a.id]), committedBlueprint, new SeededRandom(1));
+
+      expect(result.player.id).toBe(b.id);
+      expect(result.blueprint).not.toBeNull();
+      expect(result.blueprint!.map((p) => p.id)).toEqual([b.id, bMate.id]);
+    });
+
+    it("re-draws once the committed blueprint has no player for this pick", () => {
+      const knightCandidate = makePlayer("knight_pick", "TE", 5200);
+      const mate = makePlayer("mate", "RB", 4000);
+      // Neither of this pick's own candidates is in the committed blueprint.
+      const committedBlueprint = [makePlayer("unrelated", "WR", 3000), mate];
+      const field = fieldOf(committedBlueprint, [knightCandidate, mate]);
+
+      const result = chooseBlueprintPlayer([knightCandidate], field, new Set(), new Set(), committedBlueprint, new SeededRandom(3));
+
+      expect(result.player.id).toBe(knightCandidate.id); // the only lineup with a qualifying player
+      expect(result.blueprint).not.toBe(committedBlueprint);
+      expect(result.blueprint!.map((p) => p.id)).toEqual([knightCandidate.id, mate.id]);
+    });
+
+    it("falls back to the top of the list with no field built for the tier", () => {
+      const top = makePlayer("top", "WR", 3200);
+      const second = makePlayer("second", "WR", 3100);
+
+      const noField = chooseBlueprintPlayer([top, second], null, new Set(), new Set(), null, new SeededRandom(5));
+      expect(noField).toEqual({ player: top, blueprint: null });
+
+      const emptyField = chooseBlueprintPlayer(
+        [top, second], { lineups: [], lineupWeight: 1 }, new Set(), new Set(), null, new SeededRandom(5),
+      );
+      expect(emptyField).toEqual({ player: top, blueprint: null });
+    });
+
+    it("never drafts a blueprint containing a player White has locked", () => {
+      const whiteHeld = makePlayer("white_held", "RB", 4000);
+      const p1 = makePlayer("p1", "WR", 3000);
+      const p2 = makePlayer("p2", "WR", 3100);
+      const candidates = [p1, p2];
+      // Two lineups contain a qualifying candidate; one of them pairs it
+      // with a player White already holds.
+      const field = fieldOf([p1, whiteHeld], [p2, makePlayer("p2_mate", "RB", 4100)]);
+
+      for (let seed = 0; seed < 25; seed++) {
+        const result = chooseBlueprintPlayer(candidates, field, new Set(), new Set([whiteHeld.id]), null, new SeededRandom(seed));
+        expect(result.player.id).not.toBe(whiteHeld.id);
+        expect(result.blueprint).not.toBeNull();
+        expect(result.blueprint!.some((p) => p.id === whiteHeld.id)).toBe(false);
+      }
+    });
+  });
+
+  it("drafts castling's King and Rook from the blueprint, not the top of each list", () => {
+    // Same fixture as "picks the top of each piece's own list..." above,
+    // but with a built field whose own lineup -- including Black's three
+    // ALREADY-locked players from stateReadyForBlackKingsideCastle's own
+    // setup moves (the blueprint must contain every player Black has
+    // locked) -- pairs the QB with the LOWER-projection teammate, proving
+    // the pick actually comes from the blueprint now, not pickList's own
+    // top (rb_high).
+    const state = stateReadyForBlackKingsideCastle();
+    const alreadyLocked = state.blackMoves.map((m) => m.player);
+    const qb = makePlayer("qb1", "QB", 6500, 10.0, "CIN");
+    const lowProjTeammate = makePlayer("rb_low", "RB", 5200, 8.0, "CIN");
+    const highProjTeammate = makePlayer("rb_high", "RB", 5300, 22.0, "CIN");
+    const pool = [qb, lowProjTeammate, highProjTeammate];
+    const field = fieldOf([...alreadyLocked, qb, lowProjTeammate]);
+
+    const result = playBlackTemplateMove(state, uci("e8g8"), NFL, CONTEST, pool, BOOK, KingMode.EMERGE, field, new SeededRandom(1));
+
+    expect(result).not.toBeNull();
+    const rookRecord = result!.state.blackMoves.find((m) => m.piece === Piece.ROOK)!;
+    expect(rookRecord.player.id).toBe("rb_low");
   });
 });

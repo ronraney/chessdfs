@@ -219,6 +219,7 @@ function withBoardState(
     lockedPlayerIds,
     pieceLocks,
     blackCommittedLine: state.blackCommittedLine,
+    blackBlueprint: state.blackBlueprint,
     whiteCastled: state.whiteCastled,
     blackCastled: state.blackCastled,
   });
@@ -709,6 +710,7 @@ export function applyCaptureMove(
     lockedPlayerIds: locked,
     pieceLocks: newPieceLocks,
     blackCommittedLine: state.blackCommittedLine,
+    blackBlueprint: state.blackBlueprint,
     whiteCastled: state.whiteCastled,
     blackCastled: state.blackCastled,
   });

@@ -169,6 +169,14 @@ interface Props {
   whiteKing: Player | null;
   blackKing: Player | null;
   chosenOpening: ChosenOpening;
+  // Rule change "Sim 5": SetupScreen now generates this (it needs to, for
+  // Black's own QB pick at setup -- see its own ChosenSetup.buildSeed
+  // comment) and passes it down, rather than this component rolling its
+  // own via Math.random() -- optional only so every existing test/caller
+  // that doesn't care about seed continuity across setup+build keeps
+  // compiling unchanged; omitted, this falls back to the exact same
+  // Math.random() roll as before this rule change.
+  buildSeed?: number;
   // Task 40: "Start again" (same contest + King mode, back to the opening
   // choice) and "New contest" (full setup) -- both fired from here (the
   // header link, the book-exit prompt, and the finish screen all reach
@@ -404,6 +412,7 @@ export default function BuildScreen({
   whiteKing,
   blackKing,
   chosenOpening,
+  buildSeed: buildSeedProp,
   onStartAgain,
   onNewContest,
 }: Props) {
@@ -545,7 +554,14 @@ export default function BuildScreen({
   // "Sim my core" was ever clicked. "Derive from the build's own seed" is
   // satisfied by reusing this one fixed number for every sim run this
   // build ever makes, not by drawing a fresh one per click.
-  const [buildSeed] = useState<number>(() => Math.floor(Math.random() * 2 ** 31));
+  //
+  // Rule change "Sim 5": `buildSeedProp` (SetupScreen's own seed, already
+  // spent once there on Black's QB pick) takes over whenever the caller
+  // supplies one, so Black's later picks continue drafting against the
+  // same number the setup pick already used -- see ChosenSetup.buildSeed.
+  // Falls back to the original Math.random() roll when it's omitted
+  // (every pre-Sim-5 test/caller).
+  const [buildSeed] = useState<number>(() => buildSeedProp ?? Math.floor(Math.random() * 2 ** 31));
   const [rng] = useState<SeededRandom>(() => new SeededRandom(buildSeed));
   const familyRanks = useMemo(() => Object.fromEntries(RANKED_FAMILIES.map((f) => [f.name, f.rank])), []);
   const targetRank = useMemo(() => preset.contest.targetRank(LAST_RANK), [preset]);
@@ -716,7 +732,7 @@ export default function BuildScreen({
     blackTimerRef.current = setTimeout(async () => {
       try {
         const result = await playBlackMove(
-          newState, BOOK, familyRanks, targetRank, NFL, preset.contest, players, rng, kingMode, stockfishEngine,
+          newState, BOOK, familyRanks, targetRank, NFL, preset.contest, players, rng, kingMode, stockfishEngine, cachedField,
         );
         if (result.engineFailed) {
           setEngineUnavailable(true);

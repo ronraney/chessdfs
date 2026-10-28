@@ -41,6 +41,7 @@ import {
 } from "./appData";
 import BoardPreview from "./BoardPreview";
 import type { ContestPreset } from "./engine/config";
+import { chooseBlueprintPlayer } from "./engine/build";
 import { KingMode, Piece, type Player } from "./engine/models";
 import {
   findOpeningLines,
@@ -51,6 +52,10 @@ import {
   type OpeningPreview as OpeningPreviewResult,
 } from "./engine/openings";
 import { classify } from "./engine/pieces";
+import { SeededRandom } from "./engine/rng";
+import type { SimulatedField } from "./engine/sim/field";
+import { resolveCachedField, slateSignature } from "./fieldCacheStore";
+import { getSavedProjectionsCsv } from "./projectionsStore";
 import ThemeToggle from "./ThemeToggle";
 
 export type ChosenOpening = { kind: "line"; line: BookLine } | { kind: "own" };
@@ -61,6 +66,13 @@ export interface ChosenSetup {
   whiteKing: Player | null;
   blackKing: Player | null;
   opening: ChosenOpening;
+  // Rule change "Sim 5": the one seed this whole build's Black picks
+  // (starting with blackKing above, drafted via chooseBlueprintPlayer the
+  // same way every later pick is) are drawn from -- generated once here
+  // (not inside BuildScreen, which used to roll its own) so the setup
+  // pick and every later pick/sim run all trace back to the same number,
+  // same as this task's own "same seed + same moves = same Black picks."
+  buildSeed: number;
 }
 
 interface Props {
@@ -190,6 +202,11 @@ export default function SetupScreen({ players, onChoose, initialPresetIndex, ini
   const [presetIndex, setPresetIndex] = useState(initialPresetIndex ?? 0);
   const [kingMode, setKingMode] = useState<KingMode>(initialKingMode ?? KingMode.EMERGE);
   const [whiteKingId, setWhiteKingId] = useState<string | null>(null);
+  // Rule change "Sim 5": generated once per setup, not inside BuildScreen
+  // (which used to roll its own via Math.random()) -- see ChosenSetup's
+  // own comment on buildSeed for why this has to happen before Black's
+  // QB pick below, not after.
+  const [buildSeed] = useState<number>(() => Math.floor(Math.random() * 2 ** 31));
 
   const preset = PRESETS[presetIndex];
   const contestTier = useMemo(() => preset.contest.entryTier(LAST_RANK), [preset]);
@@ -206,9 +223,33 @@ export default function SetupScreen({ players, onChoose, initialPresetIndex, ini
     [players],
   );
   const whiteKing = qbs.find((p) => p.id === whiteKingId) ?? null;
-  // cli.py's `_prompt_and_place_kings`: Black's QB is the highest-projection
-  // QB other than White's own pick -- not a user choice.
-  const blackKing = whiteKing ? qbs.find((p) => p.id !== whiteKing.id) ?? null : null;
+  // Rule change "Sim 5": Black's QB is drafted the same blueprint-aware
+  // way every other Black pick is (chooseBlueprintPlayer) -- not a user
+  // choice either way. `cachedField` mirrors BuildScreen.tsx's own lookup
+  // (same signature+tier resolution) so the setup pick drafts from the
+  // SAME built field a mid-build pick would. Falls back to the pre-Sim-5
+  // rule (highest-projection QB other than White's own pick) whenever no
+  // field is built for this contest's own tier yet -- chooseBlueprintPlayer
+  // handles that fallback internally, same as every other call site.
+  const cachedField = useMemo((): SimulatedField | null => {
+    const csv = getSavedProjectionsCsv();
+    return csv === null ? null : resolveCachedField(slateSignature(csv), preset.contest, players);
+  }, [preset, players]);
+  const blackKingCandidates = useMemo(
+    () => (whiteKing ? qbs.filter((p) => p.id !== whiteKing.id) : []),
+    [qbs, whiteKing],
+  );
+  const blackKing =
+    whiteKing && blackKingCandidates.length > 0
+      ? chooseBlueprintPlayer(
+          blackKingCandidates,
+          cachedField,
+          new Set<string>(),
+          new Set([whiteKing.id]),
+          null,
+          new SeededRandom(buildSeed),
+        ).player
+      : null;
   const canPlay = kingMode === KingMode.EMERGE || whiteKing !== null;
 
   function selectLine(line: BookLine): void {
@@ -231,7 +272,7 @@ export default function SetupScreen({ players, onChoose, initialPresetIndex, ini
 
   function choose(opening: ChosenOpening): void {
     if (!canPlay) return;
-    onChoose({ preset, kingMode, whiteKing, blackKing, opening });
+    onChoose({ preset, kingMode, whiteKing, blackKing, opening, buildSeed });
   }
 
   const visibleFamilies = useMemo(() => {
