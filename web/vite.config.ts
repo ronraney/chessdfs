@@ -23,5 +23,17 @@ export default defineConfig({
     // comment for the one file that needs a DOM).
     environment: 'node',
     setupFiles: ['./src/test-setup.ts'],
+    // Housekeeping "Faster tests": Vitest's own default otherwise spins up
+    // close to one worker PER test file (sessions/HANDOFF.md's own
+    // Environment note measured ~23-32 of them on this machine's 8 cores)
+    // -- oversubscribing real CPU contention that's the documented cause
+    // of this suite's occasional full-run timeout flakiness. Capped well
+    // below the 8-core count on purpose: this box's own hard limit turned
+    // out to be RAM, not CPU (~2.8GB total, confirmed via `free -h`) --
+    // capping at 8 workers measured WORSE (more, not fewer, full-suite
+    // timeout failures) than this lower value, each worker's own jsdom +
+    // React + chessground + real player-CSV module graph adding up fast.
+    // Revisit if this ever runs on a less memory-constrained box.
+    maxWorkers: 4,
   },
 })

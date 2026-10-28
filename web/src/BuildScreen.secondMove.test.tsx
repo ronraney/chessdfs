@@ -41,7 +41,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Api } from "@lichess-org/chessground/api";
 import type { Key } from "@lichess-org/chessground/types";
 import { BOOK, PRESETS } from "./appData";
-import BuildScreen from "./BuildScreen";
+import BuildScreen, { setBlackReplyDelayForTests } from "./BuildScreen";
 import { KingMode } from "./engine/models";
 import { loadEtrCsv } from "./engine/loaders";
 import { SAMPLE_CSV } from "./testFixtures";
@@ -58,6 +58,17 @@ vi.mock("@lichess-org/chessground", async (importOriginal) => {
     },
   };
 });
+
+// Housekeeping "Faster tests": near-zero, not exactly 0 -- a
+// `setTimeout(fn, 0)` can still fire within a single `await
+// user.click(...)`'s own turns of the event loop, which would race a
+// test asserting the SYNCHRONOUS pre-reply state (no test in this file
+// does). See the setter's own comment in BuildScreen.tsx; BuildScreen.
+// movePick/castling.test.tsx pin this to the real 600ms instead, for
+// tests that do need that synchronous state reliably observable. The
+// real app's own pacing is untouched either way; this only ever runs
+// under Vitest.
+setBlackReplyDelayForTests(20);
 
 const PLAYERS = loadEtrCsv(SAMPLE_CSV);
 const H2H = PRESETS.find((preset) => preset.name === "H2H")!;

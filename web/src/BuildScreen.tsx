@@ -219,7 +219,22 @@ const HOW_IT_WORKS_KEY = "chess-dfs:how-it-works-dismissed";
 const HOW_IT_WORKS_TEXT =
   "You're White. Each move locks a DFS player of that piece's type: pawns are cheap plays, knights TEs, bishops WRs, rooks RBs, queens $7K+ studs, the king your QB. The Field (Black) does the same. Build a 4–5 player core, then stop or keep going.";
 
-const BLACK_REPLY_DELAY_MS = 600;
+// Housekeeping "Faster tests": a `let`, not a `const`, so each BuildScreen-
+// rendering test file can override it to near-zero (not exactly 0 -- a
+// `setTimeout(fn, 0)` can still fire within a single `await
+// user.click(...)`'s own turns of the event loop, racing a test that
+// asserts the synchronous pre-reply state) via setBlackReplyDelayForTests
+// below, right after its own imports -- shaving this fixed pause off of
+// every test that waits through a Black reply (most of them) without
+// touching the real app's own pacing at all. Never called from
+// BuildScreen.tsx itself or from any non-test file.
+let BLACK_REPLY_DELAY_MS = 600;
+
+// Test-only override hook -- see this constant's own comment above.
+export function setBlackReplyDelayForTests(ms: number): void {
+  BLACK_REPLY_DELAY_MS = ms;
+}
+
 // Bug fix: shown once Stockfish genuinely fails (not just "has no opinion"
 // -- see build.ts's MoveResult.engineFailed) instead of letting the status
 // line keep reading "The Field is moving…" forever while Black's reply
