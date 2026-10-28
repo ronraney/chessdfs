@@ -64,6 +64,7 @@ import {
   tightFinishStatus,
   type PointsFromOptimal,
   type SideStats,
+  type TightFinishLevel,
   type TightFinishStatus,
 } from "./buildStats";
 import { HAPPY_HUNTING, NoLegalBlackMoveError, checkWhiteDeadEnd, moveIsCompletable, playBlackMove, playWhiteMove } from "./engine/build";
@@ -1042,6 +1043,36 @@ export default function BuildScreen({
   const whiteStats = sideStats(whiteRoster, NFL, preset.contest);
   const whiteTightFinish = tightFinishStatus(whiteRoster, NFL, preset.contest);
   const blackStats = sideStats(state.blackMoves.map((m) => m.player), NFL, preset.contest);
+
+  // Bug fix: the tight-finish copy above is easy to miss (plain inline
+  // text in the You panel / pick footer) -- a `window.alert` (same native,
+  // one-click-to-dismiss pattern "Start again" already uses for its own
+  // confirm) fires once per level, the first time White's own ACTUAL
+  // (already-locked, never the pick modal's hypothetical "after this
+  // pick" preview) roster reaches it. `alertedLevelsRef` is never
+  // cleared except by a fresh mount (a new build) -- Take back flapping
+  // the level back and forth doesn't re-arm an already-fired level.
+  // `skipNextRef` swallows the one run every effect fires on mount (this
+  // component's very first render, before any pick) -- the alert is only
+  // ever about a pick that just locked.
+  const alertedLevelsRef = useRef<Set<TightFinishLevel>>(new Set());
+  const skipNextTightFinishAlertRef = useRef(true);
+  useEffect(() => {
+    if (skipNextTightFinishAlertRef.current) {
+      skipNextTightFinishAlertRef.current = false;
+      return;
+    }
+    // Fill out my core / the finish screen aren't "a pick locked" -- no
+    // alert once the build's already over.
+    if (ending !== null) return;
+    if (whiteTightFinish !== null && !alertedLevelsRef.current.has(whiteTightFinish.level)) {
+      alertedLevelsRef.current.add(whiteTightFinish.level);
+      window.alert(whiteTightFinish.message);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately
+    // keyed on the level alone: re-entering the SAME level (e.g. the exact
+    // dollar figure moving within "caution") must not re-alert.
+  }, [whiteTightFinish?.level]);
 
   // The slate's own best possible lineup never depends on `state` at all --
   // no locks, no exclusions -- so it's computed once per slate/contest

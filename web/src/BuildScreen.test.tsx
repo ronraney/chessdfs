@@ -27,6 +27,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Config } from "@lichess-org/chessground/config";
 import { BOOK, NFL, PRESETS } from "./appData";
 import BuildScreen from "./BuildScreen";
+import { tightFinishStatus } from "./buildStats";
+import type { TightFinishStatus } from "./buildStats";
 import { ContestConfig } from "./engine/config";
 import type { ContestPreset } from "./engine/config";
 import { playBlackMove } from "./engine/build";
@@ -45,6 +47,21 @@ import { SAMPLE_CSV } from "./testFixtures";
 vi.mock("./engine/build", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./engine/build")>();
   return { ...actual, playBlackMove: vi.fn(actual.playBlackMove) };
+});
+
+// Rule change: `tightFinishStatus` is partially mocked (real implementation
+// kept by default -- restored in beforeEach below via a fresh
+// vi.importActual, same spirit as `playBlackMove`'s own real implementation
+// staying its default) so the tight-finish-alert tests can script exactly
+// which level each pick reports without needing a genuinely expensive,
+// many-pick real roster to reach "caution"/"warning" against the real
+// $50,000 cap -- those thresholds already have their own direct unit
+// coverage in buildStats.test.ts; what's new (and under test) here is
+// purely BuildScreen's own wiring (window.alert, once per level, skipped
+// on mount and once the build's over).
+vi.mock("./buildStats", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./buildStats")>();
+  return { ...actual, tightFinishStatus: vi.fn(actual.tightFinishStatus) };
 });
 
 interface FakeApi {
@@ -162,12 +179,17 @@ async function selectTopRow(user: UserEvent, dialog: HTMLElement): Promise<void>
   await user.click(firstRow);
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   lastApi = null;
   window.localStorage.clear();
   onStartAgain.mockClear();
   onNewContest.mockClear();
   vi.mocked(playBlackMove).mockClear(); // clears call history only -- the wrapped real implementation stays
+  // Undoes any test's own scripted implementation -- a fresh real
+  // reference each time (see the mock's own comment above for why this
+  // can't just be captured once at module scope).
+  const real = await vi.importActual<typeof import("./buildStats")>("./buildStats");
+  vi.mocked(tightFinishStatus).mockReset().mockImplementation(real.tightFinishStatus);
 });
 
 function statusLine(): HTMLElement {
@@ -564,6 +586,106 @@ describe("BuildScreen -- pick list is no longer capped (Rule change)", () => {
     const dialog = await screen.findByRole("dialog", { name: "Choose your Knight" });
     const rows = dialog.querySelectorAll(".pick-row");
     expect(rows.length).toBeGreaterThan(12); // the full eligible pool, uncapped
+  });
+});
+
+// Rule change: the existing inline "tight finish" copy (buildStats.ts's
+// tightFinishStatus, shown in the You panel and the pick modal's own
+// "after this pick" preview) is easy to miss -- a window.alert now fires
+// too, once per level, the moment a LOCKED pick first reaches it.
+// tightFinishStatus itself is mocked (see the top of this file) so these
+// tests can script exactly which level a pick reports without needing a
+// genuinely expensive, many-pick real roster against the real $50,000 cap.
+describe("BuildScreen -- tight finish alert (rule change)", () => {
+  const CAUTION: TightFinishStatus = {
+    level: "caution",
+    avgRemainingPerOpenSlot: 4200,
+    reasons: [],
+    message: "Salary getting tight: $4,200 per open slot.",
+  };
+  const WARNING: TightFinishStatus = {
+    level: "warning",
+    avgRemainingPerOpenSlot: 3800,
+    reasons: ["QB still open"],
+    message: "Tight finish: $3,800 per open slot · QB still open",
+  };
+
+  // Same move/pick/wait-for-reply shape as the castling describe block's
+  // own developKnightAndBishop (not reused directly -- that one's scoped
+  // to its own block) -- any 3 legal, in-book moves work here, since
+  // tightFinishStatus's real output is irrelevant once mocked.
+  async function playAndLock(user: UserEvent, from: string, to: string): Promise<void> {
+    simulateMove(from, to);
+    const dialog = await screen.findByRole("dialog");
+    await selectTopRow(user, dialog);
+    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+    await waitFor(() => expect(lastApi!.config.movable!.dests!.size).toBeGreaterThan(0), { timeout: 2000 });
+  }
+
+  it("alerts the moment a locked pick first makes the build 'caution', keeping the inline text too", async () => {
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+    renderScreen();
+    const user = userEvent.setup();
+
+    expect(alertSpy).not.toHaveBeenCalled(); // nothing to alert about yet, right at mount
+
+    vi.mocked(tightFinishStatus).mockReturnValue(CAUTION);
+    await playAndLock(user, "e2", "e4");
+
+    expect(alertSpy).toHaveBeenCalledTimes(1);
+    expect(alertSpy).toHaveBeenCalledWith(CAUTION.message);
+    // The existing inline copy is still there too -- this doesn't replace it.
+    expect(within(youColumn()).getByText(CAUTION.message)).toBeInTheDocument();
+
+    alertSpy.mockRestore();
+  });
+
+  it("fires a second, different alert once a later pick makes it 'warning', but never re-fires a level already alerted this build", async () => {
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+    renderScreen();
+    const user = userEvent.setup();
+
+    vi.mocked(tightFinishStatus).mockReturnValue(CAUTION);
+    await playAndLock(user, "e2", "e4");
+    expect(alertSpy).toHaveBeenCalledTimes(1);
+
+    vi.mocked(tightFinishStatus).mockReturnValue(WARNING);
+    await playAndLock(user, "g1", "f3");
+    expect(alertSpy).toHaveBeenCalledTimes(2);
+    expect(alertSpy).toHaveBeenLastCalledWith(WARNING.message);
+
+    // Back to "caution" (e.g. Take back, or a cheaper pick) -- already
+    // alerted once this build, so no third alert.
+    vi.mocked(tightFinishStatus).mockReturnValue(CAUTION);
+    await playAndLock(user, "f1", "b5");
+    expect(alertSpy).toHaveBeenCalledTimes(2);
+
+    alertSpy.mockRestore();
+  });
+
+  it("does not alert from the pick modal's own hypothetical preview -- only once a pick actually locks", async () => {
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+    renderScreen();
+    const user = userEvent.setup();
+
+    // PickPanel's own "after this pick" preview calls tightFinishStatus
+    // with the CANDIDATE already added (one more player than the real,
+    // still-uncommitted roster) -- returning WARNING only for that longer
+    // list (and nothing for BuildScreen's own, still-empty actual roster)
+    // models "the preview already reads tight, the real roster doesn't
+    // yet" without an unrelated re-render (opening the modal) spuriously
+    // flipping the mock's return value out from under an unchanged roster.
+    vi.mocked(tightFinishStatus).mockImplementation((players) => (players.length > 0 ? WARNING : null));
+    simulateMove("e2", "e4");
+    const dialog = await screen.findByRole("dialog");
+    await selectTopRow(user, dialog); // shows the "after this pick" preview -- still not committed
+
+    expect(alertSpy).not.toHaveBeenCalled();
+
+    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+    expect(alertSpy).toHaveBeenCalledTimes(1); // only once the pick is actually locked
+
+    alertSpy.mockRestore();
   });
 });
 
