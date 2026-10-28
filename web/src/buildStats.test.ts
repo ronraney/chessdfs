@@ -6,7 +6,7 @@
 // bands the Morphy Defense line happens to touch.
 import { describe, expect, it } from "vitest";
 import nflConfig from "./data/config/sports/nfl.json";
-import { pickReason, pieceBandLabel, sideStats } from "./buildStats";
+import { pickReason, pieceBandLabel, sideStats, tightFinishStatus } from "./buildStats";
 import { ContestConfig } from "./engine/config";
 import { Piece, Player } from "./engine/models";
 import { loadSportConfig } from "./engine/sport";
@@ -85,6 +85,129 @@ describe("sideStats", () => {
 
     expect(after.salaryRemaining).toBe(before.salaryRemaining - candidate.salary);
     expect(after.openSlotCount).toBe(before.openSlotCount - 1);
+  });
+});
+
+// Tight-finish warning (White only): a display-only heads-up, never a
+// block, gated on White having 3+ open slots. Caution fires on avg
+// remaining per open slot alone; Warning additionally needs at least one
+// aggravating factor, so the same avg with no factor present stays Caution
+// rather than escalating.
+describe("tightFinishStatus", () => {
+  it("null once avg remaining per open slot is comfortably above the caution threshold", () => {
+    expect(tightFinishStatus([], NFL, CONTEST)).toBeNull();
+  });
+
+  it("null -- fewer than 3 open slots -- even though salary left is extremely tight", () => {
+    const locked = [
+      player("qb1", "QB", 7500, 20),
+      player("rb1", "RB", 6500, 10),
+      player("rb2", "RB", 6500, 10),
+      player("wr1", "WR", 6500, 10),
+      player("wr2", "WR", 6500, 10),
+      player("wr3", "WR", 6500, 10),
+      player("te1", "TE", 8500, 10), // 7 locked -> FLEX + DST open = 2, below the gate
+    ];
+    expect(tightFinishStatus(locked, NFL, CONTEST)).toBeNull();
+  });
+
+  it("caution at the $4,500 avg threshold, with no aggravating factor required", () => {
+    const locked = [
+      player("qb1", "QB", 7500, 20),
+      player("rb1", "RB", 6000, 10),
+      player("rb2", "RB", 6000, 10),
+      player("wr1", "WR", 6000, 10),
+      player("wr2", "WR", 6000, 10),
+      player("wr3", "WR", 5000, 10), // TE/FLEX/DST open = 3
+    ];
+    const status = tightFinishStatus(locked, NFL, CONTEST);
+    expect(status).not.toBeNull();
+    expect(status!.level).toBe("caution");
+    expect(status!.reasons).toEqual([]);
+    expect(status!.avgRemainingPerOpenSlot).toBeCloseTo(4500);
+    expect(status!.message).toBe("Salary getting tight: $4,500 per open slot.");
+  });
+
+  it("stays caution, not warning, at the $4,000 avg threshold when no aggravating factor applies", () => {
+    const locked = [
+      player("qb1", "QB", 7500, 20), // QB filled
+      player("rb1", "RB", 6500, 10),
+      player("rb2", "RB", 6500, 10),
+      player("wr1", "WR", 6500, 10),
+      player("wr2", "WR", 6000, 10),
+      player("wr3", "WR", 5000, 10), // none Pawn-priced (all >= $5,000); 0 TE locked
+    ];
+    const status = tightFinishStatus(locked, NFL, CONTEST);
+    expect(status).not.toBeNull();
+    expect(status!.level).toBe("caution");
+    expect(status!.reasons).toEqual([]);
+    expect(status!.avgRemainingPerOpenSlot).toBeCloseTo(4000);
+    expect(status!.message).toBe("Salary getting tight: $4,000 per open slot.");
+  });
+
+  it("warning once avg <= $4,000 AND a Pawn-priced player is locked (by salary, not by the piece that locked him)", () => {
+    const locked = [
+      player("qb1", "QB", 7500, 20),
+      player("rb1", "RB", 6500, 10),
+      player("rb2", "RB", 6500, 10),
+      player("wr1", "WR", 6500, 10),
+      player("wr2", "WR", 6800, 10),
+      player("wr3", "WR", 4200, 10), // < $5,000, non-QB -> Pawn-priced regardless of how he was drafted
+    ];
+    const status = tightFinishStatus(locked, NFL, CONTEST);
+    expect(status).not.toBeNull();
+    expect(status!.level).toBe("warning");
+    expect(status!.reasons).toEqual(["a Pawn-priced player locked"]);
+    expect(status!.avgRemainingPerOpenSlot).toBeCloseTo(4000);
+    expect(status!.message).toBe("Tight finish: $4,000 per open slot · a Pawn-priced player locked");
+  });
+
+  it("warning once avg <= $4,000 AND both TE slots are used (the dedicated TE slot plus a 2nd TE in FLEX)", () => {
+    const locked = [
+      player("qb1", "QB", 8000, 20),
+      player("te1", "TE", 9000, 10),
+      player("te2", "TE", 9000, 10), // 2nd TE fills FLEX -- RB/WR/DST (6 slots) stay open
+    ];
+    const status = tightFinishStatus(locked, NFL, CONTEST);
+    expect(status).not.toBeNull();
+    expect(status!.level).toBe("warning");
+    expect(status!.reasons).toEqual(["both TE slots used"]);
+    expect(status!.avgRemainingPerOpenSlot).toBeCloseTo(4000);
+    expect(status!.message).toBe("Tight finish: $4,000 per open slot · both TE slots used");
+  });
+
+  it("warning once avg <= $4,000 AND White's QB slot is still open", () => {
+    const locked = [
+      player("rb1", "RB", 6500, 10),
+      player("rb2", "RB", 6500, 10),
+      player("wr1", "WR", 6500, 10),
+      player("wr2", "WR", 6500, 10),
+      player("wr3", "WR", 6000, 10),
+      player("te1", "TE", 6000, 10), // QB/FLEX/DST open = 3; no QB locked
+    ];
+    const status = tightFinishStatus(locked, NFL, CONTEST);
+    expect(status).not.toBeNull();
+    expect(status!.level).toBe("warning");
+    expect(status!.reasons).toEqual(["QB still open"]);
+    expect(status!.avgRemainingPerOpenSlot).toBeCloseTo(4000);
+    expect(status!.message).toBe("Tight finish: $4,000 per open slot · QB still open");
+  });
+
+  it("joins more than one aggravating-factor reason together", () => {
+    const locked = [
+      player("rb1", "RB", 7500, 10),
+      player("rb2", "RB", 7000, 10),
+      player("wr1", "WR", 7000, 10),
+      player("wr2", "WR", 7000, 10),
+      player("wr3", "WR", 6000, 10),
+      player("te1", "TE", 4000, 10), // < $5,000 -> Pawn-priced; no QB locked
+    ];
+    const status = tightFinishStatus(locked, NFL, CONTEST);
+    expect(status).not.toBeNull();
+    expect(status!.level).toBe("warning");
+    expect(status!.reasons).toEqual(["a Pawn-priced player locked", "QB still open"]);
+    expect(status!.avgRemainingPerOpenSlot).toBeCloseTo(11500 / 3);
+    expect(status!.message).toBe("Tight finish: $3,833 per open slot · a Pawn-priced player locked · QB still open");
   });
 });
 

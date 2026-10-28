@@ -27,7 +27,7 @@
 // the footer names who's selected.
 import { useMemo, useState } from "react";
 import "./PickPanel.css";
-import { pieceBandLabel, sideStats } from "./buildStats";
+import { pieceBandLabel, sideStats, tightFinishStatus } from "./buildStats";
 import type { ContestConfig } from "./engine/config";
 import { highestOwnershipByPosition, sortMetric } from "./engine/metrics";
 import { Piece, type Player } from "./engine/models";
@@ -165,6 +165,10 @@ export default function PickPanel({
     () => (selected === null ? null : sideStats([...currentPlayers, selected], sport, contest)),
     [selected, currentPlayers, sport, contest],
   );
+  const afterTightFinish = useMemo(
+    () => (selected === null ? null : tightFinishStatus([...currentPlayers, selected], sport, contest)),
+    [selected, currentPlayers, sport, contest],
+  );
 
   return (
     <div className="pick-modal-overlay">
@@ -237,6 +241,9 @@ export default function PickPanel({
               Selected: {selected.name} · After this pick: <strong>${after.salaryRemaining.toLocaleString()}</strong> left ·{" "}
               ${after.avgRemainingPerOpenSlot.toLocaleString(undefined, { maximumFractionDigits: 0 })} / slot ·{" "}
               {after.openSlotCount} open
+              {afterTightFinish !== null && (
+                <span className={`pick-tight-finish ${afterTightFinish.level}`}> · {afterTightFinish.message}</span>
+              )}
             </span>
           )}
           <div className="pick-modal-actions">

@@ -12,130 +12,168 @@ all earlier rules. Git workflow: work on `main`, one commit per task
 after tests pass, push to `origin/main` after every commit, never use
 `AskUserQuestion` (ask inline as plain text).
 
-Python 3.11+ engine (`dfs_chess/`) + `web/` (Vite + React + TypeScript,
+Python 3.11+ engine (`dfs_chess/`, **frozen** — TS-only from here on,
+per the most recent rule change) + `web/` (Vite + React + TypeScript,
 Node v24/npm). The TS port of the chess/DFS engine and the Monte Carlo
 sim (`web/src/engine/sim/`) are both complete and wired into the UI.
 
-**Admin now has a contest upload** (this session, new) — previously
-`config/contests.json` was the only source, a static build-time
-constant. Now: `web/src/contestStore.ts` (localStorage, mirrors
-projections/Vegas exactly) + `web/src/engine/contestsCsv.ts`
-(`validateContestCsv`) + an Admin "Contests" section (upload/summary/
-Clear). An upload replaces the whole contest list; nothing uploaded (or
-after Clear, or if the saved CSV no longer validates) falls back to
-`contests.json`. Validation: required columns present, numbers parse,
-no duplicate names; any row whose payout curve can't be built is named
-and the whole upload fails. `Pct_To_First > 1` is read as the 1st-place
-dollar amount and converted to a fraction (÷ `Total_Prize_Pool`) rather
-than rejected — flagged in the summary ("Pct_To_First read as dollars:
-..."). The real, untrimmed `Sim_Contest.csv` sample now loads cleanly as
-20 contests (previously only 19 would validate — "NFL GIANT $25
-Double-Up"'s `Pct_To_First=50` used to fail outright).
+**Sim engine (`draws.ts`) is now a Gaussian copula on measured real-world
+correlations**, not a latent-factor model. Each player is ranked into a
+role (QB1, RB1/RB2, WR1/WR2/WR3, TE1/TE2, DST) by DK projection within
+team+position; everyone else is "other" (0 correlation with all).
+`config/real_correlation_targets.json` holds the measured 9x9 same-team
+and opponent correlation matrices (nflverse, 2021-2025, season-to-date
+role ranking); per game, the two teams' filled roles are assembled into
+one matrix and Cholesky-drawn. No more zGame/zTeam/regime shocks, no
+DST-splash side channel. Vegas total/spread and dome **no longer affect
+the draw at all** — removed as double-counting (ETR's own floor/proj/
+ceiling already bake both in). The Vegas upload still works end-to-end
+in Admin (`vegasCsv.ts`/`vegasStore.ts`); it's just inert now.
+`drawOutcome` was also fixed so a player's simulated **mean** (not
+median) lands on DK Proj (`internalAnchorForTargetMean`, a closed-form
+per-player anchor solve) — previously the mean ran 1-2pts high because
+real ceiling-proj gaps usually exceed proj-floor gaps. `TAIL_K` lowered
+1.0→0.5 (the old value put P95/P99 25-45% above a player's own ceiling).
 
-`payouts.ts`'s `generatePayoutCurve` gained a flat-table case: when
-rank 1's pinned payout (`prizePool * pctToFirst`) is within $0.01 of
-`minCash`, every cash spot just pays `minCash` flat (Double-Up/50/50
-shape) instead of erroring out trying to decay from a point it's
-already sitting on.
+**`field.ts` (lineup generation, the MILP that builds "the field") was
+NOT touched by any of this** — it still has no awareness of the new
+real-correlation model, just its own older ownership-bias/noise
+objective. This is a real, flagged, open gap: a diagnosis run found both
+the projection-optimal lineup and a hand-picked GB-stack benchmark
+ranking at the **100th percentile of 200 random field lineups** even
+after the correlation fixes above — the field likely isn't competitive/
+representative enough yet. Not started.
 
-`PRESETS` (`appData.ts`) is no longer a frozen import-time snapshot —
-it's a live, refreshable export (`refreshPresets()`, reassigns the
-module binding, which every importer sees immediately). Falls back to
-`contests.json` in the same situations the admin-screen summary does.
-`App.tsx` refreshes it on the way back from `#/admin`. "Start again"
-matches the previously-chosen contest by **name** (not object identity
-— every refresh builds fresh objects) against the current `PRESETS`;
-no match falls back to the first contest with a notice on SetupScreen.
+**Rook's own pool was reworked** (pieces.ts/picklist.ts): any RB/WR/TE,
+any salary — the old "QB's team only" filter is gone from `classify()`
+entirely (team no longer affects eligibility for ANY piece). The pick
+list instead sorts by a 4-tier stack rule (1: QB's team, 2: QB's
+opponent, 3: a team already in the lineup, 4: everyone else), then DK
+Ceiling within a tier. Castling's own Rook step
+is explicitly unchanged (team-restricted, proj-sorted) via a new
+dedicated `castleRookList`, kept deliberately separate from the general
+`pickList` since the two have now genuinely diverged. This is a TS-only
+divergence from the frozen Python engine; one parity fixture
+(`pick_list_rook_requires_qb_team`) is now filtered out in
+`parity.test.ts`, same precedent as Bishop's own earlier TS-only rework.
+
+**Admin has a contest upload** (from an earlier session, unchanged this
+session): `contestStore.ts` + `engine/contestsCsv.ts` + an Admin
+"Contests" section (upload/summary/Clear), falling back to
+`config/contests.json` when nothing's uploaded. `Pct_To_First > 1` is
+read as a dollar amount and converted to a fraction automatically.
 
 **Environment**: accessed from Windows via `\\wsl.localhost\Ubuntu\...`.
 Plain `npm`/`npx`/`git`/`python` through the Windows-side Bash tool
-fails on this UNC path (wrong `cd`, missing native bindings, "Python not
-found") — every such command needs
-`wsl.exe -- bash -lc "cd ~/chess-dfs/... && ..."`. No real browser is
-launchable here — Sim 4 UI and the real Worker path have still never
-been exercised end-to-end in an actual browser.
+fails on this UNC path — every such command needs
+`wsl.exe -d Ubuntu -- bash -lc "cd ~/chess-dfs/... && ..."`. No real
+browser is launchable here (missing `libasound.so.2`, no passwordless
+sudo) — Sim 4's UI and the real Worker path have still never been
+exercised end-to-end in an actual browser.
 
-**Tests**: 237 pytest, 542 npm, both green as of this session's last
-commit (`7ef4983`). Two or three BuildScreen/SetupScreen tests
-(castling, deviation-banner, admin-routing) are **known flaky under
-full-suite 32-worker parallel load only** — they pass reliably alone or
-under lighter load, and which exact test flakes varies run to run
-(confirmed pre-existing, not introduced this session: the same pattern
-reproduced on a full run taken *before* any of this session's changes
-existed). Not fixed; several already carry an explicit per-test timeout
-bump as a partial mitigation.
+**Tests**: 237 pytest, 559 npm, both green as of this session's last
+commit (`bcfdc5b`). A couple of BuildScreen/SetupScreen tests (castling,
+deviation-banner, "White can move again after castling") are **known
+flaky under full-suite parallel load only** — confirmed again this
+session, same pre-existing pattern from prior sessions; they pass
+reliably alone. Not fixed.
 
 ## What happened this session
 
-Two tasks, two commits (both pushed):
+Four rule-change tasks (all committed and pushed), plus three
+diagnosis/report/status asks with no code changes:
 
-1. **Admin contest upload** (`4fcc3b1`) — built the upload Ron's prior
-   session had only scoped (see previous HANDOFF's item 6): new
-   `contestStore.ts`, new `engine/contestsCsv.ts`
-   (`validateContestCsv`), new Admin "Contests" section, `PRESETS` made
-   dynamic/refreshable, "Start again" fallback-by-name + notice when a
-   saved build's contest no longer exists. Clarified with Ron mid-task
-   that cash games should NOT be skipped (reversing the original spec's
-   "skip Double-Up/50/50" wording, which didn't actually match the real
-   CSV's `Contest_Type` values) — rows just get payout-curve-validated
-   like everything else, with H2H's existing flat-table special case
-   (payouts.ts) covering what cash-game skipping would have.
+1. **Real NFL correlation targets, season-to-date role ranking**
+   (`ddfa1ad`) — extended the nflverse measurement script to RB2/WR3/TE2
+   (9 roles total) and to the FULL 9x9 same-team + opponent matrix (81
+   pairs), replacing the earlier per-week-ranked version (a lookahead/
+   circularity bug: ranking a role by the very week being correlated
+   inflates same-team real_r). Every real_r changed; biggest moves in
+   same-team pairs (QB-WR1 0.45→0.37, WR1-WR2 0.19→0.03).
 
-2. **Contest upload: Pct_To_First as dollars or fraction** (`7ef4983`)
-   — the real sample's own "NFL GIANT $25 Double-Up" row has
-   `Pct_To_First=50`, a dollar figure, not a (0,1] fraction. Now: > 1 is
-   divided by that row's own `Total_Prize_Pool` and flagged in the
-   upload summary; (0, 1] is left as-is. Full untrimmed file now loads
-   all 20 rows; Double-Up's converted value happens to land exactly on
-   its own `Min_Cash_Amount`, so it builds as a flat table.
+2. **Rebuild draws on real correlation targets** (`31d6c8e`) — the
+   Gaussian-copula rewrite described above. Validation (20,000 trials,
+   Main Slate 6): 67 of 81 measured pairs land within ±0.05 of real_r;
+   every failure is a weak real target and/or involves TE2 (expected
+   copula-through-nonlinear-marginal signature, not a bug). Benchmark
+   GB-stack lineup: Sim ROI 1,447%→323% (Cash% 34.8%→33.5%, Top1%
+   10.0%→3.3%, win rate 2.27%→0.48%) — the old same-team correlations
+   (e.g. 0.76) were far stronger than real ones (0.37), so a mega-stack's
+   edge shrinks a lot once it's calibrated to real data.
 
-Both commits: ran `npm run test` (full suite, multiple times to confirm
-flaky-vs-regression) and `pytest` before committing, per CLAUDE.md.
+3. **Sim diagnosis round 2** (no code changes) — found two real bugs
+   later fixed in task 4: (a) dome's old mean-shift fired regardless of
+   "no Vegas" (59.5% of this slate's players sit in a dome game, so this
+   wasn't a corner case); (b) `drawOutcome`'s median-pinned-to-proj
+   design left the mean biased ~1-2pts high even with zero shift, purely
+   from curve asymmetry. All 10 "off by 3+" players were dome-game
+   players. Also ran a 200-lineup field vs. optimal-by-proj vs. the GB
+   benchmark ROI comparison (see field.ts gap above).
+
+4. **Sim: remove double counting, fix player curves** (`a5c7af1`) — the
+   actual fixes for (a)/(b) above. Re-ran the diagnosis: below-floor/
+   above-ceiling now 14.9-15.1% every position (was 13.0/17.3); 0 players
+   off by more than 3 points (was 10); P95/P99-vs-ceiling roughly halved
+   at the same 5 sample players.
+
+5. **Benchmark check** (no code changes) — before/after comparison under
+   diagnosis-round-2 settings (field sampled to 5,000): benchmark ROI
+   393.7%→281.2% (Cash 34.1%→30.5%, Top1% 3.66%→2.97%, win 0.60%→0.44%).
+   Median ROI by stack bucket (QB+3-or-more vs. QB+0/1/2) showed no real
+   difference (−24.3% vs. −24.6%) — stacking affects tail/ceiling, not
+   the typical outcome, which is expected in a GPP.
+
+6. **Rook: stack builder** (`bcfdc5b`) — the pieces.ts/picklist.ts rework
+   described above.
+
+7. **Status check** (no code changes) — a plain description of current
+   castling/captures/Black-move-source behavior; nothing changed.
+
+Every commit: ran `npm run test` (full suite) and `pytest` before
+committing, per CLAUDE.md; flaky BuildScreen failures were re-run in
+isolation each time to confirm they weren't real regressions.
 
 ## Open items / blockers
 
-- **Vegas no longer affects the sim** (new, this session's "remove
-  double counting" task): Admin's Vegas upload (`vegasCsv.ts`/
-  `vegasStore.ts`) is still fully wired — upload, validate, save, show in
-  Admin — but `draws.ts`'s `drawSlateOutcomes` no longer reads Vegas
-  total/spread or dome status at all (both removed; ETR's own floor/
-  proj/ceiling already bake in Vegas/dome, so applying them again as a
-  separate z-mean shift was double-counting). `drawSlateOutcomes` kept
-  its `games: SlateVegas` parameter (for API stability) but it's unused;
-  the `domeTeams` parameter was dropped entirely. If Vegas/dome should
-  ever come back, it'd need a genuinely different mechanism than "shift
-  the z-mean" — that's what caused the double-count.
-- **Full-suite test flakiness under max parallel load** (see Tests
-  above) — pre-existing, not introduced this session, not fixed. Worth
-  a dedicated look if it starts blocking commits reliably rather than
-  intermittently.
-- This section's older items (STALE as of this session — `draws.ts` was
-  since fully rewritten as a Gaussian copula on measured real-world
-  correlation targets, replacing the `LATENT_WEIGHTS` model these
-  referred to; see `sessions/1026/` for that history) are not re-listed
-  here. Still carried forward, genuinely unresolved: field still short of
-  its own 5,000-distinct target; stack-size realized rates don't exactly
-  match configured weights; real-browser verification still blocked (no
-  passwordless sudo for `libasound.so.2`).
-- `data/samples/DraftKings NFL DFS Projections -- Main Slate (6).csv`
-  and `.../NFL Weekly DFS System - Sim_Contest.csv` stay uncommitted,
+- **`field.ts` doesn't know about the new real-correlation model** (see
+  above) — the single highest-value open item. Its own ownership-bias/
+  noise objective is unchanged since well before this session; a
+  diagnosis found both the optimal-by-proj and a hand-built stack
+  ranking at the 100th percentile of a 200-lineup field sample, which
+  suggests the field itself may be under-competitive. Not started.
+- **Full-suite test flakiness under parallel load** (see Tests above) —
+  pre-existing across many sessions, not fixed.
+- Field still short of its own 5,000-distinct-lineup target per tier
+  (measured a few sessions back at ~2,500-3,000); stack-size realized
+  rates still don't exactly match `STACK_SIZE_DISTRIBUTION`'s configured
+  weights (same "leakage toward smaller stacks" already documented in
+  `field.ts`'s own comments).
+- `sport.ts`'s `teamRestricted` field and `config/sports/nfl.json`'s
+  `team_restricted: true` are now unread by any code (Rook's own
+  restriction moved to an explicit team check) — left in place as data
+  since removing a schema field was a bigger change than that task
+  asked for.
+- No real-browser verification yet (`libasound.so.2`, no passwordless
+  sudo) — Sim 4's UI/Worker path still hasn't been exercised end-to-end
+  in an actual browser.
+- `data/samples/DraftKings NFL DFS Projections -- Main Slate (6).csv`,
+  `.../NFL Weekly DFS System - Sim_Contest.csv`, and
+  `.../NFL Weekly DFS System - Projections.csv` stay uncommitted,
   deliberately, same standing precedent as `repro-slate.csv`.
-- Prior-session carried-forward items (JAX vs. JAC, `tools/sim_builds.py`'s
-  stale 2-arg `classify` call, no "Back" navigation, `DEFAULT_EXCLUDED_FAMILIES`
-  double-duty, etc.) are unchanged — see `sessions/1026/` for the fuller
-  history if any of those come up.
+- `sessions/1026/10272026-admin-contest-upload-and-pct-to-first-dollars.md`
+  is still untracked (never `git add`ed by whichever earlier session
+  wrote it) — worth adding next time something else in that area is
+  committed, not urgent on its own.
 
 ## Next steps
 
-1. No contest-upload work is queued — it's functionally complete
-   (upload/validate/fallback/dollars-conversion all in place and
-   tested). Next contest-related ask, if any, would be a new prompt.
-2. The real-NFL-correlation recalibration pass on `draws.ts`'s
-   `LATENT_WEIGHTS` (flagged last session, still not started) is the
-   highest-value open item: WR1-WR2, RB1-WR1, WR1-TE1, QB-RB1 are all
-   near-zero in real data but 0.56-0.72 in the sim.
-3. Decide whether `BUILD_ATTEMPT_CAP`/`TARGET_DISTINCT_LINEUPS`
-   (`buildFieldCache.ts`) should be raised further, or whether
-   ~2,500-3,000 distinct per tier is an acceptable permanent ceiling.
-4. Still worth a real-browser verification pass once `libasound.so.2`
-   is installed, so Sim 4's UI/Worker path doesn't need re-discovering.
+1. Decide whether `field.ts`'s own lineup-generation objective should be
+   updated to use the real-correlation model too (currently fully
+   disconnected from `draws.ts`), given the 100th-percentile finding
+   above — this is the natural next rule-change task.
+2. If Vegas/dome should come back, they need a genuinely different
+   mechanism than "shift the z-mean" (that's what caused the double-
+   count this session fixed) — not scoped, just flagged for whenever it
+   comes up.
+3. Still worth a real-browser verification pass once `libasound.so.2` is
+   installed.

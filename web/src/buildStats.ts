@@ -7,10 +7,11 @@
 // engine/picklist.ts's pickList/castleQbCandidates (RULES.md piece table),
 // not this file -- "eligible, sorted by projection" stopped being the
 // whole story once each piece got its own sort metric and list cap.
-import type { Piece } from "./engine/models";
+import { Piece } from "./engine/models";
 import type { ContestConfig } from "./engine/config";
 import type { Player } from "./engine/models";
 import type { OptimizerResult } from "./engine/optimizer";
+import { classify } from "./engine/pieces";
 import { maxAssignable, openRosterSlots } from "./engine/rules";
 import type { PieceBand, SportConfig } from "./engine/sport";
 
@@ -70,6 +71,75 @@ export function sideStats(players: readonly Player[], sport: SportConfig, contes
   const ownershipTotal = players.reduce((sum, p) => sum + p.ownFor(tier), 0);
   const projTotal = players.reduce((sum, p) => sum + p.proj, 0);
   return { salaryRemaining, openSlots, openSlotCount, avgRemainingPerOpenSlot, projTotal, ownershipTotal };
+}
+
+export interface TightFinishConfig {
+  minOpenSlots: number;
+  cautionAvgPerSlot: number;
+  warningAvgPerSlot: number;
+}
+
+export const TIGHT_FINISH_CONFIG: TightFinishConfig = {
+  minOpenSlots: 3,
+  cautionAvgPerSlot: 4500,
+  warningAvgPerSlot: 4000,
+};
+
+export type TightFinishLevel = "caution" | "warning";
+
+export interface TightFinishStatus {
+  level: TightFinishLevel;
+  avgRemainingPerOpenSlot: number;
+  reasons: readonly string[]; // only non-empty at "warning" level
+  message: string;
+}
+
+function formatAvg(avg: number): string {
+  return `$${avg.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+}
+
+// Never blocks a move or pick -- purely a display heads-up for White's own
+// remaining salary, gated on White having `minOpenSlots`+ open slots at all
+// (a near-full roster is always salary-tight and isn't worth flagging).
+// "Pawn-priced" (factor a) is classify's own PAWN band -- position/salary
+// only, same as everywhere else classify is used, NOT whichever piece
+// actually locked that player (RULES.md Rook/Knight/Bishop pools now
+// overlap PAWN's own salary range, so a player bought as a Knight can still
+// read as Pawn-priced here). Warning needs avg <= warningAvgPerSlot AND at
+// least one aggravating factor; avg that low with no factor present still
+// reads as Caution, not Warning, not nothing.
+export function tightFinishStatus(
+  players: readonly Player[],
+  sport: SportConfig,
+  contest: ContestConfig,
+  config: TightFinishConfig = TIGHT_FINISH_CONFIG,
+): TightFinishStatus | null {
+  const stats = sideStats(players, sport, contest);
+  if (stats.openSlotCount < config.minOpenSlots) return null;
+  const avg = stats.avgRemainingPerOpenSlot;
+  if (avg > config.cautionAvgPerSlot) return null;
+
+  if (avg <= config.warningAvgPerSlot) {
+    const reasons: string[] = [];
+    if (players.some((p) => classify(p, sport).has(Piece.PAWN))) reasons.push("a Pawn-priced player locked");
+    if (players.filter((p) => p.positions.includes("TE")).length >= 2) reasons.push("both TE slots used");
+    if (!players.some((p) => p.positions.includes("QB"))) reasons.push("QB still open");
+    if (reasons.length > 0) {
+      return {
+        level: "warning",
+        avgRemainingPerOpenSlot: avg,
+        reasons,
+        message: `Tight finish: ${formatAvg(avg)} per open slot · ${reasons.join(" · ")}`,
+      };
+    }
+  }
+
+  return {
+    level: "caution",
+    avgRemainingPerOpenSlot: avg,
+    reasons: [],
+    message: `Salary getting tight: ${formatAvg(avg)} per open slot.`,
+  };
 }
 
 // Task 39: the pick modal's "why is this row greyed out" label -- the same

@@ -56,7 +56,16 @@ import "./BuildScreen.css";
 import { BOOK, LAST_RANK, NFL, POPULARITY, RANKED_FAMILIES, RANK_BY_FAMILY } from "./appData";
 import BuildBoard from "./BuildBoard";
 import { blockedMoveReason, classifyMove, type MoveKind } from "./buildFlow";
-import { pickReason, pieceBandLabel, pointsFromOptimal, sideStats, type PointsFromOptimal, type SideStats } from "./buildStats";
+import {
+  pickReason,
+  pieceBandLabel,
+  pointsFromOptimal,
+  sideStats,
+  tightFinishStatus,
+  type PointsFromOptimal,
+  type SideStats,
+  type TightFinishStatus,
+} from "./buildStats";
 import { HAPPY_HUNTING, NoLegalBlackMoveError, checkWhiteDeadEnd, moveIsCompletable, playBlackMove, playWhiteMove } from "./engine/build";
 import type { ContestConfig, ContestPreset } from "./engine/config";
 import { BuildState, KingMode, Piece, Side, type Move, type Player } from "./engine/models";
@@ -1013,6 +1022,7 @@ export default function BuildScreen({
   // fill happens) makes this identical to the old move-only computation.
   const whiteRoster = [...state.whiteMoves.map((m) => m.player), ...whiteFilledPlayers];
   const whiteStats = sideStats(whiteRoster, NFL, preset.contest);
+  const whiteTightFinish = tightFinishStatus(whiteRoster, NFL, preset.contest);
   const blackStats = sideStats(state.blackMoves.map((m) => m.player), NFL, preset.contest);
 
   // The slate's own best possible lineup never depends on `state` at all --
@@ -1286,6 +1296,7 @@ export default function BuildScreen({
           filled={whiteFilledPlayers}
           optimalStats={optimalStats}
           sim={whiteSim}
+          tightFinish={whiteTightFinish}
         />
         <div className="board-column">
           {ending !== null ? (
@@ -1490,6 +1501,7 @@ function SideColumn({
   filled = [],
   optimalStats,
   sim,
+  tightFinish,
 }: {
   side: "you" | "field";
   label: string;
@@ -1501,6 +1513,9 @@ function SideColumn({
   filled?: readonly Player[];
   optimalStats?: PointsFromOptimal | null;
   sim: SideSimState;
+  // Tight-finish warning (White only) -- undefined for every "field" call
+  // site, same convention as `filled` above.
+  tightFinish?: TightFinishStatus | null;
 }) {
   const rosterRows = rosterEntries(moves, filled);
   const openSlots = openSlotLabels(stats);
@@ -1520,6 +1535,7 @@ function SideColumn({
           <span className="mono">${stats.avgRemainingPerOpenSlot.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span> avg / open
           slot · {stats.openSlotCount} open
         </p>
+        {tightFinish != null && <p className={`side-tight-finish ${tightFinish.level}`}>{tightFinish.message}</p>}
       </div>
 
       <div className="side-stat-block">

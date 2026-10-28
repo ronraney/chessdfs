@@ -263,6 +263,21 @@
   font-family: var(--mono);
 }
 
+.side-tight-finish {
+  margin: 2px 0 0;
+  font-size: 13px;
+}
+
+.side-tight-finish.caution {
+  color: var(--text-h);
+  font-style: italic;
+}
+
+.side-tight-finish.warning {
+  color: var(--danger);
+  font-weight: 600;
+}
+
 .side-ownership {
   margin: 0;
   font-family: var(--mono);

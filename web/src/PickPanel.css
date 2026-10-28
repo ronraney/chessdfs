@@ -162,6 +162,16 @@
   color: var(--accent);
 }
 
+.pick-tight-finish.caution {
+  color: var(--text-h);
+  font-style: italic;
+}
+
+.pick-tight-finish.warning {
+  color: var(--danger);
+  font-weight: 600;
+}
+
 .pick-modal-actions {
   display: flex;
   gap: 8px;
