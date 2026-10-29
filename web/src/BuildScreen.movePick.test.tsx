@@ -217,6 +217,20 @@ describe("BuildScreen -- move first, then pick", () => {
     expect(lastApi!.config.fen).not.toBe(fenBefore); // the board shows the move, even though it isn't locked in yet
   });
 
+  // Rule change "Roster-full notice + opponent in pick lists": each row's
+  // own small-text opponent, next to his team -- "vs"/"@" per the real
+  // sample CSV's own home/away data, not a hardcoded team/opp pair.
+  it("shows each candidate's opponent next to his team", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    await user.click(chosenContinueButton());
+
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    const opp = dialog.querySelector(".pick-row-opp") as HTMLElement;
+    expect(opp).not.toBeNull();
+    expect(opp.textContent).toMatch(/^(vs|@) \S+$/);
+  });
+
   it("after 1. e4, the last-move highlight is on e2 and e4", async () => {
     renderScreen();
     const user = userEvent.setup();

@@ -27,7 +27,7 @@
 // the footer names who's selected.
 import { useMemo, useState } from "react";
 import "./PickPanel.css";
-import { pieceBandLabel, sideStats, tightFinishStatus } from "./buildStats";
+import { blockedPositionsNotice, pieceBandLabel, sideStats, tightFinishStatus } from "./buildStats";
 import type { ContestConfig } from "./engine/config";
 import { highestOwnershipByPosition, sortMetric } from "./engine/metrics";
 import { Piece, type Player } from "./engine/models";
@@ -168,6 +168,10 @@ export default function PickPanel({
   const selectedReason = selected !== null ? (reasons.get(selected.id) ?? null) : null;
   const tier = contest.fieldTier();
   const band = pieceBandLabel(piece, sport);
+  const rosterFullNotice = useMemo(
+    () => blockedPositionsNotice(piece, playersPool, lockedPlayerIds, currentPlayers, sport),
+    [piece, playersPool, lockedPlayerIds, currentPlayers, sport],
+  );
 
   const after = useMemo(
     () => (selected === null ? null : sideStats([...currentPlayers, selected], sport, contest)),
@@ -213,6 +217,8 @@ export default function PickPanel({
           </p>
         )}
 
+        {rosterFullNotice !== null && <p className="hint">{rosterFullNotice}</p>}
+
         {candidates.length === 0 ? (
           <p className="hint">No eligible {PIECE_LABEL[piece]} players available for that move.</p>
         ) : (
@@ -238,7 +244,10 @@ export default function PickPanel({
                     onClick={() => setSelectedId(player.id)}
                   >
                     <span className="pick-row-name">
-                      {player.name} · {player.team}
+                      {player.name} · {player.team}{" "}
+                      <span className="pick-row-opp">
+                        {player.isHome ? "vs" : "@"} {player.opp}
+                      </span>
                       {reason !== null && <span className="pick-row-reason"> · {reason}</span>}
                     </span>
                     <span>${player.salary.toLocaleString()}</span>

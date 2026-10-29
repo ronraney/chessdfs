@@ -135,6 +135,11 @@
   font-style: italic;
 }
 
+.pick-row-opp {
+  font-size: 11px;
+  color: var(--text);
+}
+
 .pick-row-name {
   overflow: hidden;
   text-overflow: ellipsis;

@@ -127,6 +127,26 @@ export function openRosterSlots(
   return openCounts;
 }
 
+// Rule change "Roster-full notice + opponent in pick lists": every real-
+// world position with no roster-slot capacity left for `players` -- every
+// slot that position could fill, including FLEX, is already taken. Reuses
+// openRosterSlots' own matching: a position is blocked only when EVERY
+// slot whose eligible positions include it shows zero open instances.
+export function blockedPositions(players: readonly Player[], rosterSlots: readonly RosterSlot[]): ReadonlySet<string> {
+  const open = openRosterSlots(players, rosterSlots);
+  const allPositions = new Set<string>();
+  for (const slot of rosterSlots) {
+    for (const position of slot.positions) allPositions.add(position);
+  }
+
+  const blocked = new Set<string>();
+  for (const position of allPositions) {
+    const stillOpen = rosterSlots.some((slot) => slot.positions.has(position) && (open[slot.name] ?? 0) > 0);
+    if (!stillOpen) blocked.add(position);
+  }
+  return blocked;
+}
+
 // Task 43: a concrete roster-slot assignment for `players` -- which named
 // slot (RosterSlot.name, e.g. "RB" or "FLEX") each player occupies,
 // parallel to `players`. Same Kuhn's matching as maxAssignable/

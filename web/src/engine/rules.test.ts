@@ -17,6 +17,7 @@ import {
   applyCaptureMove,
   applyMove,
   assignRosterSlots,
+  blockedPositions,
   canCastle,
   castle,
   isLegalCapture,
@@ -918,5 +919,45 @@ describe("assignRosterSlots", () => {
     expect(slots).toHaveLength(roster.length);
     expect(slots.every((s) => s !== "")).toBe(true); // every player landed somewhere
     expect(slots.sort()).toEqual(["FLEX", "RB", "RB", "WR"]);
+  });
+});
+
+// Rule change "Roster-full notice + opponent in pick lists": which real-
+// world positions have no roster-slot capacity left at all, FLEX included.
+describe("blockedPositions", () => {
+  it("empty roster: nothing is blocked", () => {
+    expect(blockedPositions([], NFL.rosterSlots)).toEqual(new Set());
+  });
+
+  it("WR is blocked once WR(3) and FLEX are both spoken for by WRs", () => {
+    const roster = [0, 1, 2, 3].map((i) => makePlayer(`wr${i}`, "WR", 5000 + i, "AAA"));
+    expect(blockedPositions(roster, NFL.rosterSlots)).toEqual(new Set(["WR"]));
+  });
+
+  it("RB is NOT blocked by a full WR+FLEX -- FLEX could just as easily have gone to an RB", () => {
+    // Only 3 WRs locked (WR(3) full, FLEX still open) -- RB(2) is wide open
+    // AND FLEX remains available to RB, so RB isn't blocked at all.
+    const roster = [0, 1, 2].map((i) => makePlayer(`wr${i}`, "WR", 5000 + i, "AAA"));
+    expect(blockedPositions(roster, NFL.rosterSlots)).toEqual(new Set());
+  });
+
+  it("a position with its own dedicated slot filled, but no FLEX overlap (QB), is blocked on its own", () => {
+    const roster = [makePlayer("qb1", "QB", 6000, "AAA")];
+    expect(blockedPositions(roster, NFL.rosterSlots).has("QB")).toBe(true);
+  });
+
+  it("every FLEX-eligible position (RB, WR, TE) is blocked once a full lineup locks FLEX too", () => {
+    const roster = [
+      makePlayer("qb1", "QB", 6000, "AAA"),
+      makePlayer("rb1", "RB", 5200, "AAA"),
+      makePlayer("rb2", "RB", 5300, "AAA"),
+      makePlayer("wr1", "WR", 5000, "AAA"),
+      makePlayer("wr2", "WR", 5100, "AAA"),
+      makePlayer("wr3", "WR", 5200, "AAA"),
+      makePlayer("te1", "TE", 4500, "AAA"),
+      makePlayer("rb3", "RB", 5400, "AAA"), // flex
+      makePlayer("dst1", "DST", 2500, "AAA"),
+    ];
+    expect(blockedPositions(roster, NFL.rosterSlots)).toEqual(new Set(["QB", "RB", "WR", "TE", "DST"]));
   });
 });

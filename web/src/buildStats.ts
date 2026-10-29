@@ -12,7 +12,8 @@ import type { ContestConfig } from "./engine/config";
 import type { Player } from "./engine/models";
 import { cheapestCompletionCost } from "./engine/optimizer";
 import type { OptimizerResult } from "./engine/optimizer";
-import { maxAssignable, openRosterSlots } from "./engine/rules";
+import { classify } from "./engine/pieces";
+import { blockedPositions, maxAssignable, openRosterSlots } from "./engine/rules";
 import type { PieceBand, SportConfig } from "./engine/sport";
 
 // Task 38b: a piece band's own position(s)/salary range, read off `sport`
@@ -168,6 +169,38 @@ export function pickReason(currentPlayers: readonly Player[], candidate: Player,
   if (spent > cap) return "over the cap";
   if (maxAssignable([...currentPlayers, candidate], sport.rosterSlots) < currentPlayers.length + 1) return "no slot left";
   return null;
+}
+
+// Rule change "Roster-full notice + opponent in pick lists": the pick
+// modal's own top-of-list notice -- which of THIS list's real-world
+// positions (every unlocked, `piece`-eligible player's own position,
+// regardless of whether he individually survives the roster-fit filter)
+// are flat-out blocked for `currentPlayers`' side right now (rules.
+// blockedPositions: every slot that position could fill, including FLEX,
+// is already taken). Null once nothing relevant is blocked. Deliberately
+// NOT restricted to a team (castling's own Rook step included) -- a
+// position blocked side-wide is blocked side-wide, regardless of which
+// teammates happen to fill this particular list.
+export function blockedPositionsNotice(
+  piece: Piece,
+  playersPool: readonly Player[],
+  lockedPlayerIds: ReadonlySet<string>,
+  currentPlayers: readonly Player[],
+  sport: SportConfig,
+): string | null {
+  const relevant = new Set<string>();
+  for (const p of playersPool) {
+    if (lockedPlayerIds.has(p.id)) continue;
+    if (!classify(p, sport).has(piece)) continue;
+    for (const position of p.positions) relevant.add(position.toUpperCase());
+  }
+  if (relevant.size === 0) return null;
+
+  const blocked = blockedPositions(currentPlayers, sport.rosterSlots);
+  const named = [...relevant].filter((position) => blocked.has(position)).sort();
+  if (named.length === 0) return null;
+
+  return `You cannot select any more ${named.join(" or ")}.`;
 }
 
 export interface PointsFromOptimal {

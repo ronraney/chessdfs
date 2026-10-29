@@ -6,7 +6,7 @@
 // bands the Morphy Defense line happens to touch.
 import { describe, expect, it } from "vitest";
 import nflConfig from "./data/config/sports/nfl.json";
-import { pickReason, pieceBandLabel, sideStats, tightFinishStatus } from "./buildStats";
+import { blockedPositionsNotice, pickReason, pieceBandLabel, sideStats, tightFinishStatus } from "./buildStats";
 import { ContestConfig } from "./engine/config";
 import { Piece, Player } from "./engine/models";
 import { loadSportConfig } from "./engine/sport";
@@ -251,5 +251,38 @@ describe("pickReason", () => {
     const rb3 = player("rb3", "RB", 500, 10); // already no RB-eligible slot left, and barely any cap room
     const candidate = player("rb4", "RB", 5000, 10); // way over what's left
     expect(pickReason([rb1, rb2, rb3], candidate, NFL, tightContest)).toBe("over the cap");
+  });
+});
+
+// Rule change "Roster-full notice + opponent in pick lists": the pick
+// modal's own top-of-list "you cannot select any more X" notice.
+describe("blockedPositionsNotice", () => {
+  it("names WR once WR(3)+FLEX are full and the pool still has other unlocked WR candidates hidden by it", () => {
+    const lockedWrs = [0, 1, 2, 3].map((i) => player(`wr_locked${i}`, "WR", 5000 + i, 10));
+    const stillUnlockedWr = player("wr_hidden", "WR", 5100, 10); // Rook-eligible, hidden by the roster-full filter
+    const pool = [...lockedWrs, stillUnlockedWr];
+    const notice = blockedPositionsNotice(Piece.ROOK, pool, new Set(), lockedWrs, NFL);
+    expect(notice).toBe("You cannot select any more WR.");
+  });
+
+  it("null once nothing relevant to the piece is blocked", () => {
+    const current = [player("rb1", "RB", 5200, 10)];
+    const pool = [...current, player("rb2", "RB", 5300, 10)];
+    expect(blockedPositionsNotice(Piece.ROOK, pool, new Set(), current, NFL)).toBeNull();
+  });
+
+  it("names more than one position, joined with \"or\"", () => {
+    const lockedWrs = [0, 1, 2, 3].map((i) => player(`wr_locked${i}`, "WR", 5000 + i, 10));
+    const lockedTe = player("te_locked", "TE", 4600, 10); // TE(1) now also full
+    const current = [...lockedWrs, lockedTe];
+    const pool = [...current, player("wr_hidden", "WR", 5100, 10), player("te_hidden", "TE", 4700, 10)];
+    const notice = blockedPositionsNotice(Piece.ROOK, pool, new Set(), current, NFL);
+    expect(notice).toBe("You cannot select any more TE or WR.");
+  });
+
+  it("scoped to the piece's own eligible positions -- a King pick list ignores a blocked WR", () => {
+    const lockedWrs = [0, 1, 2, 3].map((i) => player(`wr_locked${i}`, "WR", 5000 + i, 10));
+    const pool = [...lockedWrs, player("wr_hidden", "WR", 5100, 10), player("qb1", "QB", 6000, 10)];
+    expect(blockedPositionsNotice(Piece.KING, pool, new Set(), lockedWrs, NFL)).toBeNull();
   });
 });
