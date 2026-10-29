@@ -583,14 +583,15 @@ describe("BuildScreen -- Fill out my core", () => {
     expect(within(finishCard).getAllByText("(optimizer)")).toHaveLength(8);
   });
 
-  it("is disabled once White's lineup is already complete (via a prior fill)", async () => {
+  // Rule change "Salary-cap notice + finished-lineup cleanup": a side with
+  // no open slots left hides the button entirely now, rather than leaving
+  // it disabled.
+  it("is hidden once White's lineup is already complete (via a prior fill)", async () => {
     renderScreen();
     const user = userEvent.setup();
     await lockOnePawn(user);
     await user.click(screen.getByRole("button", { name: "Fill out my core" }));
 
-    // Still rendered on the finish screen (now showing "filled"), but
-    // nothing left to fill -- disabled, not hidden.
-    expect(screen.getByRole("button", { name: "Fill out my core" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Fill out my core" })).not.toBeInTheDocument();
   });
 });

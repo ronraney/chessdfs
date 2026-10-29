@@ -27,7 +27,7 @@
 // the footer names who's selected.
 import { useMemo, useState } from "react";
 import "./PickPanel.css";
-import { blockedPositionsNotice, pieceBandLabel, sideStats, tightFinishStatus } from "./buildStats";
+import { blockedPositionsNotice, pieceBandLabel, salaryCapNotice, sideStats, tightFinishStatus } from "./buildStats";
 import type { ContestConfig } from "./engine/config";
 import { highestOwnershipByPosition, sortMetric } from "./engine/metrics";
 import { Piece, type Player } from "./engine/models";
@@ -172,6 +172,10 @@ export default function PickPanel({
     () => blockedPositionsNotice(piece, playersPool, lockedPlayerIds, currentPlayers, sport),
     [piece, playersPool, lockedPlayerIds, currentPlayers, sport],
   );
+  const capNotice = useMemo(
+    () => salaryCapNotice(piece, playersPool, lockedPlayerIds, currentPlayers, sport, contest),
+    [piece, playersPool, lockedPlayerIds, currentPlayers, sport, contest],
+  );
 
   const after = useMemo(
     () => (selected === null ? null : sideStats([...currentPlayers, selected], sport, contest)),
@@ -218,6 +222,7 @@ export default function PickPanel({
         )}
 
         {rosterFullNotice !== null && <p className="hint">{rosterFullNotice}</p>}
+        {capNotice !== null && <p className="hint">{capNotice}</p>}
 
         {candidates.length === 0 ? (
           <p className="hint">No eligible {PIECE_LABEL[piece]} players available for that move.</p>

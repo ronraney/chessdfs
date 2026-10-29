@@ -203,6 +203,31 @@ export function blockedPositionsNotice(
   return `You cannot select any more ${named.join(" or ")}.`;
 }
 
+// Rule change "Salary-cap notice + finished-lineup cleanup": the pick
+// modal's own top-of-list "too expensive" notice -- the same raw cap
+// check `pickReason`'s "over the cap" already makes (and `pickList`'s own
+// `lineupStillCompletable` filter already hides candidates by), just
+// surfaced as a side-wide dollar ceiling instead of a per-row label. Null
+// once nothing relevant to `piece` is actually priced above it. Can show
+// alongside blockedPositionsNotice -- independent checks, either or both.
+export function salaryCapNotice(
+  piece: Piece,
+  playersPool: readonly Player[],
+  lockedPlayerIds: ReadonlySet<string>,
+  currentPlayers: readonly Player[],
+  sport: SportConfig,
+  contest: ContestConfig,
+): string | null {
+  const maxAffordable = contest.effectiveCap(sport) - currentPlayers.reduce((sum, p) => sum + p.salary, 0);
+
+  const anyHidden = playersPool.some(
+    (p) => !lockedPlayerIds.has(p.id) && classify(p, sport).has(piece) && p.salary > maxAffordable,
+  );
+  if (!anyHidden) return null;
+
+  return `Players over $${maxAffordable.toLocaleString()} hidden (salary cap).`;
+}
+
 export interface PointsFromOptimal {
   // bestCompletion.total - slateOptimal.total -- never positive (a
   // completion can never beat the slate's own unconstrained best), shown

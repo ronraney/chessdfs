@@ -1580,7 +1580,7 @@ export default function BuildScreen({
                     {simRunning ? "Simming…" : "Sim my core"}
                   </button>
                 )}
-                {state.whiteMoves.length > 0 && (
+                {state.whiteMoves.length > 0 && whiteStats.openSlotCount > 0 && (
                   <button type="button" className="fill-out-core" disabled={!canFillCore} onClick={fillOutCore}>
                     Fill out my core
                   </button>
@@ -1753,8 +1753,14 @@ function SideColumn({
         <p className="side-eyebrow">Salary remaining</p>
         <p className="side-salary">${stats.salaryRemaining.toLocaleString()}</p>
         <p className="side-detail">
-          <span className="mono">${stats.avgRemainingPerOpenSlot.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span> avg / open
-          slot · {stats.openSlotCount} open
+          {stats.openSlotCount === 0 ? (
+            "Lineup full."
+          ) : (
+            <>
+              <span className="mono">${stats.avgRemainingPerOpenSlot.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span> avg / open
+              slot · {stats.openSlotCount} open
+            </>
+          )}
         </p>
         {tightFinish != null && <p className={`side-tight-finish ${tightFinish.level}`}>{tightFinish.message}</p>}
       </div>
@@ -1978,9 +1984,11 @@ function FinishCard({
       <p className="finish-happy">{HAPPY_HUNTING}</p>
 
       <div className="finish-actions">
-        <button type="button" className="fill-out-core" disabled={!canFillCore} onClick={onFillOutCore}>
-          Fill out my core
-        </button>
+        {whiteStats.openSlotCount > 0 && (
+          <button type="button" className="fill-out-core" disabled={!canFillCore} onClick={onFillOutCore}>
+            Fill out my core
+          </button>
+        )}
         <button type="button" onClick={() => void copyLineup()}>
           {copied ? "Copied" : "Copy lineup"}
         </button>

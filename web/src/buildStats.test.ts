@@ -6,7 +6,7 @@
 // bands the Morphy Defense line happens to touch.
 import { describe, expect, it } from "vitest";
 import nflConfig from "./data/config/sports/nfl.json";
-import { blockedPositionsNotice, pickReason, pieceBandLabel, sideStats, tightFinishStatus } from "./buildStats";
+import { blockedPositionsNotice, pickReason, pieceBandLabel, salaryCapNotice, sideStats, tightFinishStatus } from "./buildStats";
 import { ContestConfig } from "./engine/config";
 import { Piece, Player } from "./engine/models";
 import { loadSportConfig } from "./engine/sport";
@@ -284,5 +284,40 @@ describe("blockedPositionsNotice", () => {
     const lockedWrs = [0, 1, 2, 3].map((i) => player(`wr_locked${i}`, "WR", 5000 + i, 10));
     const pool = [...lockedWrs, player("wr_hidden", "WR", 5100, 10), player("qb1", "QB", 6000, 10)];
     expect(blockedPositionsNotice(Piece.KING, pool, new Set(), lockedWrs, NFL)).toBeNull();
+  });
+});
+
+// Rule change "Salary-cap notice + finished-lineup cleanup": the pick
+// modal's own top-of-list "too expensive" notice.
+describe("salaryCapNotice", () => {
+  it("names the most affordable price once a tight cap hides pricier candidates", () => {
+    const tightContest = new ContestConfig({ fieldSize: 1000, payouts: [], cap: 10000 });
+    const current = [player("qb1", "QB", 4000, 10)]; // $6,000 left to spend on this pick
+    const pool = [...current, player("rb1", "RB", 6500, 10)]; // over the $6,000 ceiling -- hidden
+    const notice = salaryCapNotice(Piece.ROOK, pool, new Set(), current, NFL, tightContest);
+    expect(notice).toBe("Players over $6,000 hidden (salary cap).");
+  });
+
+  it("null once nothing relevant to the piece costs more than what's left", () => {
+    const current = [player("qb1", "QB", 4000, 10)];
+    const pool = [...current, player("rb1", "RB", 5000, 10)]; // comfortably under the cap
+    expect(salaryCapNotice(Piece.ROOK, pool, new Set(), current, NFL, CONTEST)).toBeNull();
+  });
+
+  it("scoped to the piece's own eligible positions -- an over-priced QB doesn't flag a Rook list", () => {
+    const tightContest = new ContestConfig({ fieldSize: 1000, payouts: [], cap: 10000 }); // $10,000 affordable
+    const current: never[] = [];
+    const pool = [player("qb1", "QB", 15000, 10), player("rb1", "RB", 5000, 10)]; // QB is over, but isn't Rook-eligible
+    expect(salaryCapNotice(Piece.ROOK, pool, new Set(), current, NFL, tightContest)).toBeNull();
+  });
+
+  it("can fire alongside blockedPositionsNotice -- independent checks", () => {
+    const tightContest = new ContestConfig({ fieldSize: 1000, payouts: [], cap: 8500 });
+    // WR(3)+FLEX full (position-blocked) AND only $494 left to spend (cap-blocked)
+    // -- the one still-unlocked WR candidate is hidden by BOTH at once.
+    const lockedWrs = [0, 1, 2, 3].map((i) => player(`wr_locked${i}`, "WR", 2000 + i, 10));
+    const pool = [...lockedWrs, player("wr_hidden", "WR", 2100, 10)];
+    expect(blockedPositionsNotice(Piece.ROOK, pool, new Set(), lockedWrs, NFL)).not.toBeNull();
+    expect(salaryCapNotice(Piece.ROOK, pool, new Set(), lockedWrs, NFL, tightContest)).not.toBeNull();
   });
 });
