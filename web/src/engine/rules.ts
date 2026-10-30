@@ -19,6 +19,7 @@ import { Chess } from "chess.js";
 import type { ContestConfig } from "./config";
 import type { Player } from "./models";
 import { BuildState, KingMode, Move, Piece, Side } from "./models";
+import { cheapestCompletionCost } from "./optimizer";
 import { classify, pieceForChessType } from "./pieces";
 import type { RosterSlot, SportConfig } from "./sport";
 
@@ -70,9 +71,53 @@ export function maxAssignable(players: readonly Player[], rosterSlots: readonly 
 // completed into a legal lineup for `sport` within `cap`. Only checks for
 // overflow a later pick could never undo; it does not require minimums
 // yet, since the roster is still incomplete.
-export function lineupStillCompletable(players: readonly Player[], sport: SportConfig, cap: number): boolean {
+//
+// Rule change "Pick lists must keep the lineup completable": `players`
+// passing the plain "total spent <= cap" check is NOT enough -- a pick can
+// be affordable by itself and still leave too little to ever fill what's
+// left (e.g. spend $7,500 of an $8,000 cushion on one slot when the other
+// two still-open slots need $3,000 each). `availablePlayers` -- every
+// player still genuinely undrafted by EITHER side, EXCLUDING whichever
+// candidate `players` itself just added -- makes the salary check ask the
+// real question instead: is there enough salary left to afford the
+// CHEAPEST possible way to fill every other still-open slot from who's
+// actually left on the board (rules.openRosterSlots + optimizer.
+// cheapestCompletionCost, the same floor `buildStats.tightFinishStatus`'s
+// "barely completable" level already computes, just moved from an
+// after-the-fact warning into the actual gate)?
+//
+// Deliberately optional, not a required 4th parameter: picklist.ts's
+// pickList/castleRookList (both sides -- this is the one shared gate every
+// pick list candidate is filtered through) pass it; every OTHER caller
+// here in rules.ts (isLegalMove, castle, switchKing, placeKings,
+// isLegalCapture, applyCaptureMove) and BuildScreen.tsx's own capture-
+// tooltip preview still call this with 3 arguments, keeping the OLD plain
+// cap check -- flagged, not fixed, by this rule change (see this task's
+// own session notes): a board move/capture/castle can still walk a side
+// into the same "technically under cap, really can't finish" trap this
+// fixes for pick lists specifically.
+export function lineupStillCompletable(
+  players: readonly Player[],
+  sport: SportConfig,
+  cap: number,
+  availablePlayers?: readonly Player[],
+): boolean {
   if (players.length > sport.rosterSize) return false;
-  if (players.reduce((sum, p) => sum + p.salary, 0) > cap) return false;
+  const remainingSalary = cap - players.reduce((sum, p) => sum + p.salary, 0);
+  if (remainingSalary < 0) return false; // the hard floor either branch below enforces
+  if (availablePlayers !== undefined) {
+    // Null (no eligible player anywhere for some open slot) means "can't
+    // prove it's unaffordable," not "assume the worst" -- same spirit as
+    // tightFinishStatus's own handling of a null cheapestCompletionCost
+    // (buildStats.ts): it skips the check rather than treating missing
+    // data as a failure. A real slate always has someone left for every
+    // slot (validateSlateCsv rejects an upload otherwise); this only ever
+    // bites a hand-built test pool that doesn't bother stocking every
+    // position.
+    const openSlots = openRosterSlots(players, sport.rosterSlots);
+    const cheapestRest = cheapestCompletionCost(availablePlayers, openSlots, sport.rosterSlots);
+    if (cheapestRest !== null && remainingSalary < cheapestRest) return false;
+  }
   if (maxAssignable(players, sport.rosterSlots) < players.length) return false;
   return true;
 }

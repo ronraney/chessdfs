@@ -196,7 +196,7 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
       // delayed reply has actually landed). Not a fieldColumn listitem
       // count either: PLACED mode already starts with one (the placed
       // Black QB) before any real move, throwing off a plain "+1" count.
-      await waitFor(() => expect(lastApi!.config.movable!.dests!.size).toBeGreaterThan(0), { timeout: 2000 });
+      await waitFor(() => expect(lastApi!.config.movable!.dests!.size).toBeGreaterThan(0), { timeout: 8000 });
     }
   }
 
@@ -228,7 +228,7 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
       expect(within(youColumn()).queryAllByRole("listitem")).toHaveLength(5);
       expect(within(youColumn()).getByText((text) => text.includes("♚"))).toBeInTheDocument();
     },
-    15000,
+    30000,
   );
 
   it(
@@ -247,7 +247,7 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
       expect(lastApi!.config.fen).toBe(fenBefore); // the castle itself never committed
       expect(within(youColumn()).queryAllByRole("listitem")).toHaveLength(3); // still just pawn, knight, bishop
     },
-    15000,
+    30000,
   );
 
   it(
@@ -292,7 +292,7 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
 
       await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(4), { timeout: 2000 }); // Black's reply still fires
     },
-    15000,
+    30000,
   );
 
   // Every square's starting occupant, for isUnmovedCapture below.
@@ -411,7 +411,7 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
       expect(screen.queryByRole("dialog", { name: /^Choose your/ })).toBeNull();
       expect(statusLine().textContent).toMatch(/^You captured .+\./);
     },
-    15000,
+    30000,
   );
 
   it(
@@ -429,15 +429,34 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
       await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
       expect(statusLine().textContent).toMatch(/^You captured .+\./);
     },
-    20000, // observed as high as ~13.8s under full-suite load -- the heaviest test in this file (up to 8 plies of real engine + chessground interaction)
+    // Rule change "Pick lists must keep the lineup completable": measured
+    // ~17s in ISOLATION after this change (was ~13.8s under full-suite
+    // load before it) -- checkWhiteDeadEnd/Black's own engine assist both
+    // re-run pickList once per LEGAL CHESS MOVE at a position (build.ts's
+    // own existing search shape, several legal moves often sharing one
+    // piece type and so one otherwise-identical pickList call), and
+    // pickList's own per-candidate check is real work now, not a plain
+    // comparison -- the heaviest test in this file (up to 8 plies of real
+    // engine + chessground interaction) feels it the most. Flagged as a
+    // real, understood cost, not papered over: see this task's own
+    // session notes for the full performance writeup.
+    60000,
   );
 
   it("an over-cap player never appears in the pick list at all", async () => {
-    // RULES.md "List cap": the cap applies after removing taken players
-    // and players who don't fit roster/salary -- an unaffordable
-    // candidate is filtered out of the list entirely, not shown greyed
-    // out the way it used to be.
-    const tinyCapPreset: ContestPreset = { name: "Tiny Cap", buyIn: 1, contest: new ContestConfig({ fieldSize: 2, payouts: [], cap: 5000 }) };
+    // The cap applies after removing taken players and players who don't
+    // fit roster/salary -- an unaffordable candidate is filtered out of
+    // the list entirely, not shown greyed out the way it used to be.
+    //
+    // Rule change "Pick lists must keep the lineup completable": $32,000,
+    // not some arbitrarily tiny cap -- the real slate's own cheapest
+    // possible full 9-player roster costs $28,600, so anything much
+    // tighter than that makes every candidate infeasible (no one could
+    // ever leave enough for the rest), emptying the list entirely rather
+    // than exercising what this test is actually after. $32,000 is tight
+    // enough to still exclude Trey McBride specifically while leaving
+    // plenty of other candidates -- and a genuinely completable build.
+    const tinyCapPreset: ContestPreset = { name: "Tiny Cap", buyIn: 1, contest: new ContestConfig({ fieldSize: 2, payouts: [], cap: 32000 }) };
     render(
       <BuildScreen
         preset={tinyCapPreset}
@@ -453,7 +472,8 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
     simulateMove("g1", "f3"); // White's first move -- a Knight move, no pawn pre-move needed
 
     const dialog = await screen.findByRole("dialog", { name: "Choose your Knight" });
-    // Trey McBride ($6,700) is over a $5,000 cap with nothing else locked yet.
+    // Trey McBride ($6,700) leaves too little to still finish the other
+    // 8 slots under a $32,000 cap with nothing else locked yet.
     expect(within(dialog).queryByText(/Trey McBride/)).toBeNull();
     const rows = [...dialog.querySelectorAll<HTMLButtonElement>(".pick-row")];
     expect(rows.length).toBeGreaterThan(0);

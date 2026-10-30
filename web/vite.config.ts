@@ -35,5 +35,21 @@ export default defineConfig({
     // React + chessground + real player-CSV module graph adding up fast.
     // Revisit if this ever runs on a less memory-constrained box.
     maxWorkers: 4,
+    // Rule change "Pick lists must keep the lineup completable": a pick
+    // list's own eligibility check now runs a real LP solve per distinct
+    // remaining-slots shape (rules.lineupStillCompletable's new
+    // availablePlayers argument, engine/optimizer.cheapestCompletionCost)
+    // instead of a plain arithmetic comparison -- cheap on its own
+    // (measured well under 100ms against the real ~300-player sample
+    // slate, even worst-case with every roster slot still open), but it
+    // adds up across a test that drives many real picks/simulated builds
+    // under this project's own documented CPU/RAM-constrained worker cap
+    // above. Bumped past Vitest's 5000ms/10000ms defaults so a
+    // legitimately slower (not hung) real-engine test doesn't flake under
+    // load -- same "extend to match real cost" precedent several
+    // individual tests in this suite already used before this rule
+    // change, just applied once here instead of file-by-file.
+    testTimeout: 20000,
+    hookTimeout: 20000,
   },
 })

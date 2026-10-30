@@ -300,3 +300,64 @@ describe("castleRookList", () => {
     expect(castleRookList(pool, new Set(), [], NFL, CONTEST, "CIN")).toHaveLength(20);
   });
 });
+
+// --- Rule change "Pick lists must keep the lineup completable": a pick
+// that's affordable BY ITSELF can still leave too little to ever finish
+// the roster -- lineupStillCompletable's salary check is now "is there
+// enough left for the CHEAPEST way to fill the other open slots from
+// who's really still on the board," not just "total spent <= cap."
+// Canonical worked example: 6 locked @ $7,000 ($42,000 of a $50,000 cap
+// spent -> $8,000 left), 3 slots open (WR, FLEX, DST), two $3,000
+// fallbacks still genuinely available for them -- taking a $7,500 WR
+// would leave only $500 for a $6,000 job; a $2,000 WR leaves exactly
+// enough. -----------------------------------------------------------------
+
+function canonicalRoster(): Player[] {
+  return [
+    makePlayer("qb1", "QB", 7000),
+    makePlayer("rb1", "RB", 7000),
+    makePlayer("rb2", "RB", 7000),
+    makePlayer("wr1", "WR", 7000),
+    makePlayer("wr2", "WR", 7000),
+    makePlayer("te1", "TE", 7000),
+  ];
+}
+
+const CHEAP_FALLBACKS = [makePlayer("cheap_flex", "RB", 3000), makePlayer("cheap_dst", "DST", 3000)];
+
+describe("pickList -- keeps the lineup completable (Rule change)", () => {
+  it("excludes a pick that's affordable alone but leaves too little for the other open slots", () => {
+    const current = canonicalRoster();
+    const locked = new Set(current.map((p) => p.id));
+    const pool = [...current, ...CHEAP_FALLBACKS, makePlayer("wr_pricey", "WR", 7500)];
+    const result = pickList(Piece.ROOK, pool, locked, current, NFL, CONTEST);
+    expect(result.map((p) => p.id)).not.toContain("wr_pricey");
+  });
+
+  it("still offers a pick that leaves exactly enough for the other open slots", () => {
+    const current = canonicalRoster();
+    const locked = new Set(current.map((p) => p.id));
+    const pool = [...current, ...CHEAP_FALLBACKS, makePlayer("wr_affordable", "WR", 2000)];
+    const result = pickList(Piece.ROOK, pool, locked, current, NFL, CONTEST);
+    expect(result.map((p) => p.id)).toContain("wr_affordable");
+  });
+
+  it("same check for a Black pick -- pickList takes no side parameter, just a roster", () => {
+    const blacksRoster = canonicalRoster(); // read as Black's own locked roster this time
+    const locked = new Set(blacksRoster.map((p) => p.id));
+    const pool = [...blacksRoster, ...CHEAP_FALLBACKS, makePlayer("wr_pricey", "WR", 7500), makePlayer("wr_affordable", "WR", 2000)];
+    const result = pickList(Piece.ROOK, pool, locked, blacksRoster, NFL, CONTEST).map((p) => p.id);
+    expect(result).not.toContain("wr_pricey");
+    expect(result).toContain("wr_affordable");
+  });
+});
+
+describe("castleRookList -- keeps the lineup completable (Rule change)", () => {
+  it("excludes a Rook pick that's affordable alone but leaves too little for the other open slots", () => {
+    const current = canonicalRoster();
+    const locked = new Set(current.map((p) => p.id));
+    const pool = [...current, ...CHEAP_FALLBACKS, makePlayer("wr_pricey", "WR", 7500, 10, 6, 16, 0.1, 0.1, "AAA")];
+    const result = castleRookList(pool, locked, current, NFL, CONTEST, "AAA");
+    expect(result.map((p) => p.id)).not.toContain("wr_pricey");
+  });
+});

@@ -165,7 +165,7 @@ describe("BuildScreen -- White's second move (bug fix)", () => {
 
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
     },
-    15000,
+    30000,
   );
 
   it(
@@ -186,7 +186,7 @@ describe("BuildScreen -- White's second move (bug fix)", () => {
 
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
     },
-    15000,
+    30000,
   );
 
   // Seeding Math.random (same value BuildScreen.test.tsx's own castling
@@ -228,7 +228,7 @@ describe("BuildScreen -- White's second move (bug fix)", () => {
       clickMove(from, to);
 
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
-    }, 15000);
+    }, 60000); // Rule change "Pick lists must keep the lineup completable": same heavier-multi-ply cost as BuildScreen.castling.test.tsx's own "capturing an unmoved piece" test
   });
 
   it(
@@ -299,6 +299,6 @@ describe("BuildScreen -- White's second move (bug fix)", () => {
 
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
     },
-    15000,
+    60000, // Rule change "Pick lists must keep the lineup completable": up to 8 plies, same heavier cost as this file's "after castling" test above
   );
 });

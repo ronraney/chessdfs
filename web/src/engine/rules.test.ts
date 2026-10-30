@@ -861,6 +861,56 @@ describe("lineupStillCompletable", () => {
   });
 });
 
+// Rule change "Pick lists must keep the lineup completable": the optional
+// 4th argument -- every other caller in this file (isLegalMove, castle,
+// switchKing, placeKings, isLegalCapture, applyCaptureMove) keeps calling
+// this with 3 arguments and is UNCHANGED by this rule change (the suite
+// above already proves that -- same assertions, same results); only
+// picklist.ts's pickList/castleRookList pass the 4th.
+describe("lineupStillCompletable -- availablePlayers (Rule change)", () => {
+  // 6 locked @ $7,000 ($42,000 of a $50,000 cap spent -> $8,000 left), 3
+  // slots open (WR, FLEX, DST), two $3,000 fallbacks genuinely available.
+  function canonicalRoster(): Player[] {
+    return [
+      makePlayer("qb1", "QB", 7000),
+      makePlayer("rb1", "RB", 7000),
+      makePlayer("rb2", "RB", 7000),
+      makePlayer("wr1", "WR", 7000),
+      makePlayer("wr2", "WR", 7000),
+      makePlayer("te1", "TE", 7000),
+    ];
+  }
+  const CHEAP_FALLBACKS = [makePlayer("cheap_flex", "RB", 3000), makePlayer("cheap_dst", "DST", 3000)];
+
+  it("false once a pick leaves too little for the cheapest fill of the other open slots, even though the total alone is still under cap", () => {
+    const current = canonicalRoster();
+    const pricey = makePlayer("wr_pricey", "WR", 7500); // $49,500 total -- under the $50,000 cap by itself
+    expect(lineupStillCompletable([...current, pricey], NFL, CONTEST_CAP)).toBe(true); // old 3-arg check: unaffected
+    expect(lineupStillCompletable([...current, pricey], NFL, CONTEST_CAP, CHEAP_FALLBACKS)).toBe(false); // new 4-arg check: catches it
+  });
+
+  it("true once a pick leaves exactly enough for the cheapest fill of the other open slots", () => {
+    const current = canonicalRoster();
+    const affordable = makePlayer("wr_affordable", "WR", 2000);
+    expect(lineupStillCompletable([...current, affordable], NFL, CONTEST_CAP, CHEAP_FALLBACKS)).toBe(true);
+  });
+
+  it("null cheapestCompletionCost (no eligible player anywhere for some slot) doesn't block the pick -- can't prove it's unaffordable", () => {
+    const current = canonicalRoster();
+    const pricey = makePlayer("wr_pricey", "WR", 7500);
+    // No fallbacks at all this time -- FLEX/DST have no eligible candidate
+    // anywhere in `availablePlayers`, same as tightFinishStatus treats a
+    // null cheapestCompletionCost: unresolved, not "assume the worst."
+    expect(lineupStillCompletable([...current, pricey], NFL, CONTEST_CAP, [])).toBe(true);
+  });
+
+  it("the hard cap floor still applies even when nothing can be resolved", () => {
+    const current = canonicalRoster();
+    const wayOverCap = makePlayer("wr_way_over", "WR", 50000); // blows the whole cap alone
+    expect(lineupStillCompletable([...current, wayOverCap], NFL, CONTEST_CAP, [])).toBe(false);
+  });
+});
+
 // Task 43: DK slot display on the finish screen/Copy lineup.
 describe("assignRosterSlots", () => {
   it("assigns each player to their own dedicated slot, with no overflow", () => {

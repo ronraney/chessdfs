@@ -1435,13 +1435,30 @@ export default function BuildScreen({
       ? { moves: pendingOnChosenLine ? chosenLine!.moves : [...history, pendingMove.san], highlightIndex: history.length }
       : null;
 
-  const pendingCandidates = pendingMove !== null ? candidatesFor(pendingMove, state, players, preset.contest) : [];
-  const pendingPlayerBaseline = pendingMove !== null ? pendingBaseline(pendingMove, state.whiteMoves) : [];
-  const pendingReasons = new Map<string, string>();
-  for (const candidate of pendingCandidates) {
-    const reason = pendingMove !== null ? pickReason(pendingPlayerBaseline, candidate, NFL, preset.contest) : null;
-    if (reason !== null) pendingReasons.set(candidate.id, reason);
-  }
+  // Rule change "Pick lists must keep the lineup completable": each
+  // candidate's own eligibility check now runs an LP solve (cached per
+  // distinct remaining-slots shape, but NOT across separate calls into
+  // candidatesFor -- `available` is a freshly filtered array each time).
+  // This used to be cheap enough to recompute on every render for free; it
+  // no longer is, so it's memoized like every other derived value in this
+  // component -- only pendingMove/state/players/the contest actually
+  // change what this list should contain.
+  const pendingCandidates = useMemo(
+    () => (pendingMove !== null ? candidatesFor(pendingMove, state, players, preset.contest) : []),
+    [pendingMove, state, players, preset.contest],
+  );
+  const pendingPlayerBaseline = useMemo(
+    () => (pendingMove !== null ? pendingBaseline(pendingMove, state.whiteMoves) : []),
+    [pendingMove, state.whiteMoves],
+  );
+  const pendingReasons = useMemo(() => {
+    const reasons = new Map<string, string>();
+    for (const candidate of pendingCandidates) {
+      const reason = pendingMove !== null ? pickReason(pendingPlayerBaseline, candidate, NFL, preset.contest) : null;
+      if (reason !== null) reasons.set(candidate.id, reason);
+    }
+    return reasons;
+  }, [pendingCandidates, pendingMove, pendingPlayerBaseline, preset.contest]);
 
   return (
     <main className="build-screen">

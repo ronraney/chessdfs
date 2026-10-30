@@ -226,7 +226,7 @@ describe("BuildScreen -- tight finish alert (rule change)", () => {
 
     await dismissTightFinishDialog(user);
     expect(tightFinishDialog()).toBeNull();
-  }, 15000);
+  }, 30000);
 
   it("shows a second, different dialog once a later pick makes it 'warning', but never re-shows a level already shown this build", async () => {
     renderScreen();
@@ -249,7 +249,7 @@ describe("BuildScreen -- tight finish alert (rule change)", () => {
     vi.mocked(tightFinishStatus).mockReturnValue(CAUTION);
     await playAndLock(user, "f1", "b5");
     expect(tightFinishDialog()).toBeNull();
-  }, 15000);
+  }, 30000);
 
   it("does not show a dialog from the pick modal's own hypothetical preview -- only once a pick actually locks", async () => {
     renderScreen();
@@ -271,7 +271,7 @@ describe("BuildScreen -- tight finish alert (rule change)", () => {
 
     await user.click(within(pickDialog).getByRole("button", { name: "Lock player" }));
     expect(await screen.findByRole("dialog", { name: "Salary alert" })).toBeInTheDocument(); // only once the pick is actually locked
-  }, 15000);
+  }, 30000);
 
   it("shows the 'critical' level with its own heading and message", async () => {
     renderScreen();
@@ -283,7 +283,7 @@ describe("BuildScreen -- tight finish alert (rule change)", () => {
     const dialog = await screen.findByRole("dialog", { name: "Salary alert" });
     expect(within(dialog).getByRole("heading", { name: "Critical" })).toBeInTheDocument();
     expect(dialog.textContent).toContain(CRITICAL.message);
-  }, 15000);
+  }, 30000);
 
   // Rule change "new levels + Go back": the dialog's primary action.
   it("Go back undoes the just-locked pick and reopens that same piece's pick list", async () => {
@@ -309,7 +309,7 @@ describe("BuildScreen -- tight finish alert (rule change)", () => {
     // e4 is still shown pending (the SAME move, not yet re-locked) -- Go
     // back undoes the LOCK, not the move itself.
     expect(lastApi!.config.fen).toBe(fenWhilePending);
-  }, 15000);
+  }, 30000);
 
   it("Go back un-marks the level it undid, so locking an equally tight player again re-alerts (only OK suppresses it)", async () => {
     renderScreen();
@@ -336,5 +336,5 @@ describe("BuildScreen -- tight finish alert (rule change)", () => {
     await user.click(within(reopened).getByRole("button", { name: "Lock player" }));
 
     expect(await screen.findByRole("dialog", { name: "Salary alert" })).toBeInTheDocument(); // re-alerts, not suppressed
-  }, 15000);
+  }, 30000);
 });

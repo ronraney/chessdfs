@@ -113,12 +113,24 @@ export function pickList(
   const cap = contest.effectiveCap(sport);
   const bishopFloors = piece === Piece.BISHOP ? bishopValueFloors(playersPool, sport) : null;
   const highestOwnership = piece === Piece.BISHOP ? highestOwnershipByPosition(playersPool, contest) : undefined;
+  // Rule change "Pick lists must keep the lineup completable": everyone
+  // still genuinely undrafted by EITHER side -- the SAME array reference
+  // for every candidate below (not re-filtered per candidate to also drop
+  // the candidate itself: on a real few-hundred-player slate there's
+  // always some other cheap alternative for any other open slot, so the
+  // rare case where a candidate would also have been the uniquely
+  // cheapest filler for a DIFFERENT slot isn't worth paying for here) --
+  // this is also what lets optimizer.cheapestCompletionCost's own cache
+  // actually hit across candidates that resolve to the same remaining-
+  // slots shape, instead of running a fresh solve per candidate on an
+  // uncapped list.
+  const available = playersPool.filter((p) => !lockedPlayerIds.has(p.id));
   const candidates = playersPool.filter(
     (p) =>
       !lockedPlayerIds.has(p.id) &&
       classify(p, sport).has(piece) &&
       (bishopFloors === null || meetsBishopValueFloor(p, bishopFloors)) &&
-      lineupStillCompletable([...currentPlayers, p], sport, cap),
+      lineupStillCompletable([...currentPlayers, p], sport, cap, available),
   );
   if (piece === Piece.ROOK) {
     const qbOpp = qbOpponentTeam(qbTeam, currentPlayers);
@@ -150,12 +162,13 @@ export function castleRookList(
   qbTeam: string,
 ): Player[] {
   const cap = contest.effectiveCap(sport);
+  const available = playersPool.filter((p) => !lockedPlayerIds.has(p.id));
   const candidates = playersPool.filter(
     (p) =>
       !lockedPlayerIds.has(p.id) &&
       classify(p, sport).has(Piece.ROOK) &&
       p.team === qbTeam &&
-      lineupStillCompletable([...currentPlayers, p], sport, cap),
+      lineupStillCompletable([...currentPlayers, p], sport, cap, available),
   );
   candidates.sort((a, b) => sortMetric(Piece.ROOK, b, contest) - sortMetric(Piece.ROOK, a, contest));
   return candidates;

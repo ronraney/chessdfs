@@ -171,6 +171,20 @@ export function pickReason(currentPlayers: readonly Player[], candidate: Player,
   return null;
 }
 
+// Every real-world position (upper-cased) at least one unlocked,
+// `piece`-eligible player in `playersPool` actually has -- shared by both
+// notices below, which each ask a different question about THIS list's
+// own relevant positions (blocked outright vs. priced out).
+function relevantPositionsFor(piece: Piece, playersPool: readonly Player[], lockedPlayerIds: ReadonlySet<string>, sport: SportConfig): Set<string> {
+  const relevant = new Set<string>();
+  for (const p of playersPool) {
+    if (lockedPlayerIds.has(p.id)) continue;
+    if (!classify(p, sport).has(piece)) continue;
+    for (const position of p.positions) relevant.add(position.toUpperCase());
+  }
+  return relevant;
+}
+
 // Rule change "Roster-full notice + opponent in pick lists": the pick
 // modal's own top-of-list notice -- which of THIS list's real-world
 // positions (every unlocked, `piece`-eligible player's own position,
@@ -188,12 +202,7 @@ export function blockedPositionsNotice(
   currentPlayers: readonly Player[],
   sport: SportConfig,
 ): string | null {
-  const relevant = new Set<string>();
-  for (const p of playersPool) {
-    if (lockedPlayerIds.has(p.id)) continue;
-    if (!classify(p, sport).has(piece)) continue;
-    for (const position of p.positions) relevant.add(position.toUpperCase());
-  }
+  const relevant = relevantPositionsFor(piece, playersPool, lockedPlayerIds, sport);
   if (relevant.size === 0) return null;
 
   const blocked = blockedPositions(currentPlayers, sport.rosterSlots);
@@ -203,13 +212,34 @@ export function blockedPositionsNotice(
   return `You cannot select any more ${named.join(" or ")}.`;
 }
 
-// Rule change "Salary-cap notice + finished-lineup cleanup": the pick
-// modal's own top-of-list "too expensive" notice -- the same raw cap
-// check `pickReason`'s "over the cap" already makes (and `pickList`'s own
-// `lineupStillCompletable` filter already hides candidates by), just
-// surfaced as a side-wide dollar ceiling instead of a per-row label. Null
-// once nothing relevant to `piece` is actually priced above it. Can show
-// alongside blockedPositionsNotice -- independent checks, either or both.
+function intersectsSet(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
+  for (const item of a) {
+    if (b.has(item)) return true;
+  }
+  return false;
+}
+
+// Rule change "Pick lists must keep the lineup completable": the pick
+// modal's own top-of-list "too expensive" notice -- $X = salary remaining
+// minus the cheapest cost to fill the OTHER open slots (not just "total
+// spent vs. cap" any more; see rules.lineupStillCompletable's own new
+// `availablePlayers` parameter, which `pickList`/`castleRookList` now pass
+// -- this notice is the same math, surfaced as a side-wide dollar ceiling
+// instead of a per-row label). "The other slots" has no single fixed
+// answer for a mixed-position list (a Rook pick could land in RB, WR, TE,
+// or FLEX, each leaving a different remainder) -- this takes the BEST
+// case: for every one of THIS list's own relevant, still-open slot names,
+// try "what if this pick fills exactly that one," and keep the cheapest
+// resulting cost for everything else. That's the most generous (largest)
+// $X that's still honest: any pricier candidate is guaranteed hidden
+// (every real slot assignment needs the same money or more for the rest);
+// a candidate priced at/under it usually clears the real per-candidate
+// check too, though a candidate confined to a SPECIFIC more-expensive-to-
+// leave-open slot type could still get hidden despite pricing at/under
+// $X -- same "informational, not exhaustive" spirit as the position-
+// blocked notice above, not a per-row guarantee. Null once nothing
+// relevant to `piece` is actually priced above it. Can show alongside
+// blockedPositionsNotice -- independent checks, either or both.
 export function salaryCapNotice(
   piece: Piece,
   playersPool: readonly Player[],
@@ -218,7 +248,26 @@ export function salaryCapNotice(
   sport: SportConfig,
   contest: ContestConfig,
 ): string | null {
-  const maxAffordable = contest.effectiveCap(sport) - currentPlayers.reduce((sum, p) => sum + p.salary, 0);
+  const relevant = relevantPositionsFor(piece, playersPool, lockedPlayerIds, sport);
+  if (relevant.size === 0) return null;
+
+  const available = playersPool.filter((p) => !lockedPlayerIds.has(p.id));
+  const openSlots = openRosterSlots(currentPlayers, sport.rosterSlots);
+  const relevantOpenSlotNames = sport.rosterSlots
+    .filter((slot) => (openSlots[slot.name] ?? 0) > 0 && intersectsSet(slot.positions, relevant))
+    .map((slot) => slot.name);
+  if (relevantOpenSlotNames.length === 0) return null;
+
+  let otherSlotsCost: number | null = null;
+  for (const name of relevantOpenSlotNames) {
+    const reduced = { ...openSlots, [name]: (openSlots[name] ?? 0) - 1 };
+    const cost = cheapestCompletionCost(available, reduced, sport.rosterSlots);
+    if (cost !== null && (otherSlotsCost === null || cost < otherSlotsCost)) otherSlotsCost = cost;
+  }
+  if (otherSlotsCost === null) return null;
+
+  const remaining = contest.effectiveCap(sport) - currentPlayers.reduce((sum, p) => sum + p.salary, 0);
+  const maxAffordable = remaining - otherSlotsCost;
 
   const anyHidden = playersPool.some(
     (p) => !lockedPlayerIds.has(p.id) && classify(p, sport).has(piece) && p.salary > maxAffordable,

@@ -252,7 +252,48 @@ export function optimalLineup(
 // `availablePlayers` for some open slot; shouldn't happen against a real
 // slate (same caveat optimalLineup's own null carries), so the caller
 // treats it as "unknown," not an error.
+//
+// Rule change "Pick lists must keep the lineup completable": rules.
+// lineupStillCompletable now calls this once per CANDIDATE in an uncapped
+// pick list (hundreds, for a real slate) -- a pure function of its own
+// two real arguments (`rosterSlots` is fixed per sport), so it's safe to
+// cache by them: a WeakMap keyed by `availablePlayers`' own array identity
+// (pickList/castleRookList build that array once per list and reuse the
+// SAME reference for every candidate, same spirit as findLegalMove's own
+// per-board cache in rules.ts) holding a Map keyed by `openSlots`' own
+// content (most candidates sharing a piece's band resolve to the SAME
+// handful of distinct openSlots shapes -- e.g. every plain RB-only
+// candidate leaves the same remainder -- collapsing what would otherwise
+// be one fresh MILP solve per candidate down to one per distinct shape).
+const cheapestCompletionCache = new WeakMap<readonly Player[], Map<string, number | null>>();
+
+function openSlotsCacheKey(openSlots: Readonly<Record<string, number>>): string {
+  return Object.keys(openSlots)
+    .filter((name) => (openSlots[name] ?? 0) > 0)
+    .sort()
+    .map((name) => `${name}:${openSlots[name]}`)
+    .join(",");
+}
+
 export function cheapestCompletionCost(
+  availablePlayers: readonly Player[],
+  openSlots: Readonly<Record<string, number>>,
+  rosterSlots: readonly RosterSlot[],
+): number | null {
+  let cache = cheapestCompletionCache.get(availablePlayers);
+  if (cache === undefined) {
+    cache = new Map();
+    cheapestCompletionCache.set(availablePlayers, cache);
+  }
+  const key = openSlotsCacheKey(openSlots);
+  if (cache.has(key)) return cache.get(key)!;
+
+  const result = solveCheapestCompletion(availablePlayers, openSlots, rosterSlots);
+  cache.set(key, result);
+  return result;
+}
+
+function solveCheapestCompletion(
   availablePlayers: readonly Player[],
   openSlots: Readonly<Record<string, number>>,
   rosterSlots: readonly RosterSlot[],

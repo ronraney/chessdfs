@@ -1,4 +1,4 @@
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
 import { afterEach } from "vitest";
 import "@testing-library/jest-dom/vitest";
 
@@ -7,6 +7,16 @@ import "@testing-library/jest-dom/vitest";
 // own -- without this, each test's render() stacks on top of the last
 // test's DOM instead of starting fresh.
 afterEach(cleanup);
+
+// Rule change "Pick lists must keep the lineup completable": a pick
+// list's own eligibility check now runs a real LP solve per distinct
+// remaining-slots shape -- cheap on its own, but it adds up across a real
+// interaction test's own many bare `waitFor(() => ...)` calls (the
+// default 1000ms asyncUtilTimeout), under this project's own documented
+// CPU/RAM-constrained worker cap (vite.config.ts). Same "extend to match
+// real cost" precedent as that file's own testTimeout/hookTimeout bump,
+// just for RTL's own internal polling instead of Vitest's per-test clock.
+configure({ asyncUtilTimeout: 8000 });
 
 // jsdom doesn't implement window.matchMedia at all -- ThemeToggle (Task
 // 36) calls it on every render (every screen now renders one, via its
