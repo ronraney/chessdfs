@@ -162,6 +162,7 @@ function pieceTooltipContent(
   sport: SportConfig,
   contest: ContestConfig,
   touchedSquares: ReadonlySet<Square>,
+  playersPool: readonly Player[],
 ): PieceTooltipContent | null {
   const boardPiece = state.board.get(square);
   if (boardPiece === undefined) return null;
@@ -175,7 +176,8 @@ function pieceTooltipContent(
       return { title: player.name, detail };
     }
     const cap = contest.effectiveCap(sport);
-    const fits = lineupStillCompletable([...state.whiteMoves.map((m) => m.player), player], sport, cap);
+    const available = playersPool.filter((p) => !state.lockedPlayerIds.has(p.id) && p.id !== player.id);
+    const fits = lineupStillCompletable([...state.whiteMoves.map((m) => m.player), player], sport, cap, available);
     const fit = fits
       ? { fits: true, text: "Capture: joins you" }
       : { fits: false, text: "Capture: won't fit — returns to pool" };
@@ -525,7 +527,7 @@ export default function BuildScreen({
   const [state, setState] = useState<BuildState>(() => {
     const base =
       kingMode === KingMode.PLACED && whiteKing !== null && blackKing !== null
-        ? placeKings(whiteKing, blackKing, NFL, preset.contest)
+        ? placeKings(whiteKing, blackKing, NFL, preset.contest, players)
         : new BuildState();
     if (chosenOpening.kind === "line") base.blackCommittedLine = chosenOpening.line.moves;
     return base;
@@ -672,12 +674,25 @@ export default function BuildScreen({
   // legal subset) share one chess.js move-generation call rather than
   // dfsLegalMoves' own (which would otherwise run it a second time every
   // render -- a real, avoidable cost, not just a style preference).
-  const allMoves = turn === "w" ? state.board.moves({ verbose: true }) : [];
-  const legalMoves = allMoves.filter((move) => {
-    const chessMove: ChessMove = { from: move.from, to: move.to, promotion: move.promotion };
-    return moveIsCompletable(state, chessMove, NFL, preset.contest, players, kingMode);
-  });
-  const legalSans = new Set(legalMoves.map((m) => m.san));
+  //
+  // Rule change "Pick lists must keep the lineup completable": each of
+  // `allMoves` now feeds moveIsCompletable -> resolvePlayers -> a REAL
+  // pick-list/LP-solve-backed check (not the old plain arithmetic one) --
+  // cheap per call, but there can be dozens of legal moves, and this used
+  // to just be plain object comparisons recomputed on every render for
+  // free. Memoized now so it only reruns when the position/roster/slate
+  // it actually depends on changes, not on every incidental re-render
+  // (hover, timers, etc.).
+  const { allMoves, legalMoves, legalSans } = useMemo(() => {
+    const moves = turn === "w" ? state.board.moves({ verbose: true }) : [];
+    const legal = moves.filter((move) => {
+      const chessMove: ChessMove = { from: move.from, to: move.to, promotion: move.promotion };
+      return moveIsCompletable(state, chessMove, NFL, preset.contest, players, kingMode);
+    });
+    return { allMoves: moves, legalMoves: legal, legalSans: new Set(legal.map((m) => m.san)) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `turn` is
+    // derived from `state` itself, not an independent input.
+  }, [state, players, preset.contest, kingMode]);
   const dests: Dests = new Map();
   for (const move of allMoves) {
     const arr = dests.get(move.from) ?? [];
@@ -810,7 +825,7 @@ export default function BuildScreen({
   // a pending pick already covers the board with its own modal.
   const touchedSquares = useMemo(() => squaresEverArrived(state.board), [state]);
   function getPieceTooltip(square: Key): PieceTooltipContent | null {
-    return pieceTooltipContent(state, square as Square, NFL, preset.contest, touchedSquares);
+    return pieceTooltipContent(state, square as Square, NFL, preset.contest, touchedSquares, players);
   }
 
   // Starts (or restarts) Black's reply timer for `newState`. The callback
@@ -963,7 +978,7 @@ export default function BuildScreen({
         return;
       case "captureTransfer": {
         const transferred = state.pieceLocks.get(capturedSquare(matched))?.at(-1) ?? null;
-        const result = playWhiteMove(state, chessMove, null, NFL, preset.contest, BOOK, null, kingMode);
+        const result = playWhiteMove(state, chessMove, null, NFL, preset.contest, BOOK, null, kingMode, players);
         let captureNote: string | null = null;
         if (transferred !== null) {
           captureNote = result.state.lockedPlayerIds.has(transferred.id)
@@ -988,7 +1003,7 @@ export default function BuildScreen({
           lockedQbTeam(state, Side.WHITE),
         );
         if (candidates.length === 0) {
-          const result = playWhiteMove(state, chessMove, null, NFL, preset.contest, BOOK, null, kingMode);
+          const result = playWhiteMove(state, chessMove, null, NFL, preset.contest, BOOK, null, kingMode, players);
           commit(result.state);
           return;
         }
@@ -1018,12 +1033,12 @@ export default function BuildScreen({
     try {
       switch (pendingMove.kind) {
         case "ordinary": {
-          const result = playWhiteMove(state, pendingMove.chessMove, player, NFL, preset.contest, BOOK, null, kingMode);
+          const result = playWhiteMove(state, pendingMove.chessMove, player, NFL, preset.contest, BOOK, null, kingMode, players);
           commit(result.state, { reopen: pendingMove });
           return;
         }
         case "captureUnmoved": {
-          const result = playWhiteMove(state, pendingMove.chessMove, player, NFL, preset.contest, BOOK, null, kingMode);
+          const result = playWhiteMove(state, pendingMove.chessMove, player, NFL, preset.contest, BOOK, null, kingMode, players);
           commit(result.state, { captureNote: `You captured ${player.name}.`, reopen: pendingMove });
           return;
         }
@@ -1033,7 +1048,7 @@ export default function BuildScreen({
           setPendingMove({ kind: "castleEmergeRook", chessMove: pendingMove.chessMove, san: pendingMove.san, king: player });
           return;
         case "castleEmergeRook": {
-          const result = playWhiteMove(state, pendingMove.chessMove, pendingMove.king, NFL, preset.contest, BOOK, player, kingMode);
+          const result = playWhiteMove(state, pendingMove.chessMove, pendingMove.king, NFL, preset.contest, BOOK, player, kingMode, players);
           commit(result.state, { reopen: pendingMove });
           return;
         }
@@ -1046,13 +1061,13 @@ export default function BuildScreen({
         // is still untouched, so Take back later undoes both in one step
         // once the Rook step actually commits.
         case "castlePlacedSwitch": {
-          const switched = switchKing(state, Side.WHITE, player, NFL, preset.contest);
+          const switched = switchKing(state, Side.WHITE, player, NFL, preset.contest, players);
           const baseState = switched ?? state;
           setPendingMove({ kind: "castlePlacedRook", chessMove: pendingMove.chessMove, san: pendingMove.san, baseState });
           return;
         }
         case "castlePlacedRook": {
-          const result = playWhiteMove(pendingMove.baseState, pendingMove.chessMove, null, NFL, preset.contest, BOOK, player, kingMode);
+          const result = playWhiteMove(pendingMove.baseState, pendingMove.chessMove, null, NFL, preset.contest, BOOK, player, kingMode, players);
           commit(result.state, { reopen: pendingMove });
           return;
         }
@@ -1944,56 +1959,64 @@ function FinishCard({
         </table>
       </div>
 
-      <div className="finish-stats">
-        <p>
-          Salary remaining: <strong>${whiteStats.salaryRemaining.toLocaleString()}</strong>
-        </p>
-        <p>
-          Core projection: <strong>{whiteStats.projTotal.toFixed(1)} pts</strong>
-        </p>
-        <p>
-          Pts from optimal:{" "}
-          <strong>{whiteOptimalStats === null ? "—" : formatPtsFromOptimal(whiteOptimalStats.delta)}</strong>
-          {whiteOptimalStats !== null && (
-            <span className="finish-stat-sub">
-              {" "}
-              best finish {whiteOptimalStats.bestCompletion.toFixed(1)} · optimal {whiteOptimalStats.slateOptimal.toFixed(1)}
-            </span>
-          )}
-        </p>
-        <p>
-          Field pts from optimal:{" "}
-          <strong>{blackOptimalStats === null ? "—" : formatPtsFromOptimal(blackOptimalStats.delta)}</strong>
-          {blackOptimalStats !== null && (
-            <span className="finish-stat-sub">
-              {" "}
-              best finish {blackOptimalStats.bestCompletion.toFixed(1)} · optimal {blackOptimalStats.slateOptimal.toFixed(1)}
-            </span>
-          )}
-        </p>
-        <p>
-          Core ownership: <strong>{(whiteStats.ownershipTotal * 100).toFixed(1)}%</strong>
-        </p>
-        <p>
-          Sim ROI{simEyebrowSuffix(whiteSim)}:{" "}
-          <strong>{whiteSim.kind === "done" ? `${(whiteSim.result.roi * 100).toFixed(1)}%` : simStatusText(whiteSim) ?? "—"}</strong>
-          {whiteSim.kind === "done" && (
-            <span className="finish-stat-sub">
-              {" "}
-              Cash {(whiteSim.result.cashRate * 100).toFixed(1)}% · Top 1% {(whiteSim.result.top1PctRate * 100).toFixed(1)}%
-            </span>
-          )}
-        </p>
-        <p>
-          Field sim ROI{simEyebrowSuffix(blackSim)}:{" "}
-          <strong>{blackSim.kind === "done" ? `${(blackSim.result.roi * 100).toFixed(1)}%` : simStatusText(blackSim) ?? "—"}</strong>
-          {blackSim.kind === "done" && (
-            <span className="finish-stat-sub">
-              {" "}
-              Cash {(blackSim.result.cashRate * 100).toFixed(1)}% · Top 1% {(blackSim.result.top1PctRate * 100).toFixed(1)}%
-            </span>
-          )}
-        </p>
+      <div className="finish-results">
+        {(whiteSim.kind === "running" || blackSim.kind === "running") && (
+          <div className="finish-simming-overlay" role="status" aria-live="polite">
+            <span className="finish-simming-spinner" aria-hidden="true" />
+            <span className="finish-simming-label">Simming…</span>
+          </div>
+        )}
+        <div className="finish-stats">
+          <p>
+            Salary remaining: <strong>${whiteStats.salaryRemaining.toLocaleString()}</strong>
+          </p>
+          <p>
+            Core projection: <strong>{whiteStats.projTotal.toFixed(1)} pts</strong>
+          </p>
+          <p>
+            Pts from optimal:{" "}
+            <strong>{whiteOptimalStats === null ? "—" : formatPtsFromOptimal(whiteOptimalStats.delta)}</strong>
+            {whiteOptimalStats !== null && (
+              <span className="finish-stat-sub">
+                {" "}
+                best finish {whiteOptimalStats.bestCompletion.toFixed(1)} · optimal {whiteOptimalStats.slateOptimal.toFixed(1)}
+              </span>
+            )}
+          </p>
+          <p>
+            Field pts from optimal:{" "}
+            <strong>{blackOptimalStats === null ? "—" : formatPtsFromOptimal(blackOptimalStats.delta)}</strong>
+            {blackOptimalStats !== null && (
+              <span className="finish-stat-sub">
+                {" "}
+                best finish {blackOptimalStats.bestCompletion.toFixed(1)} · optimal {blackOptimalStats.slateOptimal.toFixed(1)}
+              </span>
+            )}
+          </p>
+          <p>
+            Core ownership: <strong>{(whiteStats.ownershipTotal * 100).toFixed(1)}%</strong>
+          </p>
+          <p>
+            Sim ROI{simEyebrowSuffix(whiteSim)}:{" "}
+            <strong>{whiteSim.kind === "done" ? `${(whiteSim.result.roi * 100).toFixed(1)}%` : simStatusText(whiteSim) ?? "—"}</strong>
+            {whiteSim.kind === "done" && (
+              <span className="finish-stat-sub">
+                {" "}
+                Cash {(whiteSim.result.cashRate * 100).toFixed(1)}% · Top 1% {(whiteSim.result.top1PctRate * 100).toFixed(1)}%
+              </span>
+            )}
+          </p>
+          <p>
+            Field sim ROI{simEyebrowSuffix(blackSim)}:{" "}
+            <strong>{blackSim.kind === "done" ? `${(blackSim.result.roi * 100).toFixed(1)}%` : simStatusText(blackSim) ?? "—"}</strong>
+            {blackSim.kind === "done" && (
+              <span className="finish-stat-sub">
+                {" "}
+                Cash {(blackSim.result.cashRate * 100).toFixed(1)}% · Top 1% {(blackSim.result.top1PctRate * 100).toFixed(1)}%
+              </span>
+            )}
+          </p>
+        </div>
       </div>
 
       {openSlots.length > 0 && <p className="finish-open">Open slots: {openSlots.join(" · ")}</p>}

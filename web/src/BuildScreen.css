@@ -563,12 +563,58 @@
   font-size: 13px;
 }
 
+/* Task "Simming indicator": wraps .finish-stats so the overlay below can
+   cover exactly the numbers a running sim is about to replace, without
+   reflowing the rest of the finish card around it. */
+.finish-results {
+  position: relative;
+}
+
 .finish-stats {
   display: flex;
   flex-direction: column;
   gap: 4px;
   font-size: 14px;
   color: var(--text);
+}
+
+/* A running sim blurs/dims the stale numbers underneath rather than
+   hiding them outright -- the shape of the card stays put, and there's
+   still a hint of what's about to update. `color-mix` over the card's own
+   background keeps this readable in both themes without a separate
+   light/dark override. */
+.finish-simming-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: color-mix(in srgb, var(--card) 85%, transparent);
+  backdrop-filter: blur(2px);
+  border-radius: 6px;
+}
+
+.finish-simming-spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 3px solid var(--accent-border);
+  border-top-color: var(--accent);
+  animation: finish-simming-spin 0.8s linear infinite;
+}
+
+.finish-simming-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+@keyframes finish-simming-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .finish-stats strong {

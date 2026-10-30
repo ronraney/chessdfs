@@ -122,6 +122,25 @@ export function lineupStillCompletable(
   return true;
 }
 
+// Rule change "Completability for captures/castling/King placement": the
+// "everyone still genuinely undrafted" pool every caller below feeds into
+// lineupStillCompletable's own `availablePlayers` -- `excludeIds` also
+// drops whichever candidate(s) THIS check is hypothetically adding (same
+// reasoning picklist.ts's pickList/castleRookList already use: a
+// candidate isn't "available" to help complete the OTHER open slots once
+// they're the one filling this one). `playersPool` undefined -- every
+// caller that doesn't have the whole slate handy, or isn't asking for
+// this check -- means "fall back to the old raw-cap check," same as
+// passing `undefined` straight to lineupStillCompletable itself.
+function availableFor(
+  playersPool: readonly Player[] | undefined,
+  lockedPlayerIds: ReadonlySet<string>,
+  excludeIds: ReadonlySet<string>,
+): readonly Player[] | undefined {
+  if (playersPool === undefined) return undefined;
+  return playersPool.filter((p) => !lockedPlayerIds.has(p.id) && !excludeIds.has(p.id));
+}
+
 // Whether `players` is a full, legal lineup for `sport` -- exactly
 // rosterSize players, every one of them placeable into a distinct roster
 // slot. (Salary cap isn't part of "complete" -- a side can finish under
@@ -366,6 +385,7 @@ export function isLegalMove(
   player: Player,
   sport: SportConfig,
   contest: ContestConfig,
+  playersPool?: readonly Player[],
 ): boolean {
   const matched = findLegalMove(state.board, chessMove);
   if (!matched) return false;
@@ -380,7 +400,8 @@ export function isLegalMove(
 
   const cap = contest.effectiveCap(sport);
   const current = movesFor(state, side).map((m) => m.player);
-  if (!lineupStillCompletable([...current, player], sport, cap)) return false;
+  const available = availableFor(playersPool, state.lockedPlayerIds, new Set([player.id]));
+  if (!lineupStillCompletable([...current, player], sport, cap, available)) return false;
 
   return true;
 }
@@ -395,8 +416,9 @@ export function applyMove(
   player: Player,
   sport: SportConfig,
   contest: ContestConfig,
+  playersPool?: readonly Player[],
 ): BuildState {
-  if (!isLegalMove(state, chessMove, player, sport, contest)) {
+  if (!isLegalMove(state, chessMove, player, sport, contest, playersPool)) {
     throw new Error(`illegal move: ${JSON.stringify(chessMove)} for ${player.id}`);
   }
 
@@ -458,6 +480,7 @@ export function castle(
   sport: SportConfig,
   contest: ContestConfig,
   kingMode: KingMode = KingMode.EMERGE,
+  playersPool?: readonly Player[],
 ): BuildState {
   const matched = findLegalMove(state.board, chessMove);
   if (!matched || !(matched.isKingsideCastle() || matched.isQueensideCastle())) {
@@ -500,7 +523,8 @@ export function castle(
 
   const current = movesFor(state, side).map((m) => m.player);
   const additions = kingMode === KingMode.EMERGE ? [king as Player, rook] : [rook];
-  if (!lineupStillCompletable([...current, ...additions], sport, contest.effectiveCap(sport))) {
+  const available = availableFor(playersPool, state.lockedPlayerIds, new Set(additions.map((p) => p.id)));
+  if (!lineupStillCompletable([...current, ...additions], sport, contest.effectiveCap(sport), available)) {
     throw new Error("castling would make a legal lineup impossible to complete");
   }
 
@@ -553,6 +577,7 @@ export function switchKing(
   newKing: Player,
   sport: SportConfig,
   contest: ContestConfig,
+  playersPool?: readonly Player[],
 ): BuildState | null {
   if (!classify(newKing, sport).has(Piece.KING)) return null;
   if (state.lockedPlayerIds.has(newKing.id)) return null;
@@ -563,7 +588,12 @@ export function switchKing(
   const oldKing = oldKingMove.player;
 
   const otherPlayers = moves.filter((m) => m.player.id !== oldKing.id).map((m) => m.player);
-  if (!lineupStillCompletable([...otherPlayers, newKing], sport, contest.effectiveCap(sport))) {
+  // `oldKing` is still in `state.lockedPlayerIds` at this point (the swap
+  // hasn't happened yet) -- he's correctly excluded from `available`
+  // already, same as every other already-locked player, not double-
+  // counted as a newly freed-up option for this same check.
+  const available = availableFor(playersPool, state.lockedPlayerIds, new Set([newKing.id]));
+  if (!lineupStillCompletable([...otherPlayers, newKing], sport, contest.effectiveCap(sport), available)) {
     return null;
   }
 
@@ -594,6 +624,7 @@ export function placeKings(
   blackKing: Player,
   sport: SportConfig,
   contest: ContestConfig,
+  playersPool?: readonly Player[],
 ): BuildState {
   if (!classify(whiteKing, sport).has(Piece.KING)) {
     throw new Error(`${whiteKing.name} does not classify as King`);
@@ -606,10 +637,14 @@ export function placeKings(
   }
 
   const cap = contest.effectiveCap(sport);
-  if (!lineupStillCompletable([whiteKing], sport, cap)) {
+  // Nothing is locked yet -- both Kings just take each other out of the
+  // pool for each other's own check (neither side can draft the other's
+  // QB, and a side can't draft its own QB again either).
+  const available = availableFor(playersPool, new Set(), new Set([whiteKing.id, blackKing.id]));
+  if (!lineupStillCompletable([whiteKing], sport, cap, available)) {
     throw new Error(`${whiteKing.name} is not affordable for White`);
   }
-  if (!lineupStillCompletable([blackKing], sport, cap)) {
+  if (!lineupStillCompletable([blackKing], sport, cap, available)) {
     throw new Error(`${blackKing.name} is not affordable for Black`);
   }
 
@@ -651,6 +686,7 @@ export function isLegalCapture(
   sport: SportConfig,
   contest: ContestConfig,
   player: Player | null = null,
+  playersPool?: readonly Player[],
 ): boolean {
   const matched = findLegalMove(state.board, chessMove);
   if (!matched) return false;
@@ -663,13 +699,16 @@ export function isLegalCapture(
   const square = capturedSquare(matched);
   const capturedHistory = state.pieceLocks.get(square) ?? [];
   if (capturedHistory.length > 0) {
-    return lineupStillCompletable([...current, capturedHistory[capturedHistory.length - 1]], sport, cap);
+    const transferred = capturedHistory[capturedHistory.length - 1];
+    const available = availableFor(playersPool, state.lockedPlayerIds, new Set([transferred.id]));
+    return lineupStillCompletable([...current, transferred], sport, cap, available);
   }
 
   if (player === null || state.lockedPlayerIds.has(player.id)) return false;
   const capturedType = pieceForChessType(matched.captured!);
   if (!classify(player, sport).has(capturedType)) return false;
-  return lineupStillCompletable([...current, player], sport, cap);
+  const available = availableFor(playersPool, state.lockedPlayerIds, new Set([player.id]));
+  return lineupStillCompletable([...current, player], sport, cap, available);
 }
 
 // Applies a capturing move -- always legal, whenever `chessMove` itself is
@@ -691,6 +730,7 @@ export function applyCaptureMove(
   sport: SportConfig,
   contest: ContestConfig,
   player: Player | null = null,
+  playersPool?: readonly Player[],
 ): BuildState {
   const matched = findLegalMove(state.board, chessMove);
   if (!matched) {
@@ -732,7 +772,9 @@ export function applyCaptureMove(
 
   const cap = contest.effectiveCap(sport);
   const current = movesFor(state, side).map((m) => m.player);
-  const fits = captured !== null && lineupStillCompletable([...current, captured], sport, cap);
+  const available =
+    captured !== null ? availableFor(playersPool, state.lockedPlayerIds, new Set([captured.id])) : undefined;
+  const fits = captured !== null && lineupStillCompletable([...current, captured], sport, cap, available);
 
   const newBoard = cloneBoard(state.board);
   newBoard.move({ from: chessMove.from, to: chessMove.to, promotion: chessMove.promotion });

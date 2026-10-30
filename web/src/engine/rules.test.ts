@@ -1011,3 +1011,102 @@ describe("blockedPositions", () => {
     expect(blockedPositions(roster, NFL.rosterSlots)).toEqual(new Set(["QB", "RB", "WR", "TE", "DST"]));
   });
 });
+
+// Rule change "Completability for captures/castling/King placement": the
+// same `availablePlayers`-aware check pickList/castleRookList already use
+// (Rule change "Pick lists must keep the lineup completable") now reaches
+// every other place that still used the raw total-vs-cap check --
+// castling's QB step (castle(), EMERGE mode), the Place-your-King QB
+// switch (switchKing), King placement at setup (placeKings), and captures
+// (isLegalCapture/applyCaptureMove). Each test below shows the SAME
+// scenario twice: without a playersPool (the old, still-supported 3/4/5-
+// arg form -- legal) and with one (rejected) -- proving the old check
+// really would have let the side walk into a dead end. isLegalMove and
+// the capture hover preview (BuildScreen.tsx's pieceTooltipContent) share
+// this same `playersPool`-optional mechanism; not re-tested individually
+// here since isLegalMove's own completability check is already exercised
+// throughout this file's "roster/salary (same rules for both sides)"
+// section (just never with a pool before now) and the hover preview is a
+// thin, UI-only read of this same lineupStillCompletable call.
+describe("completability reaches every other raw-cap check (Rule change)", () => {
+  it("castling's QB step: a King+Rook pair affordable alone but leaving too little for the other open slots is rejected", () => {
+    // White: w_pawn(WR,$3,000)+te1(TE,$5,200)+wr1(WR,$5,000)+rb_queen(RB,$7,200) = $20,400 spent;
+    // QB/RB/WR/FLEX/DST each have exactly 1 slot open.
+    const state = stateReadyToCastleQueenside();
+    const king = makePlayer("qb_pricey", "QB", 7000);
+    const rook = makePlayer("rb_pricey", "RB", 15000); // $42,400 total -- comfortably under the $50,000 cap alone
+    expect(() => castle(state, uci("e1c1"), king, rook, NFL, CONTEST)).not.toThrow(); // old check: legal
+
+    // After castling: RB(2) is full (rb_queen + rook), WR has 1 open, FLEX
+    // and DST are untouched -- 3 slots left, needing 3 distinct players.
+    const fallbacks = [makePlayer("cheap_wr", "WR", 3000), makePlayer("cheap_flex", "TE", 3000), makePlayer("cheap_dst", "DST", 3000)];
+    expect(() => castle(state, uci("e1c1"), king, rook, NFL, CONTEST, KingMode.EMERGE, fallbacks)).toThrow(
+      "castling would make a legal lineup impossible to complete",
+    );
+  });
+
+  it("the Place-your-King QB switch: a newKing affordable alone but leaving too little for the other open slots is rejected", () => {
+    // White: qb_w(QB,$6,500 placed)+w_pawn(WR,$3,000)+te1(TE,$5,200)+wr1(WR,$5,000)+rb_queen(RB,$7,200) = $26,900 spent.
+    const state = stateReadyToCastleQueensidePlaced();
+    const newKing = makePlayer("qb_new", "QB", 20000); // swapping out qb_w: $40,400 total -- comfortably under cap alone
+    expect(switchKing(state, Side.WHITE, newKing, NFL, CONTEST)).not.toBeNull(); // old check: legal
+
+    // Without qb_w: RB/WR/FLEX/DST each have exactly 1 slot open (QB is
+    // the one newKing himself fills) -- 4 slots left, needing 4 distinct players.
+    const fallbacks = [
+      makePlayer("cheap_rb", "RB", 3000),
+      makePlayer("cheap_wr", "WR", 3000),
+      makePlayer("cheap_flex", "TE", 3000),
+      makePlayer("cheap_dst", "DST", 3000),
+    ];
+    expect(switchKing(state, Side.WHITE, newKing, NFL, CONTEST, fallbacks)).toBeNull();
+  });
+
+  it("King placement at setup: a King affordable alone but leaving too little for the other 8 open slots is rejected", () => {
+    const tight = new ContestConfig({ cap: 10000, fieldSize: 1000, payouts: [] });
+    const whiteKing = makePlayer("qb_w", "QB", 6000);
+    const blackKing = makePlayer("qb_b", "QB", 6000);
+    expect(() => placeKings(whiteKing, blackKing, NFL, tight)).not.toThrow(); // old check: each affordable alone
+
+    // Exactly enough distinct players for the other 8 slots (RB2/WR3/TE1/FLEX1/DST1).
+    const fallbacks = [
+      makePlayer("cheap_rb1", "RB", 3000),
+      makePlayer("cheap_rb2", "RB", 3100),
+      makePlayer("cheap_wr1", "WR", 3000),
+      makePlayer("cheap_wr2", "WR", 3100),
+      makePlayer("cheap_wr3", "WR", 3200),
+      makePlayer("cheap_te", "TE", 3000),
+      makePlayer("cheap_flex", "RB", 3300),
+      makePlayer("cheap_dst", "DST", 3000),
+    ];
+    expect(() => placeKings(whiteKing, blackKing, NFL, tight, fallbacks)).toThrow("is not affordable for White");
+  });
+
+  it("a capture: a transferred player affordable alone but leaving too little for the other open slots returns to the pool instead", () => {
+    const tight = new ContestConfig({ cap: 10000, fieldSize: 1000, payouts: [] });
+    // White: w_pawn1(WR,$3,000); Black: b_pawn1(WR,$3,000), capturable via e4xd5.
+    const state = stateWithACaptureAvailable();
+    const captureMove = uci("e4d5");
+    expect(isLegalCapture(state, captureMove, NFL, tight)).toBe(true); // old check: the $6,000 transfer total is legal
+
+    const fallbacks = [
+      makePlayer("cheap_qb", "QB", 3000),
+      makePlayer("cheap_rb1", "RB", 3000),
+      makePlayer("cheap_rb2", "RB", 3100),
+      makePlayer("cheap_wr", "WR", 3000),
+      makePlayer("cheap_te", "TE", 3000),
+      makePlayer("cheap_flex", "RB", 3200),
+      makePlayer("cheap_dst", "DST", 3000),
+    ];
+    expect(isLegalCapture(state, captureMove, NFL, tight, null, fallbacks)).toBe(false);
+
+    const newState = applyCaptureMove(state, captureMove, NFL, tight, null, fallbacks);
+    // RULES.md "Captures": the transfer doesn't fit, so the capture still
+    // happens (the board move is applied) but locks no one -- b_pawn1
+    // leaves Black's own roster and returns to the pool, available to
+    // either side, instead of joining White's.
+    expect(newState.lockedPlayerIds.has("b_pawn1")).toBe(false);
+    expect(newState.whiteMoves.some((m) => m.player.id === "b_pawn1")).toBe(false);
+    expect(newState.blackMoves.some((m) => m.player.id === "b_pawn1")).toBe(false);
+  });
+});

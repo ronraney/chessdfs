@@ -189,6 +189,15 @@ function bestLegalPlayer(
   const side = state.board.turn() === "w" ? Side.WHITE : Side.BLACK;
   const current = currentPlayersFor(state, side);
   const qbTeam = lockedQbTeam(state, side);
+  // Completability is already pickList's own job (Rule change "Pick lists
+  // must keep the lineup completable") -- every candidate here already
+  // passed that check for THIS side/roster; re-checking it again via
+  // isLegalMove's own optional pool, for every (candidate, chessMove)
+  // pair this gets filtered over, would just redo the same expensive
+  // solve for free-already-known answers. isLegalMove's own completability
+  // check (its optional playersPool) is for a genuinely fresh, one-off
+  // call -- e.g. BuildScreen.tsx validating the user's own drag-and-drop
+  // pick -- not this search loop's own repeated candidate filtering.
   const candidates = pickList(piece, playersPool, state.lockedPlayerIds, current, sport, contest, qbTeam).filter(
     (player) => isLegalMove(state, chessMove, player, sport, contest),
   );
@@ -210,6 +219,8 @@ function bestLegalCapturePlayer(
   const side = state.board.turn() === "w" ? Side.WHITE : Side.BLACK;
   const current = currentPlayersFor(state, side);
   const qbTeam = lockedQbTeam(state, side);
+  // Same reasoning as bestLegalPlayer above -- pickList already applied
+  // the completability check for every one of these candidates.
   const candidates = pickList(capturedType, playersPool, state.lockedPlayerIds, current, sport, contest, qbTeam).filter(
     (player) => isLegalCapture(state, chessMove, sport, contest, player),
   );
@@ -311,25 +322,26 @@ function applyResolvedPlayers(
   sport: SportConfig,
   contest: ContestConfig,
   kingMode: KingMode,
+  playersPool: readonly Player[],
 ): BuildState {
   const matched = findLegalMove(state.board, chessMove)!;
   if (matched.isKingsideCastle() || matched.isQueensideCastle()) {
     if (kingMode === KingMode.PLACED) {
       const [rook] = players;
-      return castle(state, chessMove, null, rook, sport, contest, kingMode);
+      return castle(state, chessMove, null, rook, sport, contest, kingMode, playersPool);
     }
     const [king, rook] = players;
-    return castle(state, chessMove, king, rook, sport, contest, kingMode);
+    return castle(state, chessMove, king, rook, sport, contest, kingMode, playersPool);
   }
   if (isCaptureMove(matched)) {
     const player = players.length > 0 ? players[0] : null;
-    return applyCaptureMove(state, chessMove, sport, contest, player);
+    return applyCaptureMove(state, chessMove, sport, contest, player, playersPool);
   }
   if (players.length === 0) {
     return pushSilentMove(state, chessMove);
   }
   const [player] = players;
-  return applyMove(state, chessMove, player, sport, contest);
+  return applyMove(state, chessMove, player, sport, contest, playersPool);
 }
 
 // If White (to move) has no legal (chess move, eligible player) combination
@@ -497,6 +509,7 @@ export function playWhiteMove(
   book: readonly BookLine[],
   whiteRook: Player | null = null,
   kingMode: KingMode = KingMode.EMERGE,
+  playersPool?: readonly Player[],
 ): MoveResult {
   const matched = findLegalMove(state.board, whiteMove);
   if (!matched) {
@@ -509,14 +522,14 @@ export function playWhiteMove(
       throw new Error("whiteMove is castling; whiteRook is required too");
     }
     const king = kingMode === KingMode.EMERGE ? whitePlayer : null;
-    newState = castle(state, whiteMove, king, whiteRook, sport, contest, kingMode);
+    newState = castle(state, whiteMove, king, whiteRook, sport, contest, kingMode, playersPool);
   } else if (isCaptureMove(matched)) {
-    newState = applyCaptureMove(state, whiteMove, sport, contest, whitePlayer);
+    newState = applyCaptureMove(state, whiteMove, sport, contest, whitePlayer, playersPool);
   } else {
     if (whitePlayer === null) {
       throw new Error("whiteMove is not castling or a capture; whitePlayer is required");
     }
-    newState = applyMove(state, whiteMove, whitePlayer, sport, contest);
+    newState = applyMove(state, whiteMove, whitePlayer, sport, contest, playersPool);
   }
 
   const opening = openingName(sanHistory(newState.board), book);
@@ -758,7 +771,7 @@ export async function playBlackMove(
       // just above) or as a pre-filtered candidate.
       throw new Error("internal error: resolved move unexpectedly has no players");
     }
-    newState = applyResolvedPlayers(state, chessMove, players, sport, contest, kingMode);
+    newState = applyResolvedPlayers(state, chessMove, players, sport, contest, kingMode, playersPool);
     newState.blackBlueprint = blueprint;
   }
 
@@ -815,7 +828,7 @@ export function playBlackTemplateMove(
     };
     const players = resolvePlayers(state, chessMove, sport, contest, playersPool, kingMode, pick);
     if (players === null) return null;
-    newState = applyResolvedPlayers(state, chessMove, players, sport, contest, kingMode);
+    newState = applyResolvedPlayers(state, chessMove, players, sport, contest, kingMode, playersPool);
     newState.blackBlueprint = blueprint;
   }
 
