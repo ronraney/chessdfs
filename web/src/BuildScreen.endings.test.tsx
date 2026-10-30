@@ -284,6 +284,32 @@ describe("BuildScreen -- endings and start again (Task 40)", () => {
     confirmSpy.mockRestore();
   });
 
+  // Task NN "Start over during the build": the action-row button beside
+  // Take back / Stop with this core / Sim my core / Fill out my core --
+  // always confirms first (unlike the header link above, which only
+  // confirms once a player is locked), and does exactly what the finish
+  // screen's "Start again" does once confirmed.
+  it("Start over in the action row confirms first; cancelling leaves the build untouched, confirming does what Start again does", async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    await user.click(chosenContinueButton()); // 1. e4
+    const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+    await selectTopRow(user, dialog);
+    await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+
+    const cancelSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    await user.click(screen.getByRole("button", { name: "Start over" }));
+    expect(cancelSpy).toHaveBeenCalledWith("Start over? This build will be lost.");
+    expect(onStartAgain).not.toHaveBeenCalled();
+    expect(within(youColumn()).queryAllByRole("listitem")).toHaveLength(1); // the lock from 1. e4 is still there
+    cancelSpy.mockRestore();
+
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    await user.click(screen.getByRole("button", { name: "Start over" }));
+    expect(onStartAgain).toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+
   it(
     "take back after a pick restores salary remaining and returns the player to the pick list",
     async () => {

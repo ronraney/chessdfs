@@ -1,4 +1,4 @@
-# Handoff — 2026-10-28
+# Handoff — 2026-10-29
 
 ## Where things stand
 
@@ -13,148 +13,171 @@ after tests pass, push to `origin/main` after every commit, never use
 `AskUserQuestion` (ask inline as plain text).
 
 Python 3.11+ engine (`dfs_chess/`, **frozen** — TS-only from here on) +
-`web/` (Vite + React + TypeScript, Node v24/npm). The TS port of the
-chess/DFS engine and the Monte Carlo sim (`web/src/engine/sim/`) are both
-complete and wired into the UI. `field.ts` (the MILP that builds "the
-field") still has NO awareness of the real-correlation model
-(`draws.ts`'s own Gaussian copula) — still its own older ownership-bias/
-noise objective; see Open items.
+`web/` (Vite + React + TypeScript, Node v24/npm).
 
-**Black drafts from a sim-field blueprint, not top-of-list** (earlier
-today): `build.ts`'s `chooseBlueprintPlayer` — every Black pick (moves,
-castling King/Rook, an unmoved-piece capture, the setup QB pick) drafts
-from one lineup drawn by seeded random from the contest tier's own built
-field, containing every player Black's already locked and none of
-White's; re-drawn when invalid (White took a blueprint player, or none
-fits the pick), falling back to top-of-list with no field built or no
-lineup qualifying. `BuildState.blackBlueprint` carries it forward.
-`buildSeed` now originates in `SetupScreen.tsx` (needed there for the
-setup QB pick) and flows down via `ChosenSetup.buildSeed` →
-`BuildScreen`'s own (optional) prop.
+**Since the last handoff (2026-10-28), three tasks landed directly on
+`main` without a /wrap-up in between** (commits `33c00af`, `4738f03`,
+`cab7142` — all authored as Ron, not a Claude session): board piece-info
+on hover (BuildBoard tooltip), tight-finish alerts reworked into three
+straight salary-tightness steps (Caution ≤$5,000/open-slot, Warning
+≤$4,000 at 2+ open slots, Critical/"barely completable" — remaining
+minus the cheapest possible completion of every open slot, under $500,
+no open-slot minimum — `engine/optimizer.ts`'s new
+`cheapestCompletionCost`, a weighted bipartite min-cost assignment), plus
+"Go back" on the tight-finish dialog; and a housekeeping pass that split
+`BuildScreen.test.tsx` into 5 files by describe block and capped Vitest's
+`maxWorkers` (this box is RAM-constrained, ~2.8GB — more workers measured
+WORSE, not fewer, full-suite flakes).
 
-**Pick lists are no longer capped** (earlier today): the old per-piece
-`sport.listCapFor` cap (12 for Queen/Rook/Bishop/Knight) is gone from
-`picklist.ts`/`sport.ts` entirely. `config/sports/nfl.json` still
-carries its own `list_caps` key, kept ONLY because the frozen Python
-engine's own `test_picklist.py` reads that exact shared file and still
-asserts the old cap — TS's loader just ignores the key now.
+**This session (4 tasks, all committed + pushed) made roster/salary
+completability the real gate everywhere, not just an after-the-fact
+warning:**
 
-**New this session: a capture's lock history bug, fixed.**
-`rules.ts`'s `applyCaptureMove` used to write
-`[...moverHistory, captured]` at the capturing piece's new square when
-the transfer fit — conflating the capturing piece's OWN lock history
-with the just-transferred captured player's, under the same square key.
-A capture never locks a new player for the capturing piece itself, so
-that extra entry was wrong on its face, and on a LATER recapture of the
-same square it silently became "the most recently locked player,"
-handing the wrong player to the wrong side (reported: `5. Bxc6 dxc6`
-transferred the knight captured on move 5 back out, instead of the
-bishop's own pick from move 4). Fixed: both branches now write just
-`moverHistory` (hoisted above the fits/doesn't-fit split, since they're
-now identical) — a piece's own history follows it; the captured player
-is tracked only via `moves`/`locked`. Take back needed no separate fix
-(it only restores a prior, never-mutated snapshot). The frozen Python
-engine has the identical bug (`dfs_chess/rules.py`) — left untouched
-per "TS-only from here on."
+1. `rules.ts`'s `lineupStillCompletable` gained an optional
+   `availablePlayers` 4th arg: when given, its salary check asks "is
+   there enough left for the CHEAPEST way to fill every other still-open
+   slot from who's actually still on the board" (`cheapestCompletionCost`,
+   the same floor the tight-finish dialog's Critical level already used)
+   instead of a flat "total spent <= cap." Omitted, it's the old raw
+   check — deliberately backward-compatible, not a breaking signature
+   change. `picklist.ts`'s `pickList`/`castleRookList` pass it (pick
+   lists now correctly hide/show candidates by real completability, not
+   just raw cap headroom); `rules.ts`'s `isLegalMove`, `castle`,
+   `switchKing`, `placeKings`, `isLegalCapture`, `applyCaptureMove` all
+   gained the same optional parameter and now get it from
+   `BuildScreen.tsx` at every point a user action actually locks
+   something (castling's King+Rook/Rook-only lock, the Place-your-King QB
+   switch, King placement at setup, the capture hover preview). A
+   transferred/replacement capture that doesn't fit still follows the
+   existing rule unchanged (locks no one, returns to the pool) — only the
+   completability check itself got sharper, not that behavior.
+2. New UI notices in `PickPanel.tsx`: a roster-full notice ("You cannot
+   select any more WR.", `rules.blockedPositions` — every slot a position
+   could fill, including FLEX, already taken) and a salary-cap notice
+   ("Players over $X hidden (salary cap)." — $X = salary remaining minus
+   the cheapest cost to fill the OTHER open slots, `buildStats.ts`'s
+   `salaryCapNotice`), independent checks, either or both can show. Each
+   player row also now shows a small-text opponent next to the team
+   ("DAL vs PHI" / "DAL @ PHI" using `Player.isHome`).
+3. Finished-lineup UI cleanup: "Fill out my core" hides (not just
+   disables) once a side has no open slots; the "$X avg/open slot · N
+   open" line becomes "Lineup full." in that case too (`BuildScreen.tsx`'s
+   `SideColumn`/`FinishScreen` — shared by both You and Field columns).
+4. A clear "Simming…" overlay (spinner + dimmed backdrop,
+   `.finish-simming-overlay` in `BuildScreen.css`) now covers the finish
+   screen's results area while either side's auto-run sim is in flight.
 
-**New this session: the tight-finish salary warning now interrupts,
-via an in-app dialog.** `buildStats.ts`'s `tightFinishStatus` (Caution
-at ≤$4,500/open-slot, Warning at ≤$4,000 + an aggravating factor) was
-already shown as small inline text in the You panel and the pick
-modal's "after this pick" preview — easy to miss. `TightFinishDialog.tsx`
-(new) now also shows a real modal (reusing `PickPanel.css`'s own
-overlay/card/footer/button styles — same dimmed backdrop, same
-centered-desktop/bottom-sheet-mobile treatment, theme-aware for free)
-with a level-colored heading ("Caution"/"Warning"), the same message
-text, and one "OK" button — once per level per build, the moment a
-LOCKED pick (never the modal's own hypothetical preview) first reaches
-it, never once the build's over. Went through `window.alert` first,
-then was replaced with the dialog once asked for explicitly. Fixed two
-existing castling tests along the way whose own real top-of-list picks
-(5 locks) legitimately reach "caution"/"warning" now that it's a real,
-queryable dialog — their "no dialog left open" assertions were too
-broad and needed narrowing to the pick panel's own dialog name.
+**Performance note worth knowing about**: making the completability
+check a real LP solve (not plain arithmetic) initially made a full
+`npm run test` run go from ~80s to ~22 MINUTES, because `build.ts`'s own
+move-search loop (`checkWhiteDeadEnd`/Black's move selection) calls
+`pickList` once per *legal chess move* at a position (often 20-40), and
+`BuildScreen.tsx`'s own `legalMoves`/`legalSans` were recomputed,
+unmemoized, on every render on top of that. Fixed in two ways: (a)
+`cheapestCompletionCost` now caches by its own inputs (a WeakMap keyed on
+the `availablePlayers` array reference, so `pickList`/`castleRookList`
+reusing ONE shared `available` array per list lets most candidates hit
+the cache instead of a fresh solve each); (b) `legalMoves`/`legalSans`
+are now a single `useMemo` in `BuildScreen.tsx`; (c) `build.ts`'s
+`bestLegalPlayer`/`bestLegalCapturePlayer` no longer ALSO re-run the
+completability check via `isLegalMove`/`isLegalCapture` on top of what
+`pickList` already verified for the same candidates — that was pure
+redundant work discovered mid-session (it's what caused the 22-minute
+regression, more than the LP solve itself). End state: `npm run test`
+with Vitest's own `maxWorkers` cap is ~150-230s (was ~80s before any of
+this session's work) with the SAME pre-existing, environment-driven
+flakiness pattern as before (not new); `--maxWorkers=1` (sequential) is
+always clean, confirming correctness. The remaining slowdown (vs. the
+~80s baseline) is real and understood, not hidden — see Open items.
 
-**Rook's own pool** (prior session): any RB/WR/TE, any salary — team no
-longer affects eligibility for any piece except castling's own Rook
-step (`castleRookList`, still team-restricted).
-
-**Admin has a contest upload** (prior session): `contestStore.ts` +
-`engine/contestsCsv.ts`, falling back to `config/contests.json`.
-
-**Environment**: accessed from Windows via `\\wsl.localhost\Ubuntu\...`.
-Plain `npm`/`npx`/`git`/`python`/`node` through the Windows-side shell
-fails on this UNC path for anything that shells out — every such
-command needs `wsl.exe -e bash -lc "cd /home/raney/chess-dfs/... && ..."`.
-No real browser is launchable here (missing `libasound.so.2`, no
-passwordless sudo).
-
-**Tests**: 237 pytest, 591 npm, both green as of this session's last
-commit (`342c917`) — the most recent full `npm run test` run was clean
-(no flakes at all), though a prior run today saw a wider set of full-
-suite-only flaky tests than previously documented (see Open items).
+**Rule change precedent this session re-confirmed**: when a TS-only
+change makes a `parity.test.ts` fixture scenario (frozen Python output)
+no longer comparable, exclude that one scenario by name from the
+fixture-replay list and give the new behavior its own coverage in the
+relevant `*.test.ts` file instead — same pattern already used for
+Bishop's quality floor and Rook's stack-tier rework. Wasn't actually
+needed this session (the optional-parameter design kept every existing
+3-arg `lineupStillCompletable` caller, including every parity-check call
+site, on the OLD unchanged behavior) but worth remembering for the next
+completability-adjacent change.
 
 ## What happened this session
 
-Continuing from earlier today's Sim 5 + pick-list-cap-removal work
-(already in a prior handoff), three more tasks, all committed and
-pushed:
+All 4 tasks below committed (`7e69fe8`, `23ea222`, `b560a13`, `797e19f`)
+and pushed to `origin/main`; `npm run test` + `pytest` run (and, this
+session, specifically re-run with `--maxWorkers=1` for a clean count)
+before every commit.
 
-1. **Bug fix: captures transfer the wrong player** (`4d1bd47`) — see
-   "Where things stand" above. Verified both new `rules.test.ts` tests
-   (the exact reported recapture sequence, and a Take-back-equivalent
-   snapshot-immutability check) actually fail against the pre-fix code
-   before confirming the fix.
-
-2. **Rule change: tight-finish salary alert** (`4c1c660`) — first pass,
-   `window.alert`, fired once per level after a pick locks. 3 new
-   `BuildScreen.test.tsx` tests (`tightFinishStatus` partially mocked so
-   these could script exact levels without needing a many-pick, real
-   expensive roster — the threshold math itself already has direct unit
-   coverage in `buildStats.test.ts`).
-
-3. **Rule change: tight-finish alert as an in-app dialog** (`342c917`)
-   — superseded #2's `window.alert` per explicit follow-up ask. New
-   `TightFinishDialog.tsx` + two small CSS rules in `PickPanel.css`.
-   Rewrote the 3 tests from #2 to check the real dialog instead of a
-   `window.alert` spy; fixed 2 unrelated existing castling tests whose
-   "no dialog open" assertions were too broad once a second, legitimate
-   dialog type could coexist.
-
-Every commit: ran `npm run test` + `pytest` before committing.
+1. **Roster-full notice + opponent in pick lists** (`7e69fe8`) —
+   `rules.blockedPositions` (new), `buildStats.blockedPositionsNotice`
+   (new), opponent display in `PickPanel.tsx` row (`player.isHome ?
+   "vs" : "@"`). Flagged assumption: `isHome` has no tri-state (defaults
+   `false` when a loader doesn't set it) — only `loadEtrCsv` ever sets it
+   for real data, so the "no data → default to vs" case in the prompt
+   never actually triggers against a real slate, only synthetic test
+   fixtures.
+2. **Salary-cap notice + finished-lineup cleanup** (`23ea222`) —
+   `buildStats.salaryCapNotice` (new), "Fill out my core"
+   hide-not-disable, "Lineup full." text swap.
+3. **Pick lists must keep the lineup completable** (`b560a13`) — the
+   core `lineupStillCompletable`/`cheapestCompletionCost`-caching work
+   described above, scoped to `pickList`/`castleRookList` only.
+   Mid-session finding: `cheapestCompletionCost` returning `null` (no
+   eligible player anywhere for some slot — only possible against a
+   hand-built test pool, never a real validated slate) had to mean "can't
+   prove it's unaffordable," not "assume infeasible," or ~24 of
+   `picklist.test.ts`'s 30 existing tests would have broken (same
+   "null = unresolved, not failure" spirit `tightFinishStatus` already
+   uses for its own null `cheapestCompletionCost` case).
+4. **Completability for captures/castling/King placement + Simming
+   indicator** (`797e19f`) — extended the same optional-parameter check
+   to `isLegalMove`/`castle`/`switchKing`/`placeKings`/`isLegalCapture`/
+   `applyCaptureMove`, four new `rules.test.ts` tests (one per path: QB
+   step, QB switch, King placement, capture), the Simming overlay, and —
+   the bulk of this task's real time — tracking down and fixing the
+   22-minute full-suite regression described above. Tried and abandoned
+   a dedicated automated test for the Simming overlay (mocking
+   `./simRunner` to freeze the sim mid-flight) after it hit an unrelated,
+   hard-to-pin-down hang in that one test file's own harness; verified by
+   code review + the user's own live dev-server session instead, since
+   the task didn't actually require automated coverage for that part.
+   Also answered a "check only" question earlier in the session (no code
+   changes) confirming a pick genuinely could leave a side stuck even
+   though it looked affordable alone — which became the basis for task 3.
 
 ## Open items / blockers
 
-- **`field.ts` still doesn't know about the real-correlation model** —
-  same long-standing #1 item, unchanged this session.
-- Full-suite test flakiness: one run today saw 7 distinct BuildScreen/
-  App/SetupScreen tests fail (non-overlapping sets across two runs),
-  every one confirmed passing in isolation, one even reproduced against
-  the pre-change baseline — not traced to any of this session's changes,
-  but wider than the "2 known-flaky tests" previously documented.
-  Today's LATEST full run (after the tight-finish-dialog work) was
-  completely clean, so this may just be load-dependent noise rather
-  than a worsening trend — worth a fresh look if it recurs.
-- The standalone backtest/diagnose tool (`web/src/tools/`) still
-  rebuilds a fresh ~10,000-attempt field on every invocation, no
-  caching — unchanged, low priority unless it becomes a recurring task.
-- Still undecided: `data/backtest/` vs `data/samples/` as the real home
-  for backtest input files.
-- Untracked-file pile keeps growing, same standing "leave uncommitted"
-  precedent: the same data/design/Zone.Identifier clutter as before,
-  plus FOUR session logs from 10-27/10-28 still untracked (including
-  this session's own) — none committed yet.
+- **Full `npm run test` is slower than before this session's work**
+  (~150-230s vs. ~80s previously) even after the fixes above — understood
+  (real LP-solve work, even cached, costs more than plain arithmetic) and
+  currently accepted, but not reduced further. A deeper fix would mean
+  restructuring `build.ts`'s own "try every legal move" search loop (e.g.
+  caching `pickList` results across the whole sweep, keyed by piece, not
+  just within one call) — flagged as a candidate follow-up, not started.
+- **The Simming overlay has no automated test** — see above. If this
+  matters later, the hang in the abandoned test file is worth a fresh,
+  more patient debugging pass (or: ask whether it's worth the time at
+  all before trying again).
+- User hasn't yet confirmed the Simming overlay's actual VISUAL
+  appearance (spinner + dimmed backdrop, not just the "Simming…" text)
+  from their own live session — asked, not yet answered as of this
+  handoff.
+- `field.ts` still doesn't know about the real-correlation model — same
+  long-standing item, unchanged again this session.
+- Untracked-file pile: `data/samples/` has 4 files (a DraftKings
+  projections export, two contest-standings files, `repro-slate.csv`)
+  that predate this session and were left alone throughout (not this
+  session's concern, but still sitting there).
 
 ## Next steps
 
-1. Decide whether `field.ts`'s own lineup-generation objective should be
-   reworked to reflect the real-correlation model — still the natural
-   next rule-change task.
-2. Real-browser verification pass once `libasound.so.2` is available —
-   Sim 4/Sim 5's UI/Worker paths still haven't been exercised end-to-end
-   in an actual browser.
-3. If backtests/diagnostics become a recurring thing: pick a stable home
-   for input files and consider caching the built field across runs.
-4. Housekeeping: the growing pile of untracked session logs (and the
-   older data/design clutter) could use a decision — commit, `.gitignore`,
-   or explicitly leave as-is.
+1. Decide whether `build.ts`'s own move-search loop is worth
+   restructuring for performance, or whether the current (correct, just
+   somewhat slower) state is fine to live with.
+2. Get the user's visual confirmation on the Simming overlay; revisit
+   the abandoned overlay test if it still seems worth having.
+3. `field.ts`'s real-correlation-model rework — still the standing
+   bigger item whenever it's next picked up.
+4. Housekeeping: the `data/samples/` untracked pile could use a decision
+   (commit, `.gitignore`, or explicitly leave as-is) whenever someone's
+   looking at that area anyway.

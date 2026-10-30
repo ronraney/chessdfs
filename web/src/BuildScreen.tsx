@@ -1156,6 +1156,16 @@ export default function BuildScreen({
     onStartAgain();
   }
 
+  // Task NN "Start over": the build-controls action row's own version of
+  // the finish screen's "Start again" (same onStartAgain() call) -- always
+  // confirms first, unlike requestStartAgain above, since there's no
+  // "nothing locked yet" case to skip it for here (the row only renders
+  // once state.whiteMoves.length > 0, same gating as Stop/Sim/Fill out).
+  function requestStartOver(): void {
+    if (!window.confirm("Start over? This build will be lost.")) return;
+    onStartAgain();
+  }
+
   // "Fill out my core" feeds Copy lineup -- whiteStats (salary remaining,
   // ownership, projection, open slots) folds in whiteFilledPlayers so
   // every display/export that already reads whiteStats picks the filled
@@ -1617,6 +1627,9 @@ export default function BuildScreen({
                     Fill out my core
                   </button>
                 )}
+                <button type="button" className="start-over" onClick={requestStartOver}>
+                  Start over
+                </button>
               </div>
             </>
           )}

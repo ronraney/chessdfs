@@ -473,7 +473,8 @@
 .take-back,
 .stop-with-core,
 .sim-core,
-.fill-out-core {
+.fill-out-core,
+.start-over {
   min-height: 44px;
   background: transparent;
   border-radius: 6px;
@@ -483,7 +484,8 @@
 
 .take-back,
 .sim-core,
-.fill-out-core {
+.fill-out-core,
+.start-over {
   border: 1px solid var(--border);
   color: var(--text-h);
 }
