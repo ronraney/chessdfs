@@ -1770,6 +1770,19 @@ function simStatusText(sim: SideSimState): string | null {
   }
 }
 
+// "Make the Finish screen match the sim box" task: the Bottom99/Top1%Score
+// ROI pair's plain-words labels, shared by SideColumn's sim box and
+// FinishCard's own sim line -- same "shared so wording/formatting can't
+// drift" precedent as simEyebrowSuffix/simStatusText above. These labels
+// "may change later" (per the task that introduced them) -- change them
+// here once and both call sites follow.
+const BOTTOM_99_ROI_LABEL = "ROI without luckiest 1%";
+const TOP_1_PCT_SCORE_ROI_LABEL = "ROI in best 1% of games";
+
+function formatRoiPct(fraction: number): string {
+  return `${(fraction * 100).toFixed(1)}%`;
+}
+
 function SideColumn({
   side,
   label,
@@ -1849,19 +1862,25 @@ function SideColumn({
           <p className="side-eyebrow">Sim results{simEyebrowSuffix(sim)}</p>
           {sim.kind === "done" ? (
             <>
-              <p className="side-sim-cash-rate">{(sim.result.cashRate * 100).toFixed(1)}%</p>
+              <p className="side-sim-cash-rate">{formatRoiPct(sim.result.cashRate)}</p>
               <div className="side-sim-secondary">
                 <div className="side-sim-secondary-stat">
-                  <span className="side-sim-secondary-value">{(sim.result.bottom99Roi * 100).toFixed(1)}%</span>
-                  <span className="side-sim-secondary-label">ROI without luckiest 1%</span>
+                  <span className="side-sim-secondary-value">{formatRoiPct(sim.result.bottom99Roi)}</span>
+                  <span className="side-sim-secondary-label">{BOTTOM_99_ROI_LABEL}</span>
                 </div>
                 <div className="side-sim-secondary-stat">
-                  <span className="side-sim-secondary-value">{(sim.result.top1PctScoreRoi * 100).toFixed(1)}%</span>
-                  <span className="side-sim-secondary-label">ROI in best 1% of games</span>
+                  <span className="side-sim-secondary-value">{formatRoiPct(sim.result.top1PctScoreRoi)}</span>
+                  <span className="side-sim-secondary-label">{TOP_1_PCT_SCORE_ROI_LABEL}</span>
                 </div>
               </div>
-              <p className="side-detail">Top 1% {(sim.result.top1PctRate * 100).toFixed(1)}%</p>
-              <p className="side-sim-seeds">build {sim.buildSeed} · sim {sim.simSeed}</p>
+              <p className="side-detail">Top 1% {formatRoiPct(sim.result.top1PctRate)}</p>
+              {/* "Show the seed once" task: buildSeed/simSeed are the SAME
+                  number by construction (this build's one seed, reused for
+                  every sim run on purpose -- see the `buildSeed` useState's
+                  own comment) -- showing one, not both, per that task's
+                  spec. Both fields stay on the state (unused here) since
+                  the task asked for a display change only. */}
+              <p className="side-sim-seeds">seed {sim.simSeed}</p>
             </>
           ) : (
             <p className="side-detail">{simStatusText(sim)}</p>
@@ -2031,22 +2050,24 @@ function FinishCard({
             Core ownership: <strong>{(whiteStats.ownershipTotal * 100).toFixed(1)}%</strong>
           </p>
           <p>
-            Sim ROI{simEyebrowSuffix(whiteSim)}:{" "}
-            <strong>{whiteSim.kind === "done" ? `${(whiteSim.result.roi * 100).toFixed(1)}%` : simStatusText(whiteSim) ?? "—"}</strong>
+            Sim results{simEyebrowSuffix(whiteSim)}:{" "}
+            <strong>{whiteSim.kind === "done" ? formatRoiPct(whiteSim.result.cashRate) : simStatusText(whiteSim) ?? "—"}</strong>
             {whiteSim.kind === "done" && (
               <span className="finish-stat-sub">
                 {" "}
-                Cash {(whiteSim.result.cashRate * 100).toFixed(1)}% · Top 1% {(whiteSim.result.top1PctRate * 100).toFixed(1)}%
+                {BOTTOM_99_ROI_LABEL} {formatRoiPct(whiteSim.result.bottom99Roi)} · {TOP_1_PCT_SCORE_ROI_LABEL}{" "}
+                {formatRoiPct(whiteSim.result.top1PctScoreRoi)}
               </span>
             )}
           </p>
           <p>
-            Field sim ROI{simEyebrowSuffix(blackSim)}:{" "}
-            <strong>{blackSim.kind === "done" ? `${(blackSim.result.roi * 100).toFixed(1)}%` : simStatusText(blackSim) ?? "—"}</strong>
+            Field sim results{simEyebrowSuffix(blackSim)}:{" "}
+            <strong>{blackSim.kind === "done" ? formatRoiPct(blackSim.result.cashRate) : simStatusText(blackSim) ?? "—"}</strong>
             {blackSim.kind === "done" && (
               <span className="finish-stat-sub">
                 {" "}
-                Cash {(blackSim.result.cashRate * 100).toFixed(1)}% · Top 1% {(blackSim.result.top1PctRate * 100).toFixed(1)}%
+                {BOTTOM_99_ROI_LABEL} {formatRoiPct(blackSim.result.bottom99Roi)} · {TOP_1_PCT_SCORE_ROI_LABEL}{" "}
+                {formatRoiPct(blackSim.result.top1PctScoreRoi)}
               </span>
             )}
           </p>

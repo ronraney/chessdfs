@@ -476,8 +476,8 @@ describe("BuildScreen -- Sim 4: sim results", () => {
 
     const finishCard = document.querySelector(".finish-card") as HTMLElement;
     await waitFor(() => {
-      expect(within(finishCard).getByText(/^Sim ROI \(best finish\):/)).toBeInTheDocument();
-      expect(within(finishCard).getByText(/^Field sim ROI \(best finish\):/)).toBeInTheDocument();
+      expect(within(finishCard).getByText(/^Sim results \(best finish\):/)).toBeInTheDocument();
+      expect(within(finishCard).getByText(/^Field sim results \(best finish\):/)).toBeInTheDocument();
     });
     expect(within(finishCard).getAllByText("Build fields in Admin first.")).toHaveLength(2); // White's line + Black's line
   });
