@@ -178,6 +178,49 @@ describe("aggregateResults", () => {
     expect(agg.top1PctRate).toBeCloseTo(0.5, 10);
     expect(agg.top1PctRate).toBeCloseTo(agg.winRate, 10);
   });
+
+  it("bottom99Roi excludes the top-1%-by-payout trial; top1PctScoreRoi is the top-1%-by-score trial -- a DIFFERENT bucket", () => {
+    // 10 trials -> topCount = ceil(10 * 0.01) = 1. Trial 1 has the biggest
+    // PAYOUT (1000) but a middling userScore (50); trial 2 has the biggest
+    // userScore (200) but a modest payout (100) -- the two "top 1%" buckets
+    // pick out different trials on purpose, to prove they're independent.
+    const results: TrialResult[] = [
+      { trial: 1, userScore: 50, place: 1, payout: 1000 },
+      { trial: 2, userScore: 200, place: 2, payout: 100 },
+      { trial: 3, userScore: 10, place: 3, payout: 0 },
+      { trial: 4, userScore: 20, place: 4, payout: 0 },
+      { trial: 5, userScore: 30, place: 5, payout: 0 },
+      { trial: 6, userScore: 40, place: 6, payout: 0 },
+      { trial: 7, userScore: 60, place: 7, payout: 0 },
+      { trial: 8, userScore: 70, place: 8, payout: 0 },
+      { trial: 9, userScore: 80, place: 9, payout: 0 },
+      { trial: 10, userScore: 90, place: 10, payout: 0 },
+    ];
+    const entryFee = 10;
+    const agg = aggregateResults(results, entryFee, 1000);
+
+    // plain roi (reference only, no longer shown in the UI): totalPayout=1100,
+    // totalCost=100 -> (1100-100)/100 = 10
+    expect(agg.roi).toBeCloseTo(10, 10);
+
+    // bottom99Roi: trial 1 (biggest payout) excluded -- remaining 9 trials'
+    // payout sums to 100 (trial 2 only), cost = 9*10=90 -> (100-90)/90
+    expect(agg.bottom99Roi).toBeCloseTo((100 - 90) / 90, 10);
+
+    // top1PctScoreRoi: trial 2 (biggest userScore) alone -- payout 100,
+    // cost = 1*10=10 -> (100-10)/10 = 9
+    expect(agg.top1PctScoreRoi).toBeCloseTo(9, 10);
+  });
+
+  it("bottom99Roi/top1PctScoreRoi don't divide by zero when topCount consumes the whole (tiny) trial set", () => {
+    const results: TrialResult[] = [{ trial: 1, userScore: 100, place: 1, payout: 1000 }];
+    const agg = aggregateResults(results, 10, 1000);
+    // topCount = ceil(1 * 0.01) = 1 -- bottom99Roi's own bucket (slice(1) of
+    // a 1-length array) is empty, not a payout-sum / 0 NaN.
+    expect(agg.bottom99Roi).toBe(0);
+    // top1PctScoreRoi's own bucket is the single trial itself: (1000-10)/10
+    expect(agg.top1PctScoreRoi).toBeCloseTo(99, 10);
+  });
 });
 
 describe("runSimulation", () => {

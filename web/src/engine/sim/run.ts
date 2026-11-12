@@ -1,12 +1,12 @@
 // Monte Carlo trial loop: scores the user's lineup and a simulated field
 // against correlated per-trial draws, ranks the user, pays from the
 // contest's payout table, and aggregates into ROI/cash rate/win rate/
-// top-1%-of-entries rate/finish-place percentiles. Ported from
-// rraney/nfl-dfs's runSimulation_ +
-// scoreLineup_ + computeEffectivePlaceAndPayout_ + aggregateSimResults_
-// (sim_trial_loop.js, Parts C/D) -- the batch variant (runSimulationBatch_,
-// grading many lineups against one shared per-trial draw+field pass) is
-// not ported; this task asked for one lineup at a time.
+// top-1%-of-entries rate/finish-place percentiles/Bottom99 ROI/Top1%Score
+// ROI. Ported from rraney/nfl-dfs's runSimulation_ +
+// scoreLineup_ + computeEffectivePlaceAndPayout_ + aggregateSimResults_ +
+// computeTopBottomRoi_ (sim_trial_loop.js, Parts C/D) -- the batch variant
+// (runSimulationBatch_, grading many lineups against one shared per-trial
+// draw+field pass) is not ported; this task asked for one lineup at a time.
 //
 // Pure and seeded, same discipline as draws.ts/field.ts: no I/O, the only
 // randomness is the injected seed. The field itself is NOT read from
@@ -93,11 +93,24 @@ export interface FinishPercentiles {
 // with cashRate (also a bare place-based frequency, not a dollar figure)
 // in this same return shape, "Rate" reads as frequency here, not
 // nfl-dfs's ROI-flavored metric.
+//
+// bottom99Roi/top1PctScoreRoi (this task's own addition) ARE dollar ROI,
+// each a mean over a different 1%-sized bucket of TRIALS (not entries):
+// bottom99Roi excludes the top 1% of trials by payout (nfl-dfs's own
+// Bottom99pct_ROI -- "ROI without the luckiest trials"), top1PctScoreRoi
+// is the mean ROI over just the top 1% of trials by the lineup's own raw
+// userScore, regardless of place/payout (nfl-dfs's own Top1pctScore_ROI --
+// "ROI in this lineup's own best-scoring games"). roi itself (plain mean
+// ROI across every trial) stays in this shape for any caller that still
+// wants it (e.g. a future diagnostic), but per this task's own UI spec it
+// is no longer shown anywhere in BuildScreen.
 export interface SimResult {
   readonly roi: number;
   readonly cashRate: number;
   readonly winRate: number;
   readonly top1PctRate: number;
+  readonly bottom99Roi: number;
+  readonly top1PctScoreRoi: number;
   readonly finishPercentiles: FinishPercentiles;
 }
 
@@ -181,25 +194,59 @@ function percentile(sortedAscending: readonly number[], p: number): number {
   return sortedAscending[lo] + (sortedAscending[hi] - sortedAscending[lo]) * (idx - lo);
 }
 
+// Mean ROI over one bucket of trials -- shared by the plain `roi` figure
+// (the whole `results` array is itself just the trivial "bucket is
+// everything" case) and the two 1%-bucket metrics below.
+function roiOverBucket(bucket: readonly TrialResult[], entryFee: number): number {
+  const cost = bucket.length * entryFee;
+  return cost > 0 ? (bucket.reduce((s, r) => s + r.payout, 0) - cost) / cost : 0;
+}
+
+// Bottom99Roi / Top1PctScoreRoi: ported from nfl-dfs's own
+// computeTopBottomRoi_ (sim_trial_loop.js) -- bottom99Roi is the mean ROI
+// over every trial EXCEPT the top 1% by payout ("if you strip out the
+// luckiest trials, what's left"); top1PctScoreRoi is the mean ROI over
+// just the top 1% of trials by the lineup's own raw userScore, regardless
+// of place/payout ("how good is this lineup at its own ceiling" -- a
+// different bucket from "top 1% by payout," since a huge-score trial can
+// still lose to an even bigger field spike that trial). Unlike nfl-dfs's
+// own MIN_TOP_COUNT_ floor (30), no minimum bucket size is applied here --
+// this task's own spec is "top 1% of trials," not "top 1%, floored"; at
+// the live default of 5,000 trials, 1% is already 50 trials, well clear
+// of the small-sample degeneracy nfl-dfs's floor was guarding against.
+function computeTopBottomRoi(results: readonly TrialResult[], entryFee: number): { bottom99Roi: number; top1PctScoreRoi: number } {
+  const trialCount = results.length;
+  const topCount = trialCount > 0 ? Math.ceil(trialCount * 0.01) : 0;
+
+  const byPayoutDesc = results.slice().sort((a, b) => b.payout - a.payout);
+  const bottom99Roi = roiOverBucket(byPayoutDesc.slice(topCount), entryFee);
+
+  const byScoreDesc = results.slice().sort((a, b) => b.userScore - a.userScore);
+  const top1PctScoreRoi = roiOverBucket(byScoreDesc.slice(0, topCount), entryFee);
+
+  return { bottom99Roi, top1PctScoreRoi };
+}
+
 // Part D aggregation: Sim ROI, Cash Rate, win rate, top-1%-of-entries rate,
-// and finish-place percentiles. Exported separately from runSimulation so
-// scoring/payout correctness can be tested against hand-built
-// TrialResult[] fixtures directly, without needing a real correlated draw
-// to land on exact scores (same reason nfl-dfs keeps aggregateSimResults_
-// as its own separately-callable pure function, distinct from
-// runSimulation_ itself). `entries` is the contest's own total entrant
-// count (ContestConfig.fieldSize) -- the top1PctRate cutoff place,
-// ceil(entries * 0.01), is a property of the CONTEST, not of this
-// particular field sample's lineup count.
+// finish-place percentiles, and the Bottom99/Top1%Score ROI split.
+// Exported separately from runSimulation so scoring/payout correctness can
+// be tested against hand-built TrialResult[] fixtures directly, without
+// needing a real correlated draw to land on exact scores (same reason
+// nfl-dfs keeps aggregateSimResults_ as its own separately-callable pure
+// function, distinct from runSimulation_ itself). `entries` is the
+// contest's own total entrant count (ContestConfig.fieldSize) -- the
+// top1PctRate cutoff place, ceil(entries * 0.01), is a property of the
+// CONTEST, not of this particular field sample's lineup count (unlike
+// bottom99Roi/top1PctScoreRoi's own cutoff, which is a property of
+// `trialCount` instead -- a different "top 1%").
 export function aggregateResults(results: readonly TrialResult[], entryFee: number, entries: number): SimResult {
   const trialCount = results.length;
-  const totalPayout = results.reduce((s, r) => s + r.payout, 0);
-  const totalCost = trialCount * entryFee;
-  const roi = totalCost > 0 ? (totalPayout - totalCost) / totalCost : 0;
+  const roi = roiOverBucket(results, entryFee);
   const cashRate = trialCount > 0 ? results.filter((r) => r.payout > 0).length / trialCount : 0;
   const winRate = trialCount > 0 ? results.filter((r) => r.place === 1).length / trialCount : 0;
   const top1PctCutoff = Math.ceil(entries * 0.01);
   const top1PctRate = trialCount > 0 ? results.filter((r) => r.place <= top1PctCutoff).length / trialCount : 0;
+  const { bottom99Roi, top1PctScoreRoi } = computeTopBottomRoi(results, entryFee);
 
   const places = results.map((r) => r.place).sort((a, b) => a - b);
   const finishPercentiles: FinishPercentiles = {
@@ -210,7 +257,7 @@ export function aggregateResults(results: readonly TrialResult[], entryFee: numb
     P90: percentile(places, 0.9),
   };
 
-  return { roi, cashRate, winRate, top1PctRate, finishPercentiles };
+  return { roi, cashRate, winRate, top1PctRate, bottom99Roi, top1PctScoreRoi, finishPercentiles };
 }
 
 // The trial loop itself. Draws one correlated outcome per player each

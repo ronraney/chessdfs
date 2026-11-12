@@ -297,11 +297,23 @@ type Ending = { kind: "stopped" } | { kind: "complete" } | { kind: "deadEnd"; si
 // variant carries it, including "noField" -- the "(best finish)" label
 // shouldn't flicker on/off depending on whether a field happens to be
 // cached.
+//
+// "Make runs reproducible" task: `buildSeed`/`simSeed` are attached ONLY
+// to "done" (there's no result to reproduce before then) so the muted
+// seed text under the sim results always reads straight off the result
+// it describes, rather than a separate render-time variable that could in
+// principle drift from what the run actually used. Both fields hold the
+// SAME number today -- this build has exactly one seed concept
+// (`buildSeed`, dispatchSim's own closed-over value), reused for every
+// sim run on purpose (see the `buildSeed` useState's own comment below:
+// "not by drawing a fresh one per click") -- recorded under two labels
+// because they answer two different questions ("which build is this,"
+// "what seed did this run use"), not because they can currently diverge.
 type SideSimState =
   | { kind: "idle" }
   | { kind: "noField"; isBestFinish: boolean }
   | { kind: "running"; isBestFinish: boolean }
-  | { kind: "done"; result: SimResult; isBestFinish: boolean }
+  | { kind: "done"; result: SimResult; isBestFinish: boolean; buildSeed: number; simSeed: number }
   | { kind: "error"; message: string; isBestFinish: boolean };
 
 // The finish screen's "how it ended" headline -- RULES.md/dfs_chess/cli.py
@@ -1361,7 +1373,7 @@ export default function BuildScreen({
       rememberWorker(worker);
       done
         .then((result) => {
-          if (simRunIdRef.current === runId) setSim({ kind: "done", result, isBestFinish });
+          if (simRunIdRef.current === runId) setSim({ kind: "done", result, isBestFinish, buildSeed, simSeed: buildSeed });
         })
         .catch((e: unknown) => {
           if (simRunIdRef.current === runId) setSim({ kind: "error", message: errorMessage(e), isBestFinish });
@@ -1837,10 +1849,19 @@ function SideColumn({
           <p className="side-eyebrow">Sim results{simEyebrowSuffix(sim)}</p>
           {sim.kind === "done" ? (
             <>
-              <p className="side-sim-roi">{(sim.result.roi * 100).toFixed(1)}%</p>
-              <p className="side-detail">
-                Cash {(sim.result.cashRate * 100).toFixed(1)}% · Top 1% {(sim.result.top1PctRate * 100).toFixed(1)}%
-              </p>
+              <p className="side-sim-cash-rate">{(sim.result.cashRate * 100).toFixed(1)}%</p>
+              <div className="side-sim-secondary">
+                <div className="side-sim-secondary-stat">
+                  <span className="side-sim-secondary-value">{(sim.result.bottom99Roi * 100).toFixed(1)}%</span>
+                  <span className="side-sim-secondary-label">ROI without luckiest 1%</span>
+                </div>
+                <div className="side-sim-secondary-stat">
+                  <span className="side-sim-secondary-value">{(sim.result.top1PctScoreRoi * 100).toFixed(1)}%</span>
+                  <span className="side-sim-secondary-label">ROI in best 1% of games</span>
+                </div>
+              </div>
+              <p className="side-detail">Top 1% {(sim.result.top1PctRate * 100).toFixed(1)}%</p>
+              <p className="side-sim-seeds">build {sim.buildSeed} · sim {sim.simSeed}</p>
             </>
           ) : (
             <p className="side-detail">{simStatusText(sim)}</p>

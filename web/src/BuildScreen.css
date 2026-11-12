@@ -300,14 +300,57 @@
   color: var(--text-h);
 }
 
-/* Sim 4: same size/weight treatment as .side-pts-from-optimal -- a
-   separate class (not reused directly) since the two values are never
-   shown in the same spot but are semantically distinct stats. */
-.side-sim-roi {
+/* "Replace the mean-ROI headline" task: same size/weight treatment
+   .side-sim-roi had (a separate class, not reused directly, since the
+   value is never shown in the same spot as .side-pts-from-optimal but is
+   a semantically distinct stat) -- renamed from .side-sim-roi now that it
+   headlines Cash Rate instead of mean ROI, so the class name doesn't lie
+   about what it shows. */
+.side-sim-cash-rate {
   margin: 0;
   font-family: var(--mono);
   font-size: 24px;
   color: var(--text-h);
+}
+
+/* Bottom99 ROI / Top1%Score ROI, side by side -- smaller than the Cash
+   Rate headline above (these are the secondary pair the task asked for),
+   each with its own plain-words label underneath rather than relying on
+   the "·"-joined single line .side-detail uses elsewhere, since these two
+   numbers need their own distinct labels, not a shared one. */
+.side-sim-secondary {
+  display: flex;
+  gap: 16px;
+  margin-top: 2px;
+}
+
+.side-sim-secondary-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.side-sim-secondary-value {
+  font-family: var(--mono);
+  font-size: 16px;
+  color: var(--text-h);
+}
+
+.side-sim-secondary-label {
+  font-size: 11px;
+  color: var(--text);
+}
+
+/* "Make runs reproducible" task: small, muted, selectable/copyable text
+   under the sim results. Not opacity -- same reasoning as
+   .opening-moves .pending's own comment: a faded-out token reads as
+   disabled/inert, plain muted text (the same shade .side-eyebrow already
+   uses) stays legible while still reading as secondary. */
+.side-sim-seeds {
+  margin: 2px 0 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
 }
 
 .locked-players {
