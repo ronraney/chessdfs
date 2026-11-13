@@ -143,11 +143,11 @@ export function deleteLineup(id: string): void {
   writeAll(readAll().filter((lineup) => lineup.id !== id));
 }
 
-// "Export all" -- every saved lineup, newest first, as one JSON file's
-// worth of text. The caller (SavedLineupsScreen) turns this into an actual
-// file download; this function stays pure (no Blob/anchor/DOM), same
-// "I/O lives at the UI layer" split every other *Store.ts here already
-// follows.
+// "Download all (backup)" -- every saved lineup, newest first, as one
+// JSON file's worth of text. The caller (SavedLineupsScreen) turns this
+// into an actual file download; this function stays pure (no Blob/
+// anchor/DOM), same "I/O lives at the UI layer" split every other
+// *Store.ts here already follows.
 export function exportLineupsJson(): string {
   return JSON.stringify(getSavedLineups(), null, 2);
 }

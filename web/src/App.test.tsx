@@ -82,6 +82,21 @@ describe("Saved lineups routing", () => {
     await user.click(screen.getByRole("button", { name: "Back" }));
     expect(screen.getByLabelText("1 · Contest")).toBeInTheDocument();
   });
+
+  // "Slot-ordered lineups + clearer save" task: "reachable from every
+  // screen, including 'No slate loaded yet'" -- that placeholder has no
+  // slate and so no `screen` state route of its own guarding it; this is
+  // the one case that needed the "saved" check moved ahead of the
+  // "players === null" branch in App.tsx.
+  it('"Saved lineups" is reachable from "No slate loaded yet" (no projections saved at all)', async () => {
+    render(<App />);
+    expect(screen.getByText("No slate loaded yet.")).toBeInTheDocument();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Saved lineups" }));
+
+    expect(screen.getByText("No saved lineups yet.")).toBeInTheDocument();
+  });
 });
 
 describe("admin screen routing", () => {

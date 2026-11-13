@@ -367,6 +367,14 @@
   align-items: center;
   gap: 10px;
   font-size: 14px;
+  min-height: 24px;
+}
+
+/* "Slot-ordered lineups" task: a blank row for a DK slot no one's locked
+   yet -- a faint dashed line keeps the fixed 9-row grid legible without
+   any placeholder text (the task's own "blank placeholder rows" spec). */
+.locked-players-empty {
+  border-bottom: 1px dashed var(--border);
 }
 
 .locked-glyph {
@@ -608,6 +616,13 @@
   font-size: 13px;
 }
 
+/* "Slot-ordered lineups" task: an open DK slot's own blank row -- same
+   height as a filled one (the shared padding above already does that),
+   just no cell content. */
+.finish-core-empty td {
+  border-bottom: 1px dashed var(--border);
+}
+
 /* Task "Simming indicator": wraps .finish-stats so the overlay below can
    cover exactly the numbers a running sim is about to replace, without
    reflowing the rest of the finish card around it. */
@@ -703,6 +718,30 @@
   font-weight: 600;
   background: transparent;
   color: var(--text-h);
+}
+
+.finish-actions button:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+/* "Save lineup" button + its own "Saved. View saved lineups →" link,
+   stacked -- the link only renders once saved, directly below the now-
+   disabled button. */
+.finish-save {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.finish-actions .finish-view-saved {
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 /* Player | Field -- Task 38b moves this up next to the board/cards row

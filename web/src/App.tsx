@@ -96,20 +96,27 @@ function App() {
     return <AdminScreen />;
   }
 
+  // "Slot-ordered lineups + clearer save" task: checked before the
+  // "no slate loaded" branch below -- saved lineups don't depend on a
+  // slate at all, and that task's own header link has to actually reach
+  // this screen even when no projections have been loaded yet.
+  if (screen === "saved") {
+    return <SavedLineupsScreen onBack={() => setScreen("setup")} />;
+  }
+
   if (players === null) {
     return (
       <main className="setup">
         <header className="app-header">
+          <button type="button" className="saved-lineups-link" onClick={() => setScreen("saved")}>
+            Saved lineups
+          </button>
           <ThemeToggle />
         </header>
         <h1>Chess DFS</h1>
         <p className="status">No slate loaded yet.</p>
       </main>
     );
-  }
-
-  if (screen === "saved") {
-    return <SavedLineupsScreen onBack={() => setScreen("setup")} />;
   }
 
   if (screen === "build" && chosenSetup !== null) {
@@ -124,6 +131,7 @@ function App() {
         buildSeed={chosenSetup.buildSeed}
         onStartAgain={startAgain}
         onNewContest={newContest}
+        onViewSaved={() => setScreen("saved")}
       />
     );
   }

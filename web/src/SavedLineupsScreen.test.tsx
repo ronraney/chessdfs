@@ -66,6 +66,33 @@ describe("SavedLineupsScreen", () => {
     expect(rows[0].textContent).toContain("$13,500");
   });
 
+  // "Slot-ordered lineups" task: the detail view shows the same fixed
+  // 9-row DK grid (QB, RB, RB, WR, WR, WR, TE, FLEX, DST) the build
+  // screens do, with no "Slot" column (row position IS the slot) --
+  // recomputed fresh from the saved record's own `.pos` fields, not read
+  // back off the stored `.slot` (Copy's own field, untouched by this
+  // task). makeInput's QB + RB fill only the first two rows; the other 7
+  // are blank placeholders.
+  it("detail view: fixed DK-order grid, no Slot column, blank placeholder rows for the rest", async () => {
+    saveLineup(makeInput());
+    render(<SavedLineupsScreen onBack={onBack} />);
+    const user = userEvent.setup();
+    await user.click(document.querySelector(".saved-row-main") as HTMLElement);
+
+    const finishCard = document.querySelector(".finish-card") as HTMLElement;
+    const headers = [...finishCard.querySelectorAll(".finish-core thead th")].map((th) => th.textContent);
+    expect(headers).toEqual(["Piece", "Player", "Pos", "Team", "Salary"]);
+
+    const rows = [...finishCard.querySelectorAll(".finish-core tbody tr")];
+    expect(rows).toHaveLength(9);
+    const cellsOf = (row: Element) => [...row.querySelectorAll("td")].map((td) => td.textContent);
+    expect(cellsOf(rows[0])).toEqual(["King", "Joe Burrow", "QB", "CIN", "$8,000"]); // QB row
+    expect(cellsOf(rows[1])).toEqual(["(optimizer)", "Some Back", "RB", "DAL", "$5,500"]); // RB row
+    for (const row of rows.slice(2)) {
+      expect(cellsOf(row)).toEqual([""]); // blank placeholder, colSpan'd
+    }
+  });
+
   it("clicking a row shows the full lineup, with Back to list returning to the list", async () => {
     saveLineup(makeInput());
     render(<SavedLineupsScreen onBack={onBack} />);
@@ -129,9 +156,9 @@ describe("SavedLineupsScreen", () => {
   });
 
   describe("export / import", () => {
-    it("Export all is disabled when there's nothing saved", () => {
+    it('"Download all (backup)" is disabled when there\'s nothing saved', () => {
       render(<SavedLineupsScreen onBack={onBack} />);
-      expect(screen.getByRole("button", { name: "Export all" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Download all (backup)" })).toBeDisabled();
     });
 
     it("Import loads an exported file back in, skipping anything already saved", async () => {

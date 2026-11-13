@@ -414,6 +414,39 @@ describe("BuildScreen -- castling, captures, and unaffordable picks (Task 39)", 
     30000,
   );
 
+  // "Slot-ordered lineups" task: "Recompute slot assignment from the
+  // current roster every time it changes (captures can remove players)."
+  // A transfer capture here always moves a Black-locked player onto
+  // White's own roster (White is the only side that ever drags a piece --
+  // see applyCaptureMove's own comment) -- Black's own grid loses a row,
+  // White's gains one, and (the actual point of this test) neither side's
+  // rendered `.locked-players` list is left stale: its own real listitem
+  // count still matches `.side-meta`'s own "N locked" (whiteMoves.length/
+  // blackMoves.length), the ground truth this task's fixed 9-row grid is
+  // recomputed from on every render.
+  function lockedCountFromMeta(column: HTMLElement): number {
+    const text = column.querySelector(".side-meta")!.textContent!;
+    return Number(text.match(/(\d+) locked/)![1]);
+  }
+
+  it(
+    "re-slotting after a capture: the transferred player moves sides, and neither list is left stale",
+    async () => {
+      renderScreen();
+      const user = userEvent.setup();
+      await playUntilCapture(user, (fen, _from, to) => !isSameStartingPiece(fen, to));
+
+      const capturedName = statusLine().textContent!.match(/^You captured (.+)\./)![1];
+
+      expect(within(youColumn()).getByText(new RegExp(capturedName))).toBeInTheDocument();
+      expect(within(fieldColumn()).queryByText(new RegExp(capturedName))).toBeNull();
+
+      expect(within(youColumn()).queryAllByRole("listitem")).toHaveLength(lockedCountFromMeta(youColumn()));
+      expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(lockedCountFromMeta(fieldColumn()));
+    },
+    30000,
+  );
+
   it(
     "capturing an unmoved piece opens the modal for that piece type",
     async () => {

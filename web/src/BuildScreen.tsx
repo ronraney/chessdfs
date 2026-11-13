@@ -93,6 +93,7 @@ import { validateVegasCsv } from "./engine/sim/vegasCsv";
 import type { SimResult } from "./engine/sim/run";
 import type { SportConfig } from "./engine/sport";
 import { NO_FIELD_CACHED_MESSAGE, resolveCachedField, slateSignature } from "./fieldCacheStore";
+import { slotGridRows } from "./lineupSlots";
 import { formatLineupText, formatMoveList, type LineupTextRow } from "./lineupText";
 import { getSavedProjectionsCsv } from "./projectionsStore";
 import { saveLineup, type SavedLineupPlayer, type SavedLineupSim } from "./savedLineupsStore";
@@ -201,6 +202,12 @@ function pieceTooltipContent(
 const OPTIMIZER_GLYPH = "✦";
 const OPTIMIZER_LABEL = "(optimizer)";
 
+// "Slot-ordered lineups + clearer save" task: BuildScreen's own
+// `onViewSaved` prop is optional (see its own comment) -- FinishCard's
+// isn't, so this stands in for it on the rare caller that omits it,
+// rather than threading `undefined` further down.
+const NOOP = () => {};
+
 // One roster row, piece-locked or optimizer-filled -- SideColumn's own
 // list, FinishCard's table, and lineupText all walk the same shape so
 // White's two kinds of roster entry render identically everywhere
@@ -279,6 +286,14 @@ interface Props {
   // locally; BuildScreen itself has no notion of "setup."
   onStartAgain: () => void;
   onNewContest: () => void;
+  // "Slot-ordered lineups + clearer save" task: the header's own "Saved
+  // lineups" link and the Finish screen's "Saved. View saved lineups →"
+  // link, once Save lineup is clicked -- optional, like buildSeed above,
+  // so every existing test/caller that doesn't care about this nav path
+  // keeps compiling unchanged; omitted, the header link just doesn't
+  // render (see its own call site) and the Finish-screen link becomes an
+  // inert no-op rather than a crash.
+  onViewSaved?: () => void;
 }
 
 // Task 40: how the build ended -- drives the finish screen (replacing the
@@ -524,6 +539,7 @@ export default function BuildScreen({
   buildSeed: buildSeedProp,
   onStartAgain,
   onNewContest,
+  onViewSaved,
 }: Props) {
   // Bug fix: a chosen "line" opening was never seeded as Black's own
   // committed line, so build.playBlackMove's "keep the committed line while
@@ -1520,6 +1536,11 @@ export default function BuildScreen({
           <button type="button" className="start-again-link" onClick={requestStartAgain}>
             Start again
           </button>
+          {onViewSaved !== undefined && (
+            <button type="button" className="saved-lineups-link" onClick={onViewSaved}>
+              Saved lineups
+            </button>
+          )}
           <ThemeToggle />
         </div>
       </header>
@@ -1571,6 +1592,7 @@ export default function BuildScreen({
               onFillOutCore={fillOutCore}
               onStartAgain={onStartAgain}
               onNewContest={onNewContest}
+              onViewSaved={onViewSaved ?? NOOP}
               preset={preset}
               kingMode={kingMode}
             />
@@ -1813,6 +1835,12 @@ function SideColumn({
   tightFinish?: TightFinishStatus | null;
 }) {
   const rosterRows = rosterEntries(moves, filled);
+  // "Slot-ordered lineups" task: a fixed 9-row DK grid (QB, RB, RB, WR,
+  // WR, WR, TE, FLEX, DST), recomputed from the CURRENT roster on every
+  // render -- see slotGridRows' own header comment for why this, not
+  // engine/rules.ts's assignRosterSlots, is what keeps re-slotting after a
+  // capture well-defined.
+  const slotRows = slotGridRows(rosterRows, (entry) => entry.player.positions[0], NFL.rosterSlots);
   const openSlots = openSlotLabels(stats);
   return (
     <div className={`side-column ${side}`}>
@@ -1893,18 +1921,27 @@ function SideColumn({
       )}
 
       <ul className="locked-players">
-        {rosterRows.map((entry) => (
-          <li key={entry.player.id}>
-            <span className="locked-glyph" aria-hidden="true">
-              {entry.glyph}
-            </span>
-            <span className="locked-name">
-              {entry.player.name} · {entry.player.positions[0]}
-              {entry.label === OPTIMIZER_LABEL && <span className="locked-optimizer"> {OPTIMIZER_LABEL}</span>}
-            </span>
-            <span className="locked-salary">${entry.player.salary.toLocaleString()}</span>
-          </li>
-        ))}
+        {slotRows.map((row, i) =>
+          row.entry === null ? (
+            // "No slot labels needed" -- a blank placeholder row purely
+            // for visual grid spacing, so it carries no accessible
+            // content of its own (aria-hidden keeps every existing
+            // listitem-count assertion elsewhere counting only REAL
+            // locked players, same as before this task).
+            <li key={i} className="locked-players-empty" aria-hidden="true" />
+          ) : (
+            <li key={row.entry.player.id}>
+              <span className="locked-glyph" aria-hidden="true">
+                {row.entry.glyph}
+              </span>
+              <span className="locked-name">
+                {row.entry.player.name} · {row.entry.player.positions[0]}
+                {row.entry.label === OPTIMIZER_LABEL && <span className="locked-optimizer"> {OPTIMIZER_LABEL}</span>}
+              </span>
+              <span className="locked-salary">${row.entry.player.salary.toLocaleString()}</span>
+            </li>
+          ),
+        )}
       </ul>
 
       {openSlots.length > 0 && <p className="side-open">Open: {openSlots.join(" · ")}</p>}
@@ -1951,6 +1988,7 @@ function FinishCard({
   onFillOutCore,
   onStartAgain,
   onNewContest,
+  onViewSaved,
   preset,
   kingMode,
 }: {
@@ -1969,6 +2007,11 @@ function FinishCard({
   onFillOutCore: () => void;
   onStartAgain: () => void;
   onNewContest: () => void;
+  // "Slot-ordered lineups + clearer save" task: the Finish screen's own
+  // "Saved. View saved lineups →" link, under the Save lineup button --
+  // App.tsx owns screen navigation (same split as onStartAgain/
+  // onNewContest), this just fires it.
+  onViewSaved: () => void;
   // "Save lineup" task: not used anywhere else in this component -- only
   // needed to fill out the saved record's own contest name/King mode
   // (preset.contest.fieldTier(), for each player's saved ownership
@@ -1980,8 +2023,10 @@ function FinishCard({
   const openSlots = openSlotLabels(whiteStats);
   const [copied, setCopied] = useState(false);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // "Slot-ordered lineups + clearer save" task: once true, this stays
+  // true (and the button disabled) for the rest of THIS build -- no timer
+  // reverting it back the way Copy lineup's "Copied" flash still does.
   const [saved, setSaved] = useState(false);
-  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // "Fill out my core" entries first, piece-locked moves then optimizer
   // fills, same order rosterEntries always uses -- Task 43's DK roster
   // slot (QB/RB/WR/TE/FLEX/DST) assignment runs over the SAME combined
@@ -1991,11 +2036,17 @@ function FinishCard({
   // lock/fill order.
   const entries = useMemo(() => rosterEntries(whiteMoves, whiteFilledPlayers), [whiteMoves, whiteFilledPlayers]);
   const slots = useMemo(() => assignRosterSlots(entries.map((e) => e.player), NFL.rosterSlots), [entries]);
+  // "Slot-ordered lineups" task: the fixed 9-row DK grid this table now
+  // shows -- deliberately separate from `slots` above (Copy lineup/Save
+  // lineup's own "Slot" field, untouched by this task): see
+  // slotGridRows' own header comment for why its deterministic, pick-
+  // order placement can differ from assignRosterSlots' matching-based one
+  // in the rare multi-FLEX-candidate case.
+  const slotRows = useMemo(() => slotGridRows(entries, (e) => e.player.positions[0], NFL.rosterSlots), [entries]);
 
   useEffect(() => {
     return () => {
       if (copiedTimerRef.current !== null) clearTimeout(copiedTimerRef.current);
-      if (savedTimerRef.current !== null) clearTimeout(savedTimerRef.current);
     };
   }, []);
 
@@ -2044,8 +2095,6 @@ function FinishCard({
       blackSim: simToSaved(blackSim),
     });
     setSaved(true);
-    if (savedTimerRef.current !== null) clearTimeout(savedTimerRef.current);
-    savedTimerRef.current = setTimeout(() => setSaved(false), 1500);
   }
 
   return (
@@ -2060,12 +2109,16 @@ function FinishCard({
 
       {/* Task 41: a 5-column table doesn't fit 360px gracefully -- this
           scrolls internally rather than forcing the whole page wider.
-          Task 43 adds a 6th (Slot) -- still scrolls, not a new concern. */}
+          "Slot-ordered lineups" task: always 9 rows now, QB/RB/RB/WR/WR/
+          WR/TE/FLEX/DST (slotRows' own fixed order) -- row position IS
+          the DK slot, so the old "Slot" column (Task 43) is gone; an open
+          slot is a blank row (colSpan'd, aria-hidden -- same "no
+          accessible content of its own" reasoning as SideColumn's own
+          empty <li>). */}
       <div className="finish-core-scroll">
         <table className="finish-core">
           <thead>
             <tr>
-              <th>Slot</th>
               <th>Piece</th>
               <th>Player</th>
               <th>Pos</th>
@@ -2074,16 +2127,21 @@ function FinishCard({
             </tr>
           </thead>
           <tbody>
-            {entries.map((entry, i) => (
-              <tr key={entry.player.id}>
-                <td>{slots[i]}</td>
-                <td>{entry.label}</td>
-                <td>{entry.player.name}</td>
-                <td>{entry.player.positions[0]}</td>
-                <td>{entry.player.team}</td>
-                <td>${entry.player.salary.toLocaleString()}</td>
-              </tr>
-            ))}
+            {slotRows.map((row, i) =>
+              row.entry === null ? (
+                <tr key={i} className="finish-core-empty" aria-hidden="true">
+                  <td colSpan={5} />
+                </tr>
+              ) : (
+                <tr key={row.entry.player.id}>
+                  <td>{row.entry.label}</td>
+                  <td>{row.entry.player.name}</td>
+                  <td>{row.entry.player.positions[0]}</td>
+                  <td>{row.entry.player.team}</td>
+                  <td>${row.entry.player.salary.toLocaleString()}</td>
+                </tr>
+              ),
+            )}
           </tbody>
         </table>
       </div>
@@ -2163,9 +2221,19 @@ function FinishCard({
         <button type="button" onClick={() => void copyLineup()}>
           {copied ? "Copied" : "Copy lineup"}
         </button>
-        <button type="button" onClick={saveLineupNow}>
-          {saved ? "Saved" : "Save lineup"}
-        </button>
+        <div className="finish-save">
+          <button type="button" disabled={saved} onClick={saveLineupNow}>
+            {saved ? "✓ Saved" : "Save lineup"}
+          </button>
+          {/* "Slot-ordered lineups + clearer save" task: appears once
+              saved, and stays -- same "for the rest of that build" as the
+              button above it, not a timed flash. */}
+          {saved && (
+            <button type="button" className="finish-view-saved" onClick={onViewSaved}>
+              Saved. View saved lineups →
+            </button>
+          )}
+        </div>
         <button type="button" onClick={onStartAgain}>
           Start again
         </button>

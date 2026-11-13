@@ -2,10 +2,11 @@
 // here -- a list of everything savedLineupsStore.ts has (newest first),
 // each row showing date/contest/opening/projection/salary used with its
 // own Copy (same tab-separated text format as the Finish screen's own
-// "Copy lineup" -- see lineupText.ts) and Delete (confirm first). "Export
-// all" downloads the whole store as one JSON backup file; "Import" loads
-// one back in, skipping anything already saved (by content, not id -- see
-// savedLineupsStore.importLineupsJson's own comment).
+// "Copy lineup" -- see lineupText.ts) and Delete (confirm first).
+// "Download all (backup)" downloads the whole store as one JSON backup
+// file; "Import" loads one back in, skipping anything already saved (by
+// content, not id -- see savedLineupsStore.importLineupsJson's own
+// comment).
 //
 // Reuses several of SetupScreen.css's and BuildScreen.css's own class
 // names (setup-header/setup-wordmark/finish-core/finish-stats/...) rather
@@ -16,9 +17,11 @@
 // toolbar, the hidden file input) live in SavedLineupsScreen.css.
 import { type ChangeEvent, useRef, useState } from "react";
 import "./SavedLineupsScreen.css";
+import { NFL } from "./appData";
 import { KingMode } from "./engine/models";
+import { slotGridRows } from "./lineupSlots";
 import { formatLineupText, formatMoveList, type LineupTextRow } from "./lineupText";
-import { deleteLineup, exportLineupsJson, getSavedLineups, importLineupsJson, type SavedLineup } from "./savedLineupsStore";
+import { deleteLineup, exportLineupsJson, getSavedLineups, importLineupsJson, type SavedLineup, type SavedLineupPlayer } from "./savedLineupsStore";
 import ThemeToggle from "./ThemeToggle";
 
 interface Props {
@@ -143,7 +146,7 @@ export default function SavedLineupsScreen({ onBack }: Props) {
         <>
           <div className="saved-toolbar">
             <button type="button" disabled={lineups.length === 0} onClick={exportAll}>
-              Export all
+              Download all (backup)
             </button>
             <button type="button" onClick={() => fileInputRef.current?.click()}>
               Import
@@ -194,7 +197,14 @@ export default function SavedLineupsScreen({ onBack }: Props) {
   );
 }
 
+// "Slot-ordered lineups" task: the saved record's own `.slot` field
+// (Copy's "Slot" column) is left alone -- this is a FRESH recompute from
+// `.pos`, same deterministic pick-order placement the live build screens
+// use, independent of whatever `.slot` was captured at save time. See
+// lineupSlots.ts's own header comment for why these two can, in the rare
+// multi-FLEX-candidate case, name a different slot for the same player.
 function LineupDetail({ lineup, onBack }: { lineup: SavedLineup; onBack: () => void }) {
+  const slotRows = slotGridRows<SavedLineupPlayer>(lineup.players, (p) => p.pos, NFL.rosterSlots);
   return (
     <div className="finish-card saved-detail">
       <button type="button" className="saved-detail-back" onClick={onBack}>
@@ -217,7 +227,6 @@ function LineupDetail({ lineup, onBack }: { lineup: SavedLineup; onBack: () => v
         <table className="finish-core">
           <thead>
             <tr>
-              <th>Slot</th>
               <th>Piece</th>
               <th>Player</th>
               <th>Pos</th>
@@ -226,16 +235,21 @@ function LineupDetail({ lineup, onBack }: { lineup: SavedLineup; onBack: () => v
             </tr>
           </thead>
           <tbody>
-            {lineup.players.map((p, i) => (
-              <tr key={`${p.name}-${i}`}>
-                <td>{p.slot}</td>
-                <td>{p.piece}</td>
-                <td>{p.name}</td>
-                <td>{p.pos}</td>
-                <td>{p.team}</td>
-                <td>${p.salary.toLocaleString()}</td>
-              </tr>
-            ))}
+            {slotRows.map((row, i) =>
+              row.entry === null ? (
+                <tr key={i} className="finish-core-empty" aria-hidden="true">
+                  <td colSpan={5} />
+                </tr>
+              ) : (
+                <tr key={`${row.entry.name}-${i}`}>
+                  <td>{row.entry.piece}</td>
+                  <td>{row.entry.name}</td>
+                  <td>{row.entry.pos}</td>
+                  <td>{row.entry.team}</td>
+                  <td>${row.entry.salary.toLocaleString()}</td>
+                </tr>
+              ),
+            )}
           </tbody>
         </table>
       </div>

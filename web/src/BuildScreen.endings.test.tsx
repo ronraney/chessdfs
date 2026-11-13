@@ -111,6 +111,7 @@ const BLACK_QB = PLAYERS.find((p) => p.name === "Jared Goff")!;
 
 const onStartAgain = vi.fn();
 const onNewContest = vi.fn();
+const onViewSaved = vi.fn();
 
 function renderScreen() {
   return render(
@@ -123,6 +124,7 @@ function renderScreen() {
       chosenOpening={{ kind: "line", line: MORPHY_DEFENSE }}
       onStartAgain={onStartAgain}
       onNewContest={onNewContest}
+      onViewSaved={onViewSaved}
     />,
   );
 }
@@ -154,6 +156,7 @@ beforeEach(() => {
   window.localStorage.clear();
   onStartAgain.mockClear();
   onNewContest.mockClear();
+  onViewSaved.mockClear();
   vi.mocked(playBlackMove).mockClear(); // clears call history only -- the wrapped real implementation stays
 });
 
@@ -188,16 +191,19 @@ describe("BuildScreen -- endings and start again (Task 40)", () => {
       const finishCard = document.querySelector(".finish-card") as HTMLElement;
       expect(within(finishCard).getByText(lockedName)).toBeInTheDocument();
 
-      // Task 43: a DK roster slot (Slot column), before Piece -- folded
-      // into this same test (not a new one) since it already drives the
-      // exact lock -> Black-reply -> Stop flow needed; a second standalone
-      // test would just repeat that same real-engine setup for no added
+      // "Slot-ordered lineups" task: always 9 rows, fixed DK order, no
+      // Slot column any more (row position IS the slot) -- folded into
+      // this same test (not a new one) since it already drives the exact
+      // lock -> Black-reply -> Stop flow needed; a second standalone test
+      // would just repeat that same real-engine setup for no added
       // coverage.
       const headers = [...finishCard.querySelectorAll(".finish-core thead th")].map((th) => th.textContent);
-      expect(headers[0]).toBe("Slot");
-      expect(headers[1]).toBe("Piece");
-      const firstRowCells = [...finishCard.querySelectorAll(".finish-core tbody tr")[0].querySelectorAll("td")].map((td) => td.textContent);
-      expect(["QB", "RB", "WR", "TE", "FLEX", "DST"]).toContain(firstRowCells[0]);
+      expect(headers).toEqual(["Piece", "Player", "Pos", "Team", "Salary"]);
+      const rows = [...finishCard.querySelectorAll(".finish-core tbody tr")];
+      expect(rows).toHaveLength(9); // QB, RB, RB, WR, WR, WR, TE, FLEX, DST
+      const filledRows = rows.filter((row) => row.querySelector("td")!.textContent !== "");
+      expect(filledRows).toHaveLength(1); // only the one lock so far
+      expect(within(filledRows[0] as HTMLElement).getByText(lockedName)).toBeInTheDocument();
     },
     15000,
   );
@@ -241,12 +247,13 @@ describe("BuildScreen -- endings and start again (Task 40)", () => {
     15000,
   );
 
-  // "Save lineup" task: saves the finished core to savedLineupsStore.ts and
-  // shows "Saved" briefly, same transient-text pattern as Copy lineup's own
-  // "Copied"; saving the identical build a second time must not add a
-  // second row.
+  // "Save lineup" + "clearer save" tasks: saves the finished core to
+  // savedLineupsStore.ts; the button becomes "✓ Saved" and disabled for
+  // the rest of this build (not a brief flash the way Copy lineup's own
+  // "Copied" still is), and a "Saved. View saved lineups →" link appears
+  // underneath it.
   it(
-    'Save lineup saves the core, shows "Saved" briefly, and does not duplicate on a second click',
+    'Save lineup saves the core, then shows a disabled "✓ Saved" and a link to the Saved lineups screen, persistently',
     async () => {
       renderScreen();
       const user = userEvent.setup();
@@ -259,22 +266,43 @@ describe("BuildScreen -- endings and start again (Task 40)", () => {
       const lockedName = youColumn().querySelector(".locked-name")!.textContent!.split(" · ")[0];
       await user.click(screen.getByRole("button", { name: "Stop with this core" }));
 
+      expect(screen.queryByText(/View saved lineups/)).toBeNull(); // not shown before any save
       await user.click(screen.getByRole("button", { name: "Save lineup" }));
 
-      expect(await screen.findByRole("button", { name: "Saved" })).toBeInTheDocument();
-      let saved = getSavedLineups();
+      const savedButton = await screen.findByRole("button", { name: "✓ Saved" });
+      expect(savedButton).toBeDisabled();
+      const saved = getSavedLineups();
       expect(saved).toHaveLength(1);
       expect(saved[0].contestName).toBe(H2H.name);
       expect(saved[0].kingMode).toBe(KingMode.EMERGE);
       expect(saved[0].players.map((p) => p.name)).toContain(lockedName);
-      await waitFor(() => expect(screen.getByRole("button", { name: "Save lineup" })).toBeInTheDocument(), { timeout: 3000 });
 
-      await user.click(screen.getByRole("button", { name: "Save lineup" }));
-      saved = getSavedLineups();
-      expect(saved).toHaveLength(1); // the identical build again -- no duplicate row
+      // Persistent, not a timed flash -- still "✓ Saved" well past Copy
+      // lineup's own 1500ms revert window, with no further click.
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      expect(screen.getByRole("button", { name: "✓ Saved" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Save lineup" })).toBeNull();
+
+      // Clicking a disabled button is a no-op -- still just the one row.
+      await user.click(savedButton);
+      expect(getSavedLineups()).toHaveLength(1);
+
+      await user.click(screen.getByRole("button", { name: "Saved. View saved lineups →" }));
+      expect(onViewSaved).toHaveBeenCalled();
     },
     15000,
   );
+
+  // "Slot-ordered lineups + clearer save" task: "Add a 'Saved lineups'
+  // link to the app header so it's reachable from every screen" --
+  // BuildScreen's own header link, reachable before any pick at all (no
+  // build progress needed to test this one).
+  it('the header\'s own "Saved lineups" link calls onViewSaved', async () => {
+    renderScreen();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Saved lineups" }));
+    expect(onViewSaved).toHaveBeenCalled();
+  });
 
   it("a dead end shows the right message and open slots", async () => {
     // An empty player pool: every one of White's 20 legal first moves has
