@@ -5,9 +5,72 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { KingMode } from "./engine/models";
-import { getSavedLineups, saveLineup, type SavedLineupInput } from "./savedLineupsStore";
+import { loadEtrCsv } from "./engine/loaders";
+import { KingMode, type Player } from "./engine/models";
+import { saveProjectionsCsv } from "./projectionsStore";
+import { getSavedLineups, saveLineup, type SavedLineupInput, type SavedLineupPlayer } from "./savedLineupsStore";
 import SavedLineupsScreen from "./SavedLineupsScreen";
+import { SAMPLE_CSV } from "./testFixtures";
+
+const REAL_PLAYERS = loadEtrCsv(SAMPLE_CSV);
+function realPlayersByPos(pos: string, count: number): Player[] {
+  const found = REAL_PLAYERS.filter((p) => p.positions[0] === pos).slice(0, count);
+  if (found.length < count) throw new Error(`fixture needs ${count} ${pos}(s), SAMPLE_CSV only has ${found.length}`);
+  return found;
+}
+
+function toSavedPlayer(player: Player, slot: string): SavedLineupPlayer {
+  return {
+    slot,
+    piece: "Pawn",
+    optimizer: false,
+    name: player.name,
+    pos: player.positions[0],
+    team: player.team,
+    salary: player.salary,
+    projection: player.proj,
+    ownership: player.ownSmall,
+  };
+}
+
+// A real, full (9/9) roster -- 2 dedicated RBs + a 3rd that overflows to
+// FLEX, same as a genuine "Fill out my core"/full build would save, with
+// `.slot` already reflecting that overflow (exactly what saveLineupNow
+// itself would have written).
+function fullSavedPlayers(): SavedLineupPlayer[] {
+  const [qb] = realPlayersByPos("QB", 1);
+  const [rb1, rb2, rb3] = realPlayersByPos("RB", 3);
+  const [wr1, wr2, wr3] = realPlayersByPos("WR", 3);
+  const [te] = realPlayersByPos("TE", 1);
+  const [dst] = realPlayersByPos("DST", 1);
+  return [
+    toSavedPlayer(qb, "QB"),
+    toSavedPlayer(rb1, "RB"),
+    toSavedPlayer(rb2, "RB"),
+    toSavedPlayer(wr1, "WR"),
+    toSavedPlayer(wr2, "WR"),
+    toSavedPlayer(wr3, "WR"),
+    toSavedPlayer(te, "TE"),
+    toSavedPlayer(rb3, "FLEX"),
+    toSavedPlayer(dst, "DST"),
+  ];
+}
+
+// jsdom implements neither (confirmed empirically: Node's jsdom build has
+// no URL.createObjectURL at all) -- downloadFile would throw the moment
+// any test actually clicks a download button without this. Blob#text()
+// is ALSO unavailable (same gap AdminScreen.tsx's own readFileAsText
+// comment already documents) -- FileReader is used instead, same
+// workaround, to read back what a captured Blob actually contains.
+let lastBlob: Blob | null = null;
+function readBlobText(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(blob);
+  });
+}
 
 function makeInput(overrides: Partial<SavedLineupInput> = {}): SavedLineupInput {
   return {
@@ -42,6 +105,12 @@ const onBack = vi.fn();
 beforeEach(() => {
   window.localStorage.clear();
   onBack.mockClear();
+  lastBlob = null;
+  URL.createObjectURL = vi.fn((blob: Blob) => {
+    lastBlob = blob;
+    return "blob:mock";
+  });
+  URL.revokeObjectURL = vi.fn();
 });
 
 describe("SavedLineupsScreen", () => {
@@ -192,4 +261,113 @@ describe("SavedLineupsScreen", () => {
       expect(document.querySelectorAll(".saved-row")).toHaveLength(2);
     });
   });
+
+  // "DraftKings upload CSV" task.
+  describe("DraftKings CSV export", () => {
+    it("a core (under 9 players) can't be selected and says why; a full lineup gets a real checkbox", () => {
+      saveLineup(makeInput()); // makeInput's own default roster is a 2-player core
+      saveLineup({ ...makeInput(), players: fullSavedPlayers(), moves: ["d4"] });
+      saveProjectionsCsv(SAMPLE_CSV);
+      render(<SavedLineupsScreen onBack={onBack} />);
+
+      const rows = [...document.querySelectorAll(".saved-row")];
+      const coreRow = rows.find((r) => r.textContent?.includes("Core ("))!;
+      expect(coreRow.textContent).toContain("Core (2/9)");
+      expect(coreRow.querySelector('input[type="checkbox"]')).toBeNull();
+
+      const fullRow = rows.find((r) => r !== coreRow)!;
+      expect(fullRow.querySelector('input[type="checkbox"]')).not.toBeNull();
+    });
+
+    it("Select all selects every full lineup and skips cores; toggles back off", async () => {
+      saveLineup(makeInput()); // a core
+      saveLineup({ ...makeInput(), players: fullSavedPlayers(), moves: ["d4"] });
+      saveLineup({ ...makeInput(), players: fullSavedPlayers(), moves: ["Nf3"] });
+      saveProjectionsCsv(SAMPLE_CSV);
+      render(<SavedLineupsScreen onBack={onBack} />);
+      const user = userEvent.setup();
+
+      const checkboxes = () => [...document.querySelectorAll('.saved-row input[type="checkbox"]')] as HTMLInputElement[];
+      expect(checkboxes()).toHaveLength(2); // the core has none at all
+
+      await user.click(screen.getByRole("checkbox", { name: "Select all" }));
+      expect(checkboxes().every((c) => c.checked)).toBe(true);
+      expect(screen.getByRole("button", { name: "Download for DraftKings" })).toBeEnabled();
+
+      await user.click(screen.getByRole("checkbox", { name: "Select all" }));
+      expect(checkboxes().every((c) => !c.checked)).toBe(true);
+    });
+
+    it("header and slot order + \"Name (ID)\" format + FLEX overflow, in the actual downloaded CSV", async () => {
+      saveLineup({ ...makeInput(), players: fullSavedPlayers() });
+      saveProjectionsCsv(SAMPLE_CSV);
+      render(<SavedLineupsScreen onBack={onBack} />);
+      const user = userEvent.setup();
+
+      await user.click(screen.getByRole("checkbox", { name: /Select .+ for DraftKings export/ }));
+      await user.click(screen.getByRole("button", { name: "Download for DraftKings" }));
+
+      await waitFor(() => expect(screen.getByText(/Exported 1 lineup\./)).toBeInTheDocument());
+      expect(lastBlob).not.toBeNull();
+      const csv = await readBlobText(lastBlob!);
+      const [header, row] = csv.split("\n");
+      expect(header).toBe("QB,RB,RB,WR,WR,WR,TE,FLEX,DST");
+
+      const cells = row.split(",");
+      const flexBack = fullSavedPlayers().find((p) => p.slot === "FLEX")!;
+      const flexCell = cells[dkHeaderIndex("FLEX")];
+      expect(flexCell).toMatch(new RegExp(`^${flexBack.name} \\(\\d+\\)$`));
+      // The two dedicated RB columns are the OTHER two RBs, not the FLEX one.
+      expect(cells[dkHeaderIndex("RB", 0)]).not.toContain(flexBack.name);
+      expect(cells[dkHeaderIndex("RB", 1)]).not.toContain(flexBack.name);
+    });
+
+    it("missing-ID skip: a lineup with a player no longer in the current projections is skipped and reported, by name and reason", async () => {
+      const players = fullSavedPlayers();
+      const ghost = { ...players[1], name: "Totally Fake Player Not In Slate" };
+      players[1] = ghost;
+      saveLineup({ ...makeInput(), contestName: "Ghost Lineup", players });
+      saveProjectionsCsv(SAMPLE_CSV);
+      render(<SavedLineupsScreen onBack={onBack} />);
+      const user = userEvent.setup();
+
+      await user.click(screen.getByRole("checkbox", { name: /Select .+ for DraftKings export/ }));
+      await user.click(screen.getByRole("button", { name: "Download for DraftKings" }));
+
+      const status = await waitFor(() => screen.getByRole("status"));
+      expect(status.textContent).toMatch(/Exported 0 lineups\./);
+      expect(status.textContent).toMatch(/Skipped 1:/);
+      expect(status.textContent).toMatch(/Ghost Lineup/);
+      expect(status.textContent).toMatch(/Totally Fake Player Not In Slate/);
+      expect(status.textContent).toMatch(/not in the current projections/);
+    });
+
+    it('no DK ID column at all: "stop and report" -- the button is disabled and the reason is shown, not a guessed ID', () => {
+      saveLineup({ ...makeInput(), players: fullSavedPlayers() });
+      saveProjectionsCsv("Player,DK Pos,Team,Opp,DK Salary,DK Proj,Small Field,Large Field,DK Floor,DK Ceiling\n"); // no DK_ID, no id
+      render(<SavedLineupsScreen onBack={onBack} />);
+
+      expect(screen.getByText("No DK player ID column found in the loaded projections file.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Download for DraftKings" })).toBeDisabled();
+    });
+
+    it("no projections loaded at all: stop and report", () => {
+      saveLineup({ ...makeInput(), players: fullSavedPlayers() });
+      render(<SavedLineupsScreen onBack={onBack} />);
+
+      expect(screen.getByText("No projections loaded -- DK IDs are unavailable.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Download for DraftKings" })).toBeDisabled();
+    });
+
+    it("reports the real ID column's own name when one is found", () => {
+      saveProjectionsCsv(SAMPLE_CSV);
+      render(<SavedLineupsScreen onBack={onBack} />);
+      expect(screen.getByText(/DK IDs from column: DK_ID/)).toBeInTheDocument();
+    });
+  });
 });
+
+const DK_HEADER = ["QB", "RB", "RB", "WR", "WR", "WR", "TE", "FLEX", "DST"];
+function dkHeaderIndex(slotName: string, occurrence = 0): number {
+  return DK_HEADER.reduce<number[]>((acc, name, i) => (name === slotName ? [...acc, i] : acc), [])[occurrence];
+}

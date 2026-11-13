@@ -79,6 +79,22 @@ function resolveIdColumn(columnMap: EtrColumnMap, fields: readonly string[]): st
   return columnMap.id;
 }
 
+// "DraftKings upload CSV" task: whether `data`'s own header row HAS a
+// real ID column ("DK_ID" or a plain "id" -- see resolveIdColumn's own
+// comment for why both count) -- the column's own name if so, else null.
+// Unlike resolveIdColumn (which always returns SOME string, even when
+// neither is actually present, as a last-resort default for loadEtrCsv's
+// own id field), this is for callers that need to CONFIRM a real column
+// exists -- and report its name -- before trusting any player's `id` at
+// all, rather than silently riding that fallback into every player
+// sharing the same `undefined` id.
+export function detectIdColumn(data: string, columnMap: EtrColumnMap = ETR_COLUMN_MAP): string | null {
+  const fields = parse<Record<string, string>>(data, { header: true, skipEmptyLines: true }).meta.fields ?? [];
+  if (fields.includes(columnMap.id)) return columnMap.id;
+  if (fields.includes("id")) return "id";
+  return null;
+}
+
 export function loadEtrCsv(data: string, columnMap: EtrColumnMap = ETR_COLUMN_MAP): Player[] {
   const parsed = parse<Record<string, string>>(data, { header: true, skipEmptyLines: true });
   const rows = parsed.data;

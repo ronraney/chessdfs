@@ -8,6 +8,15 @@
 // content, not id -- see savedLineupsStore.importLineupsJson's own
 // comment).
 //
+// "DraftKings upload CSV" task: a checkbox per row (full, 9/9, lineups
+// only -- a core shows why it can't be picked instead of a checkbox) plus
+// "Select all", and "Download for DraftKings" (dkExport.ts) builds the
+// CSV from the CURRENTLY loaded projections slate -- never from anything
+// cached on the saved record itself, since a real player's own DK ID can
+// change slate to slate. detectIdColumn (engine/loaders.ts) is checked
+// FIRST, before ever attempting a build: no recognizable ID column at
+// all disables the button with a reason shown instead of guessing IDs.
+//
 // Reuses several of SetupScreen.css's and BuildScreen.css's own class
 // names (setup-header/setup-wordmark/finish-core/finish-stats/...) rather
 // than re-declaring the same look -- plain global stylesheets, not CSS
@@ -15,12 +24,15 @@
 // App.tsx, so those styles are always loaded regardless of which screen
 // is currently showing. New, screen-specific rules (the row list, the
 // toolbar, the hidden file input) live in SavedLineupsScreen.css.
-import { type ChangeEvent, useRef, useState } from "react";
+import { type ChangeEvent, useMemo, useRef, useState } from "react";
 import "./SavedLineupsScreen.css";
 import { NFL } from "./appData";
-import { KingMode } from "./engine/models";
+import { buildDkCsv } from "./dkExport";
+import { detectIdColumn, loadEtrCsv } from "./engine/loaders";
+import { KingMode, type Player } from "./engine/models";
 import { slotGridRows } from "./lineupSlots";
 import { formatLineupText, formatMoveList, type LineupTextRow } from "./lineupText";
+import { getSavedProjectionsCsv } from "./projectionsStore";
 import { deleteLineup, exportLineupsJson, getSavedLineups, importLineupsJson, type SavedLineup, type SavedLineupPlayer } from "./savedLineupsStore";
 import ThemeToggle from "./ThemeToggle";
 
@@ -63,8 +75,8 @@ function lineupCopyText(lineup: SavedLineup): string {
   });
 }
 
-function downloadJsonFile(filename: string, text: string): void {
-  const blob = new Blob([text], { type: "application/json" });
+function downloadFile(filename: string, text: string, mimeType: string): void {
+  const blob = new Blob([text], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
@@ -79,13 +91,41 @@ function formatRoiPct(fraction: number): string {
   return `${(fraction * 100).toFixed(1)}%`;
 }
 
+// A "full" lineup -- all 9 roster slots filled -- vs. a "core" (the
+// 4-5 player builds this app's "Stop with this core" ending normally
+// produces). Only a full lineup has exactly one player per DK CSV
+// column; a core has no well-defined DK upload row at all.
+function isFullLineup(lineup: SavedLineup): boolean {
+  return lineup.players.length === NFL.rosterSize;
+}
+
 export default function SavedLineupsScreen({ onBack }: Props) {
   const [lineups, setLineups] = useState<SavedLineup[]>(() => getSavedLineups());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [dkSelectedIds, setDkSelectedIds] = useState<ReadonlySet<string>>(new Set());
+  const [dkExportStatus, setDkExportStatus] = useState<string | null>(null);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // "DraftKings upload CSV" task: "Before building, check whether it has
+  // a DK player ID column and report its name. If it doesn't, stop and
+  // report; don't guess IDs." -- computed once per mount (re-opening this
+  // screen re-reads it); `idColumnName === null` covers both "no
+  // projections loaded at all" and "loaded, but no DK_ID/id column in its
+  // own header."
+  const { idColumnName, currentPlayers, dkUnavailableReason } = useMemo(() => {
+    const csv = getSavedProjectionsCsv();
+    if (csv === null) {
+      return { idColumnName: null, currentPlayers: [] as Player[], dkUnavailableReason: "No projections loaded -- DK IDs are unavailable." };
+    }
+    const column = detectIdColumn(csv);
+    if (column === null) {
+      return { idColumnName: null, currentPlayers: [] as Player[], dkUnavailableReason: "No DK player ID column found in the loaded projections file." };
+    }
+    return { idColumnName: column, currentPlayers: loadEtrCsv(csv), dkUnavailableReason: null as string | null };
+  }, []);
 
   function refresh(): void {
     setLineups(getSavedLineups());
@@ -106,7 +146,40 @@ export default function SavedLineupsScreen({ onBack }: Props) {
   }
 
   function exportAll(): void {
-    downloadJsonFile(`chess-dfs-saved-lineups-${new Date().toISOString().slice(0, 10)}.json`, exportLineupsJson());
+    downloadFile(`chess-dfs-saved-lineups-${new Date().toISOString().slice(0, 10)}.json`, exportLineupsJson(), "application/json");
+  }
+
+  function toggleDkSelect(id: string): void {
+    setDkSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  const fullLineups = lineups.filter(isFullLineup);
+  const allFullSelected = fullLineups.length > 0 && fullLineups.every((l) => dkSelectedIds.has(l.id));
+
+  function toggleSelectAll(): void {
+    setDkSelectedIds(allFullSelected ? new Set() : new Set(fullLineups.map((l) => l.id)));
+  }
+
+  function downloadForDraftKings(): void {
+    const selected = lineups.filter((l) => dkSelectedIds.has(l.id));
+    const result = buildDkCsv(selected, currentPlayers, NFL);
+    if (result.exportedCount > 0) {
+      downloadFile(`chess-dfs-draftkings-${new Date().toISOString().slice(0, 10)}.csv`, result.csv, "text/csv");
+    }
+    const exportedText = `Exported ${result.exportedCount} lineup${result.exportedCount === 1 ? "" : "s"}.`;
+    if (result.skipped.length === 0) {
+      setDkExportStatus(exportedText);
+    } else {
+      const reasons = result.skipped
+        .map((s) => `${s.lineup.contestName} (${new Date(s.lineup.savedAt).toLocaleDateString()}) -- ${s.reason}`)
+        .join("; ");
+      setDkExportStatus(`${exportedText} Skipped ${result.skipped.length}: ${reasons}`);
+    }
   }
 
   async function handleImport(event: ChangeEvent<HTMLInputElement>): Promise<void> {
@@ -145,6 +218,13 @@ export default function SavedLineupsScreen({ onBack }: Props) {
       ) : (
         <>
           <div className="saved-toolbar">
+            <label className="saved-select-all">
+              <input type="checkbox" checked={allFullSelected} disabled={fullLineups.length === 0} onChange={toggleSelectAll} />
+              Select all
+            </label>
+            <button type="button" disabled={dkSelectedIds.size === 0 || dkUnavailableReason !== null} onClick={downloadForDraftKings}>
+              Download for DraftKings
+            </button>
             <button type="button" disabled={lineups.length === 0} onClick={exportAll}>
               Download all (backup)
             </button>
@@ -160,6 +240,12 @@ export default function SavedLineupsScreen({ onBack }: Props) {
               onChange={(event) => void handleImport(event)}
             />
           </div>
+          <p className="hint">{dkUnavailableReason ?? `DK IDs from column: ${idColumnName}`}</p>
+          {dkExportStatus !== null && (
+            <p className="status" role="status">
+              {dkExportStatus}
+            </p>
+          )}
           {importStatus !== null && (
             <p className="status" role="status">
               {importStatus}
@@ -172,6 +258,20 @@ export default function SavedLineupsScreen({ onBack }: Props) {
             <ul className="saved-list">
               {lineups.map((lineup) => (
                 <li key={lineup.id} className="saved-row">
+                  <div className="saved-row-select">
+                    {isFullLineup(lineup) ? (
+                      <input
+                        type="checkbox"
+                        checked={dkSelectedIds.has(lineup.id)}
+                        onChange={() => toggleDkSelect(lineup.id)}
+                        aria-label={`Select ${lineup.contestName} for DraftKings export`}
+                      />
+                    ) : (
+                      <span className="saved-row-core-note" title="Only full lineups (9/9) can be exported for DraftKings.">
+                        Core ({lineup.players.length}/9)
+                      </span>
+                    )}
+                  </div>
                   <button type="button" className="saved-row-main" onClick={() => setSelectedId(lineup.id)}>
                     <span className="saved-row-date">{new Date(lineup.savedAt).toLocaleString()}</span>
                     <span className="saved-row-contest">{lineup.contestName}</span>
@@ -197,12 +297,12 @@ export default function SavedLineupsScreen({ onBack }: Props) {
   );
 }
 
-// "Slot-ordered lineups" task: the saved record's own `.slot` field
-// (Copy's "Slot" column) is left alone -- this is a FRESH recompute from
-// `.pos`, same deterministic pick-order placement the live build screens
-// use, independent of whatever `.slot` was captured at save time. See
-// lineupSlots.ts's own header comment for why these two can, in the rare
-// multi-FLEX-candidate case, name a different slot for the same player.
+// "Slot-ordered lineups" task: the fixed 9-row DK grid, recomputed fresh
+// from `.pos` rather than read back off the stored `.slot` field -- for
+// a lineup saved since "DraftKings upload CSV" retired the old
+// assignRosterSlots, the two already agree; this stays a fresh recompute
+// regardless (lineupSlots.ts's own placement is cheap and deterministic,
+// and never needs to trust a snapshot it can just re-derive).
 function LineupDetail({ lineup, onBack }: { lineup: SavedLineup; onBack: () => void }) {
   const slotRows = slotGridRows<SavedLineupPlayer>(lineup.players, (p) => p.pos, NFL.rosterSlots);
   return (

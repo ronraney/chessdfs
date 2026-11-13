@@ -4,7 +4,7 @@
 // actually pass it.
 import { describe, expect, it } from "vitest";
 import nflConfig from "./data/config/sports/nfl.json";
-import { slotGridRows } from "./lineupSlots";
+import { slotGridRows, slotNamesForEntries } from "./lineupSlots";
 import { loadSportConfig } from "./engine/sport";
 
 const NFL = loadSportConfig(nflConfig);
@@ -94,5 +94,30 @@ describe("slotGridRows", () => {
     const rb = entry("RB1", "rb");
     const rows = run([rb]);
     expect(rows.find((r) => r.slotName === "RB")?.entry).toBe(rb);
+  });
+});
+
+// "DraftKings upload CSV" task: Copy lineup, the saved record's own
+// `.slot` field, and the DK CSV all read THIS shape (parallel to the
+// input entries, no blanks) -- same underlying placement as
+// slotGridRows above (computePlacement), just a different return shape.
+describe("slotNamesForEntries", () => {
+  function runNames(entries: readonly Entry[]) {
+    return slotNamesForEntries(entries, (e) => e.pos, NFL.rosterSlots);
+  }
+
+  it("slot fill order: each position's own dedicated slots fill in pick order", () => {
+    const names = runNames([entry("QB1", "QB"), entry("RB1", "RB"), entry("RB2", "RB"), entry("WR1", "WR")]);
+    expect(names).toEqual(["QB", "RB", "RB", "WR"]);
+  });
+
+  it("FLEX overflow: a 3rd same-position entry lands in FLEX, in pick order, parallel to the input", () => {
+    const names = runNames([entry("RB1", "RB"), entry("RB2", "RB"), entry("RB3", "RB")]);
+    expect(names).toEqual(["RB", "RB", "FLEX"]);
+  });
+
+  it("is parallel to the input -- same length, no blanks, one name per entry", () => {
+    const entries = [entry("QB1", "QB"), entry("RB1", "RB")];
+    expect(runNames(entries)).toHaveLength(entries.length);
   });
 });

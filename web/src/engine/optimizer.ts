@@ -1,10 +1,9 @@
 // Exact best-lineup solver: the best legal DK Classic lineup by total
 // projection, subject to `sport`'s own roster slots (FLEX included, via
 // each slot's own eligible positions -- no FLEX-specific logic here, same
-// "sport-agnostic, config-driven" shape rules.ts's maxAssignable/
-// assignRosterSlots already use) and a salary cap, optionally forcing a
-// set of players in (White's locks) and excluding others (players Black has
-// already taken).
+// "sport-agnostic, config-driven" shape rules.ts's maxAssignable already
+// uses) and a salary cap, optionally forcing a set of players in (White's
+// locks) and excluding others (players Black has already taken).
 //
 // This is a weighted roster-slot assignment problem, not a plain knapsack:
 // a greedy "take the best projection per slot" can miss the true optimum

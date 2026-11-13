@@ -77,7 +77,6 @@ import { pieceForChessType } from "./engine/pieces";
 import { castleQbCandidates, castleRookList, pickList } from "./engine/picklist";
 import { SeededRandom } from "./engine/rng";
 import {
-  assignRosterSlots,
   capturedSquare,
   isLineupComplete,
   lineupStillCompletable,
@@ -93,7 +92,7 @@ import { validateVegasCsv } from "./engine/sim/vegasCsv";
 import type { SimResult } from "./engine/sim/run";
 import type { SportConfig } from "./engine/sport";
 import { NO_FIELD_CACHED_MESSAGE, resolveCachedField, slateSignature } from "./fieldCacheStore";
-import { slotGridRows } from "./lineupSlots";
+import { slotGridRows, slotNamesForEntries } from "./lineupSlots";
 import { formatLineupText, formatMoveList, type LineupTextRow } from "./lineupText";
 import { getSavedProjectionsCsv } from "./projectionsStore";
 import { saveLineup, type SavedLineupPlayer, type SavedLineupSim } from "./savedLineupsStore";
@@ -212,8 +211,8 @@ const NOOP = () => {};
 // list, FinishCard's table, and lineupText all walk the same shape so
 // White's two kinds of roster entry render identically everywhere
 // (ordering: every piece-locked move first, in play order, then every
-// optimizer-filled player after -- matches assignRosterSlots' own "same
-// order as the input array" contract).
+// optimizer-filled player after -- the pick order lineupSlots.ts's own
+// slot placement relies on).
 interface RosterEntry {
   readonly label: string; // PIECE_LABEL[piece], or OPTIMIZER_LABEL
   readonly glyph: string; // PIECE_GLYPH[piece], or OPTIMIZER_GLYPH
@@ -1837,9 +1836,8 @@ function SideColumn({
   const rosterRows = rosterEntries(moves, filled);
   // "Slot-ordered lineups" task: a fixed 9-row DK grid (QB, RB, RB, WR,
   // WR, WR, TE, FLEX, DST), recomputed from the CURRENT roster on every
-  // render -- see slotGridRows' own header comment for why this, not
-  // engine/rules.ts's assignRosterSlots, is what keeps re-slotting after a
-  // capture well-defined.
+  // render -- see lineupSlots.ts's own header comment for why this keeps
+  // re-slotting after a capture well-defined.
   const slotRows = slotGridRows(rosterRows, (entry) => entry.player.positions[0], NFL.rosterSlots);
   const openSlots = openSlotLabels(stats);
   return (
@@ -2028,20 +2026,14 @@ function FinishCard({
   // reverting it back the way Copy lineup's "Copied" flash still does.
   const [saved, setSaved] = useState(false);
   // "Fill out my core" entries first, piece-locked moves then optimizer
-  // fills, same order rosterEntries always uses -- Task 43's DK roster
-  // slot (QB/RB/WR/TE/FLEX/DST) assignment runs over the SAME combined
-  // list, one slot per entry, same order; see assignRosterSlots' own
-  // comment for why WHICH interchangeable player draws "FLEX" vs. its own
-  // dedicated slot is a cosmetic artifact of the matching search, not
-  // lock/fill order.
+  // fills, same order rosterEntries always uses -- this is the pick order
+  // lineupSlots.ts's own placement relies on, for both `slots` (parallel
+  // to `entries`, feeding Copy lineup/Save lineup's own "Slot" field) and
+  // `slotRows` (the fixed 9-row grid this table shows) below -- the SAME
+  // placement ("DraftKings upload CSV" task retired the old, separate
+  // assignRosterSlots this used to read from).
   const entries = useMemo(() => rosterEntries(whiteMoves, whiteFilledPlayers), [whiteMoves, whiteFilledPlayers]);
-  const slots = useMemo(() => assignRosterSlots(entries.map((e) => e.player), NFL.rosterSlots), [entries]);
-  // "Slot-ordered lineups" task: the fixed 9-row DK grid this table now
-  // shows -- deliberately separate from `slots` above (Copy lineup/Save
-  // lineup's own "Slot" field, untouched by this task): see
-  // slotGridRows' own header comment for why its deterministic, pick-
-  // order placement can differ from assignRosterSlots' matching-based one
-  // in the rare multi-FLEX-candidate case.
+  const slots = useMemo(() => slotNamesForEntries(entries, (e) => e.player.positions[0], NFL.rosterSlots), [entries]);
   const slotRows = useMemo(() => slotGridRows(entries, (e) => e.player.positions[0], NFL.rosterSlots), [entries]);
 
   useEffect(() => {
@@ -2247,12 +2239,13 @@ function FinishCard({
 
 // Finish screen's "Copy lineup" -- plain tab-separated text (pastes cleanly
 // into a spreadsheet), one row per roster entry (piece-locked OR
-// "Fill out my core" optimizer-filled -- see rosterEntries) matching the
-// on-screen finish-core table (Slot/Piece/Player/Pos/Team/Salary) plus a
-// totals block. "Salary used" has no stored field of its own (SideStats
-// only tracks salaryRemaining) -- it's just the roster's own salaries
-// summed (whiteStats itself already folds in any filled players too, see
-// its own comment). `slots` is parallel to `entries`, from assignRosterSlots.
+// "Fill out my core" optimizer-filled -- see rosterEntries) with its own
+// Slot/Piece/Player/Pos/Team/Salary columns, plus a totals block. "Salary
+// used" has no stored field of its own (SideStats only tracks
+// salaryRemaining) -- it's just the roster's own salaries summed
+// (whiteStats itself already folds in any filled players too, see its
+// own comment). `slots` is parallel to `entries`, from
+// lineupSlots.slotNamesForEntries.
 function lineupText(
   entries: readonly RosterEntry[],
   slots: readonly string[],
