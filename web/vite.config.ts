@@ -17,6 +17,13 @@ syncStockfish()
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // Pins the dev server to its default port (5173) -- without this, Vite
+  // silently moves to the next free port whenever that one's already
+  // taken (e.g. a previous `npm run dev` still running), so the app's own
+  // address changes between runs instead of failing loudly.
+  server: {
+    strictPort: true,
+  },
   test: {
     // Pure engine tests stay on the default 'node' environment (jsdom adds
     // real overhead -- see App.test.tsx's own `@vitest-environment jsdom`

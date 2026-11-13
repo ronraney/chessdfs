@@ -19,6 +19,7 @@ import { loadEtrCsv } from "./engine/loaders";
 import type { KingMode } from "./engine/models";
 import type { Player } from "./engine/models";
 import { getSavedProjectionsCsv } from "./projectionsStore";
+import SavedLineupsScreen from "./SavedLineupsScreen";
 import type { ChosenSetup } from "./SetupScreen";
 import SetupScreen from "./SetupScreen";
 import ThemeToggle from "./ThemeToggle";
@@ -36,7 +37,7 @@ function loadSavedPlayers(): Player[] | null {
 
 function App() {
   const [isAdminRoute, setIsAdminRoute] = useState(() => window.location.hash === "#/admin");
-  const [screen, setScreen] = useState<"setup" | "build">("setup");
+  const [screen, setScreen] = useState<"setup" | "build" | "saved">("setup");
   const [chosenSetup, setChosenSetup] = useState<ChosenSetup | null>(null);
   const [players, setPlayers] = useState<Player[] | null>(() => loadSavedPlayers());
   // Task 40: "Start again" (same contest + King mode, back to the opening
@@ -107,6 +108,10 @@ function App() {
     );
   }
 
+  if (screen === "saved") {
+    return <SavedLineupsScreen onBack={() => setScreen("setup")} />;
+  }
+
   if (screen === "build" && chosenSetup !== null) {
     return (
       <BuildScreen
@@ -133,6 +138,7 @@ function App() {
         setChosenSetup(chosen);
         setScreen("build");
       }}
+      onViewSaved={() => setScreen("saved")}
     />
   );
 }

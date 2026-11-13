@@ -93,7 +93,9 @@ import { validateVegasCsv } from "./engine/sim/vegasCsv";
 import type { SimResult } from "./engine/sim/run";
 import type { SportConfig } from "./engine/sport";
 import { NO_FIELD_CACHED_MESSAGE, resolveCachedField, slateSignature } from "./fieldCacheStore";
+import { formatLineupText, formatMoveList, type LineupTextRow } from "./lineupText";
 import { getSavedProjectionsCsv } from "./projectionsStore";
+import { saveLineup, type SavedLineupPlayer, type SavedLineupSim } from "./savedLineupsStore";
 import { getSavedVegasCsv } from "./vegasStore";
 import { runSimInWorker } from "./simRunner";
 import { stockfishEngine } from "./stockfishEngine";
@@ -1569,6 +1571,8 @@ export default function BuildScreen({
               onFillOutCore={fillOutCore}
               onStartAgain={onStartAgain}
               onNewContest={onNewContest}
+              preset={preset}
+              kingMode={kingMode}
             />
           ) : (
             <>
@@ -1908,6 +1912,24 @@ function SideColumn({
   );
 }
 
+// "Save lineup" task: SideSimState's "done" variant -> the plain-number
+// shape savedLineupsStore.SavedLineupSim stores, or null for every other
+// sim status (idle, never run; running/noField/error, no result to save
+// yet) -- "sim stats if run" per that task's own wording.
+function simToSaved(sim: SideSimState): SavedLineupSim | null {
+  if (sim.kind !== "done") return null;
+  return {
+    cashRate: sim.result.cashRate,
+    bottom99Roi: sim.result.bottom99Roi,
+    top1PctScoreRoi: sim.result.top1PctScoreRoi,
+    top1PctRate: sim.result.top1PctRate,
+    roi: sim.result.roi,
+    isBestFinish: sim.isBestFinish,
+    buildSeed: sim.buildSeed,
+    simSeed: sim.simSeed,
+  };
+}
+
 // Task 40: replaces the board area's own controls (status line, board,
 // book continues, take-back) once the build has ended, for every ending
 // kind. `whiteStats`/`whiteMoves` are read straight off the live `state`
@@ -1929,6 +1951,8 @@ function FinishCard({
   onFillOutCore,
   onStartAgain,
   onNewContest,
+  preset,
+  kingMode,
 }: {
   ending: Ending;
   chosenOpeningLabel: string;
@@ -1945,10 +1969,19 @@ function FinishCard({
   onFillOutCore: () => void;
   onStartAgain: () => void;
   onNewContest: () => void;
+  // "Save lineup" task: not used anywhere else in this component -- only
+  // needed to fill out the saved record's own contest name/King mode
+  // (preset.contest.fieldTier(), for each player's saved ownership
+  // fraction, same tier Copy lineup's live Ownership total already uses
+  // via whiteStats).
+  preset: ContestPreset;
+  kingMode: KingMode;
 }) {
   const openSlots = openSlotLabels(whiteStats);
   const [copied, setCopied] = useState(false);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [saved, setSaved] = useState(false);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // "Fill out my core" entries first, piece-locked moves then optimizer
   // fills, same order rosterEntries always uses -- Task 43's DK roster
   // slot (QB/RB/WR/TE/FLEX/DST) assignment runs over the SAME combined
@@ -1962,6 +1995,7 @@ function FinishCard({
   useEffect(() => {
     return () => {
       if (copiedTimerRef.current !== null) clearTimeout(copiedTimerRef.current);
+      if (savedTimerRef.current !== null) clearTimeout(savedTimerRef.current);
     };
   }, []);
 
@@ -1970,6 +2004,48 @@ function FinishCard({
     setCopied(true);
     if (copiedTimerRef.current !== null) clearTimeout(copiedTimerRef.current);
     copiedTimerRef.current = setTimeout(() => setCopied(false), 1500);
+  }
+
+  // "Save lineup" task: everything the Saved lineups screen later needs
+  // (date/time comes from saveLineup's own savedAt, not captured here) --
+  // same roster order/fields Copy lineup's own table already reads off
+  // `entries`/`slots`, plus per-player projection/ownership (not shown in
+  // the on-screen table, but part of this task's own spec) and sim stats
+  // for both sides if a run has finished. saveLineup itself no-ops (no new
+  // row) if an identical build was already saved -- see its own comment.
+  function saveLineupNow(): void {
+    const tier = preset.contest.fieldTier();
+    const players: SavedLineupPlayer[] = entries.map((entry, i) => ({
+      slot: slots[i],
+      piece: entry.label,
+      optimizer: entry.label === OPTIMIZER_LABEL,
+      name: entry.player.name,
+      pos: entry.player.positions[0],
+      team: entry.player.team,
+      salary: entry.player.salary,
+      projection: entry.player.proj,
+      ownership: entry.player.ownFor(tier),
+    }));
+    const salaryUsed = entries.reduce((sum, entry) => sum + entry.player.salary, 0);
+    saveLineup({
+      contestName: preset.name,
+      kingMode,
+      chosenOpening: chosenOpeningLabel,
+      finalOpening: finalOpeningLabel,
+      moves: history,
+      players,
+      totals: {
+        salaryUsed,
+        salaryRemaining: whiteStats.salaryRemaining,
+        projection: whiteStats.projTotal,
+        ownership: whiteStats.ownershipTotal,
+      },
+      whiteSim: simToSaved(whiteSim),
+      blackSim: simToSaved(blackSim),
+    });
+    setSaved(true);
+    if (savedTimerRef.current !== null) clearTimeout(savedTimerRef.current);
+    savedTimerRef.current = setTimeout(() => setSaved(false), 1500);
   }
 
   return (
@@ -2087,6 +2163,9 @@ function FinishCard({
         <button type="button" onClick={() => void copyLineup()}>
           {copied ? "Copied" : "Copy lineup"}
         </button>
+        <button type="button" onClick={saveLineupNow}>
+          {saved ? "Saved" : "Save lineup"}
+        </button>
         <button type="button" onClick={onStartAgain}>
           Start again
         </button>
@@ -2113,31 +2192,23 @@ function lineupText(
   openingLabel: string,
   history: readonly string[],
 ): string {
-  const rows = entries.map((entry, i) =>
-    [slots[i], entry.label, entry.player.name, entry.player.positions[0], entry.player.team, `$${entry.player.salary.toLocaleString()}`].join(
-      "\t",
-    ),
-  );
+  const rows: LineupTextRow[] = entries.map((entry, i) => ({
+    slot: slots[i],
+    label: entry.label,
+    name: entry.player.name,
+    pos: entry.player.positions[0],
+    team: entry.player.team,
+    salary: entry.player.salary,
+  }));
   const salaryUsed = entries.reduce((sum, entry) => sum + entry.player.salary, 0);
-  const totals = [
-    `Salary used: $${salaryUsed.toLocaleString()}`,
-    `Salary remaining: $${whiteStats.salaryRemaining.toLocaleString()}`,
-    `Projection: ${whiteStats.projTotal.toFixed(1)} pts`,
-    `Ownership: ${(whiteStats.ownershipTotal * 100).toFixed(1)}%`,
-    `Opening: ${openingLabel}`,
-    `Moves: ${formatMoveList(history)}`,
-  ];
-  return [...rows, "", ...totals].join("\n");
-}
-
-function formatMoveList(history: readonly string[]): string {
-  const pairs: string[] = [];
-  for (let i = 0; i < history.length; i += 2) {
-    const num = i / 2 + 1;
-    const black = history[i + 1];
-    pairs.push(black !== undefined ? `${num}. ${history[i]} ${black}` : `${num}. ${history[i]}`);
-  }
-  return pairs.join(" ");
+  return formatLineupText(rows, {
+    salaryUsed,
+    salaryRemaining: whiteStats.salaryRemaining,
+    projection: whiteStats.projTotal,
+    ownership: whiteStats.ownershipTotal,
+    opening: openingLabel,
+    moves: formatMoveList(history),
+  });
 }
 
 function PlayerFieldTable({ white, black }: { white: readonly Move[]; black: readonly Move[] }) {

@@ -1,0 +1,138 @@
+/* "Save lineup" task: screen-specific rules only -- the header, the
+   detail view's table/stats card, and its "Chosen:"/"Final position:"
+   lines all reuse SetupScreen.css's/BuildScreen.css's own classes
+   directly (see SavedLineupsScreen.tsx's own header comment). */
+.saved-screen {
+  box-sizing: border-box;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px 20px 48px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.saved-toolbar {
+  display: flex;
+  gap: 10px;
+}
+
+.saved-toolbar button {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--text-h);
+}
+
+/* The real file input stays in the DOM (for the browser's own file
+   picker) but is never shown -- the "Import" button above it is what the
+   user actually sees and clicks; its own onClick forwards to this input
+   via a ref. */
+.saved-import-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.saved-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.saved-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 4px 4px 14px;
+}
+
+.saved-row-main {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 10px 4px;
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.saved-row-date {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.saved-row-contest {
+  font-weight: 700;
+}
+
+.saved-row-opening {
+  color: var(--text);
+}
+
+.saved-row-projection,
+.saved-row-salary {
+  font-family: var(--mono);
+  font-size: 13px;
+  margin-left: auto;
+}
+
+.saved-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.saved-row-actions button {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--text-h);
+}
+
+.saved-detail-back {
+  align-self: flex-start;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0;
+  cursor: pointer;
+}
+
+@media (max-width: 480px) {
+  .saved-screen {
+    padding: 12px 14px 32px;
+  }
+
+  .saved-row {
+    flex-wrap: wrap;
+  }
+
+  .saved-row-projection,
+  .saved-row-salary {
+    margin-left: 0;
+  }
+}

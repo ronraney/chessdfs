@@ -67,6 +67,23 @@ describe("App setup screen", () => {
   });
 });
 
+// "Save lineup" task: the Saved lineups screen is reachable from the setup
+// screen and back again -- the actual list/copy/delete/export/import
+// behavior is SavedLineupsScreen's own test file; this just covers the
+// App-level screen switch.
+describe("Saved lineups routing", () => {
+  it('"Saved lineups" from setup shows the screen, and Back returns to setup', async () => {
+    renderWithSavedSlate();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Saved lineups" }));
+    expect(screen.getByText("No saved lineups yet.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByLabelText("1 · Contest")).toBeInTheDocument();
+  });
+});
+
 describe("admin screen routing", () => {
   beforeEach(() => {
     vi.stubEnv("VITE_ADMIN_PASSWORD", PASSWORD);

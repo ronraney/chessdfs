@@ -34,7 +34,7 @@ function optionLabel(preset: ContestPreset): string {
 
 async function renderScreen() {
   const onChoose = vi.fn();
-  render(<SetupScreen players={PLAYERS} onChoose={onChoose} />);
+  render(<SetupScreen players={PLAYERS} onChoose={onChoose} onViewSaved={vi.fn()} />);
   const user = userEvent.setup();
   await user.selectOptions(screen.getByLabelText("1 · Contest"), optionLabel(H2H));
   return { onChoose, user };
@@ -51,6 +51,15 @@ describe("SetupScreen", () => {
     expect(screen.getByRole("group", { name: "Theme" })).toBeInTheDocument();
   });
 
+  // "Save lineup" task: the Saved lineups screen's own entry point.
+  it('clicking "Saved lineups" calls onViewSaved', async () => {
+    const onViewSaved = vi.fn();
+    const user = userEvent.setup();
+    render(<SetupScreen players={PLAYERS} onChoose={vi.fn()} onViewSaved={onViewSaved} />);
+    await user.click(screen.getByRole("button", { name: "Saved lineups" }));
+    expect(onViewSaved).toHaveBeenCalled();
+  });
+
   it("pre-selects the contest's own tier chip", async () => {
     // H2H (2 entries) resolves to the Small tier.
     await renderScreen();
@@ -60,7 +69,7 @@ describe("SetupScreen", () => {
 
   it("picking a contest shows its tier", async () => {
     const user = userEvent.setup();
-    render(<SetupScreen players={PLAYERS} onChoose={vi.fn()} />);
+    render(<SetupScreen players={PLAYERS} onChoose={vi.fn()} onViewSaved={vi.fn()} />);
     await user.selectOptions(screen.getByLabelText("1 · Contest"), optionLabel(H2H));
     const contestCard = document.querySelector(".contest-card") as HTMLElement;
     expect(within(contestCard).getByText(/Small field/)).toBeInTheDocument();
@@ -70,7 +79,7 @@ describe("SetupScreen", () => {
     const user = userEvent.setup();
     // PRESETS[0] (Nickel, 9,512 entries) resolves to the Large tier --
     // a different suggestion and a different chip than H2H's Small.
-    render(<SetupScreen players={PLAYERS} onChoose={vi.fn()} />);
+    render(<SetupScreen players={PLAYERS} onChoose={vi.fn()} onViewSaved={vi.fn()} />);
     expect(screen.getByRole("button", { name: "Large" })).toHaveAttribute("aria-pressed", "true");
 
     await user.selectOptions(screen.getByLabelText("1 · Contest"), optionLabel(H2H));

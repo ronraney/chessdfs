@@ -29,6 +29,22 @@
   flex-wrap: wrap;
 }
 
+.setup-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.saved-lineups-link {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--text-h);
+}
+
 .setup-wordmark {
   font-family: var(--heading);
   font-weight: 700;

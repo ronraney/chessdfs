@@ -78,6 +78,11 @@ export interface ChosenSetup {
 interface Props {
   players: readonly Player[];
   onChoose: (chosen: ChosenSetup) => void;
+  // "Save lineup" task: the setup screen's own entry point into the
+  // Saved lineups screen -- App.tsx owns navigation (same split as
+  // onStartAgain/onNewContest elsewhere), this just fires the header
+  // button.
+  onViewSaved: () => void;
   // Task 40 "Start again": App.tsx passes the just-finished build's own
   // preset index/King mode back in here so the contest/King-mode step
   // starts pre-selected to match ("same contest and King mode, back to
@@ -198,7 +203,7 @@ const ALL_CHIP = "All";
 const MAX_SEARCH_RESULTS = 20;
 const MIN_QUERY_LENGTH = 3;
 
-export default function SetupScreen({ players, onChoose, initialPresetIndex, initialKingMode, contestNotice }: Props) {
+export default function SetupScreen({ players, onChoose, onViewSaved, initialPresetIndex, initialKingMode, contestNotice }: Props) {
   const [presetIndex, setPresetIndex] = useState(initialPresetIndex ?? 0);
   const [kingMode, setKingMode] = useState<KingMode>(initialKingMode ?? KingMode.EMERGE);
   const [whiteKingId, setWhiteKingId] = useState<string | null>(null);
@@ -306,7 +311,12 @@ export default function SetupScreen({ players, onChoose, initialPresetIndex, ini
           <span className="setup-wordmark">Chess DFS</span>
           <span className="setup-tagline">DFS lineups, built from chess openings.</span>
         </div>
-        <ThemeToggle />
+        <div className="setup-header-actions">
+          <button type="button" className="saved-lineups-link" onClick={onViewSaved}>
+            Saved lineups
+          </button>
+          <ThemeToggle />
+        </div>
       </header>
 
       <div className="setup-layout">

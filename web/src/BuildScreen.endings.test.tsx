@@ -32,6 +32,7 @@ import { KingMode, Piece } from "./engine/models";
 import { classify } from "./engine/pieces";
 import { NO_FIELD_CACHED_MESSAGE, saveCachedFieldIds, slateSignature } from "./fieldCacheStore";
 import { saveProjectionsCsv } from "./projectionsStore";
+import { getSavedLineups } from "./savedLineupsStore";
 import { SAMPLE_CSV } from "./testFixtures";
 
 // Bug fix: `playBlackMove` is partially mocked (real implementation kept
@@ -236,6 +237,41 @@ describe("BuildScreen -- endings and start again (Task 40)", () => {
 
       expect(await screen.findByRole("button", { name: "Copied" })).toBeInTheDocument();
       await waitFor(() => expect(screen.getByRole("button", { name: "Copy lineup" })).toBeInTheDocument(), { timeout: 3000 });
+    },
+    15000,
+  );
+
+  // "Save lineup" task: saves the finished core to savedLineupsStore.ts and
+  // shows "Saved" briefly, same transient-text pattern as Copy lineup's own
+  // "Copied"; saving the identical build a second time must not add a
+  // second row.
+  it(
+    'Save lineup saves the core, shows "Saved" briefly, and does not duplicate on a second click',
+    async () => {
+      renderScreen();
+      const user = userEvent.setup();
+      await user.click(chosenContinueButton()); // 1. e4
+      const dialog = await screen.findByRole("dialog", { name: "Choose your Pawn" });
+      await selectTopRow(user, dialog);
+      await user.click(within(dialog).getByRole("button", { name: "Lock player" }));
+      await waitFor(() => expect(within(fieldColumn()).queryAllByRole("listitem")).toHaveLength(1), { timeout: 2000 });
+
+      const lockedName = youColumn().querySelector(".locked-name")!.textContent!.split(" · ")[0];
+      await user.click(screen.getByRole("button", { name: "Stop with this core" }));
+
+      await user.click(screen.getByRole("button", { name: "Save lineup" }));
+
+      expect(await screen.findByRole("button", { name: "Saved" })).toBeInTheDocument();
+      let saved = getSavedLineups();
+      expect(saved).toHaveLength(1);
+      expect(saved[0].contestName).toBe(H2H.name);
+      expect(saved[0].kingMode).toBe(KingMode.EMERGE);
+      expect(saved[0].players.map((p) => p.name)).toContain(lockedName);
+      await waitFor(() => expect(screen.getByRole("button", { name: "Save lineup" })).toBeInTheDocument(), { timeout: 3000 });
+
+      await user.click(screen.getByRole("button", { name: "Save lineup" }));
+      saved = getSavedLineups();
+      expect(saved).toHaveLength(1); // the identical build again -- no duplicate row
     },
     15000,
   );
